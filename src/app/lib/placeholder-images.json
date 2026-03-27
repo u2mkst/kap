@@ -1,0 +1,41 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-education",
+      "description": "A modern classroom with students engaged in learning",
+      "imageUrl": "https://picsum.photos/seed/edu1/1200/600",
+      "imageHint": "modern classroom"
+    },
+    {
+      "id": "course-math",
+      "description": "Mathematics formulas on a chalkboard",
+      "imageUrl": "https://picsum.photos/seed/math/600/400",
+      "imageHint": "mathematics blackboard"
+    },
+    {
+      "id": "course-science",
+      "description": "Science laboratory equipment",
+      "imageUrl": "https://picsum.photos/seed/science/600/400",
+      "imageHint": "science lab"
+    },
+    {
+      "id": "course-english",
+      "description": "Books and English literature",
+      "imageUrl": "https://picsum.photos/seed/english/600/400",
+      "imageHint": "english books"
+    },
+    {
+      "id": "course-coding",
+      "description": "Computer coding on a screen",
+      "imageUrl": "https://picsum.photos/seed/coding/600/400",
+      "imageHint": "coding computer"
+    },
+    {
+      "id": "instructor-1",
+      "description": "Professional smiling instructor",
+      "imageUrl": "https://picsum.photos/seed/teacher1/200/200",
+      "imageHint": "smiling teacher"
+    }
+  ]
+}
