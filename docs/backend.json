@@ -1,0 +1,544 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user profile in the Class Hub academy, including personal details, accumulated points, and enrolled courses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "Unique identifier for the user within the academy, following a specific 'ufes---' format. Used for login."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's contact email address. Not used for login.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's contact phone number."
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "description": "The user's date of birth.",
+          "format": "date"
+        },
+        "points": {
+          "type": "number",
+          "description": "Current accumulated points for gamification features."
+        },
+        "registeredCourseIds": {
+          "type": "array",
+          "description": "References to Courses the user has registered for. (Relationship: User N:N Course)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "firstName",
+        "lastName",
+        "points",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Course": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Course",
+      "type": "object",
+      "description": "Details about an academic course offered by the Class Hub academy.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Course entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the course."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the course content."
+        },
+        "instructorId": {
+          "type": "string",
+          "description": "Reference to the Instructor teaching this course. (Relationship: Instructor 1:N Course)"
+        },
+        "schedule": {
+          "type": "string",
+          "description": "Textual description of the course schedule (e.g., 'Mon, Wed 10:00-12:00')."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The start date of the course.",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The end date of the course.",
+          "format": "date"
+        },
+        "capacity": {
+          "type": "number",
+          "description": "The maximum number of students allowed in the course."
+        },
+        "courseCode": {
+          "type": "string",
+          "description": "A unique code assigned to the course."
+        },
+        "recommended": {
+          "type": "boolean",
+          "description": "Indicates if this course is recommended for display on the homepage."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the course record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the course record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "instructorId",
+        "schedule",
+        "startDate",
+        "endDate",
+        "capacity",
+        "courseCode",
+        "recommended",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Instructor": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Instructor",
+      "type": "object",
+      "description": "Information about an instructor teaching courses in the Class Hub academy.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Instructor entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The instructor's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The instructor's last name."
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography or description of the instructor."
+        },
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL to the instructor's profile picture.",
+          "format": "uri"
+        },
+        "email": {
+          "type": "string",
+          "description": "The instructor's contact email address.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The instructor's contact phone number."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the instructor record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the instructor record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "bio",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Announcement": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Announcement",
+      "type": "object",
+      "description": "Official announcements or notices from the Class Hub academy.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Announcement entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the announcement."
+        },
+        "content": {
+          "type": "string",
+          "description": "The full content of the announcement."
+        },
+        "publishDate": {
+          "type": "string",
+          "description": "The date and time when the announcement was published.",
+          "format": "date-time"
+        },
+        "expirationDate": {
+          "type": "string",
+          "description": "Optional date and time when the announcement should no longer be displayed.",
+          "format": "date-time"
+        },
+        "isUrgent": {
+          "type": "boolean",
+          "description": "Indicates if the announcement is urgent and requires prominent display."
+        },
+        "createdByUserId": {
+          "type": "string",
+          "description": "Reference to the User (admin) who created this announcement. (Relationship: User 1:N Announcement)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the announcement record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the announcement record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "publishDate",
+        "isUrgent",
+        "createdByUserId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyProblem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DailyProblem",
+      "type": "object",
+      "description": "A daily academic problem provided for user engagement.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DailyProblem entity."
+        },
+        "date": {
+          "type": "string",
+          "description": "The specific date for which this daily problem is designated.",
+          "format": "date"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title or subject of the daily problem."
+        },
+        "problemText": {
+          "type": "string",
+          "description": "The full text of the problem."
+        },
+        "solutionText": {
+          "type": "string",
+          "description": "The solution or explanation for the daily problem."
+        },
+        "topic": {
+          "type": "string",
+          "description": "The academic topic or subject of the problem (e.g., 'Math - Algebra')."
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The difficulty level of the problem (e.g., 'Easy', 'Medium', 'Hard')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the daily problem record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the daily problem record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "title",
+        "problemText",
+        "solutionText",
+        "topic",
+        "difficulty",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyFortune": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DailyFortune",
+      "type": "object",
+      "description": "A daily fortune message for user entertainment and engagement.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DailyFortune entity."
+        },
+        "date": {
+          "type": "string",
+          "description": "The specific date for which this daily fortune is designated.",
+          "format": "date"
+        },
+        "fortuneText": {
+          "type": "string",
+          "description": "The text content of the daily fortune message."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the fortune (e.g., 'General', 'Study', 'Luck')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the daily fortune record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the daily fortune record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "fortuneText",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPlant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserPlant",
+      "type": "object",
+      "description": "Represents a virtual plant owned by a user, tracking its type and growth stage within the gamification feature.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserPlant entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this plant. (Relationship: User 1:N UserPlant)"
+        },
+        "plantName": {
+          "type": "string",
+          "description": "An optional name given to the plant by the user."
+        },
+        "plantType": {
+          "type": "string",
+          "description": "The type or species of the virtual plant (e.g., 'Sunflower', 'Oak Tree')."
+        },
+        "growthStage": {
+          "type": "string",
+          "description": "The current growth stage of the plant (e.g., 'Seed', 'Sprout', 'Sapling', 'Mature')."
+        },
+        "lastGrowthUpdateDate": {
+          "type": "string",
+          "description": "The date when the plant's growth stage was last updated or advanced.",
+          "format": "date"
+        },
+        "pointsInvested": {
+          "type": "number",
+          "description": "The total points a user has invested in this specific plant."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user plant record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user plant record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "plantType",
+        "growthStage",
+        "lastGrowthUpdateDate",
+        "pointsInvested",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores individual user profiles. Access is restricted to the authenticated user matching the 'userId' or to administrators. Includes 'registeredCourseIds' array for user enrollments. The 'id' field in the document matches the 'userId' parameter for path-based authorization.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, corresponding to `request.auth.uid`."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/plants/{userPlantId}",
+        "definition": {
+          "entityName": "UserPlant",
+          "schema": {
+            "$ref": "#/backend/entities/UserPlant"
+          },
+          "description": "A subcollection storing virtual plants owned by a specific user. Each document includes a denormalized 'userId' field for explicit ownership, ensuring authorization independence for each plant. Access is restricted to the authenticated user matching the 'userId' path parameter.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns this plant, matching the parent user document ID."
+            },
+            {
+              "name": "userPlantId",
+              "description": "The unique ID of the specific virtual plant."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courses/{courseId}",
+        "definition": {
+          "entityName": "Course",
+          "schema": {
+            "$ref": "#/backend/entities/Course"
+          },
+          "description": "Stores details about academic courses. All documents are publicly readable. Write access is restricted to administrators.",
+          "params": [
+            {
+              "name": "courseId",
+              "description": "The unique ID of the course."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/instructors/{instructorId}",
+        "definition": {
+          "entityName": "Instructor",
+          "schema": {
+            "$ref": "#/backend/entities/Instructor"
+          },
+          "description": "Stores profiles and details of instructors. All documents are publicly readable. Write access is restricted to administrators.",
+          "params": [
+            {
+              "name": "instructorId",
+              "description": "The unique ID of the instructor."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/announcements/{announcementId}",
+        "definition": {
+          "entityName": "Announcement",
+          "schema": {
+            "$ref": "#/backend/entities/Announcement"
+          },
+          "description": "Stores public announcements from the academy. All documents are publicly readable. Write access is restricted to administrators.",
+          "params": [
+            {
+              "name": "announcementId",
+              "description": "The unique ID of the announcement."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/daily_problems/{problemDate}",
+        "definition": {
+          "entityName": "DailyProblem",
+          "schema": {
+            "$ref": "#/backend/entities/DailyProblem"
+          },
+          "description": "Stores daily academic problems, indexed by date. All documents are publicly readable. Write access is restricted to administrators. The 'id' field in the document is the same as the 'problemDate' for path-based access.",
+          "params": [
+            {
+              "name": "problemDate",
+              "description": "The date for which the problem is designated (format: YYYY-MM-DD), serving as the document ID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/daily_fortunes/{fortuneDate}",
+        "definition": {
+          "entityName": "DailyFortune",
+          "schema": {
+            "$ref": "#/backend/entities/DailyFortune"
+          },
+          "description": "Stores daily fortune messages, indexed by date. All documents are publicly readable. Write access is restricted to administrators. The 'id' field in the document is the same as the 'fortuneDate' for path-based access.",
+          "params": [
+            {
+              "name": "fortuneDate",
+              "description": "The date for which the fortune is designated (format: YYYY-MM-DD), serving as the document ID."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for the Class Hub academy is designed to meet security, scalability, and debuggability requirements, prioritizing authorization independence and clear access patterns. \n\n**Authorization Independence:**\n1.  **User Data & User Plants:** User-specific data is organized hierarchically under `/users/{userId}`. This path directly enforces ownership, as `request.auth.uid` must match `{userId}` for read/write access to a user's profile. For user-owned virtual plants, a subcollection `/users/{userId}/plants/{plantId}` is used. Each `userPlant` document explicitly includes the `userId` field, denormalizing the ownership context. This ensures that authorization rules for `userPlant` documents can operate atomically (`request.auth.uid == resource.data.userId` or `request.auth.uid == userId` from the path wildcard) without requiring expensive and problematic `get()` calls to the parent `user` document, thus enabling atomic operations and simplifying rules.\n2.  **Global Content (Courses, Instructors, Announcements, Daily Problems/Fortunes):** These collections are designed for public read access and admin write access. Their security posture does not depend on hierarchical parent data, making them inherently authorization-independent for general users.\n\n**QAPs (Rules are not Filters) Support:**\n1.  **Structural Segregation for Public Read:** Collections like `/courses`, `/instructors`, `/announcements`, `/daily_problems`, and `/daily_fortunes` are designed to be publicly readable. This means `list` operations on these collections are inherently secure and efficient, as all documents within them share the same security posture (public read). There's no need for complex filtering by security rules on the client-side.\n2.  **Path-Based Ownership for User Data:** For user-specific data such as `userPlants`, the `/users/{userId}/plants/{plantId}` structure naturally scopes `list` queries. A user can only list plants within their own `userId` path, ensuring that `list` operations implicitly adhere to ownership rules (`request.auth.uid` matches the `userId` in the path). This prevents unauthorized listing of other users' plants.\n3.  **DBAC for Admin Roles:** To manage write access for administrative content (e.g., creating courses, announcements, daily problems/fortunes), a Database Access Control (DBAC) model will be implemented using a dedicated collection, such as `/roles_admin/{uid}`. The mere existence of a document at `/roles_admin/{request.auth.uid}` grants administrative privileges, enabling robust and easily debuggable rules like `allow write: if get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).exists();`. This uses existence over content and is authorization-independent from other data.\n\n**Overall Design Principles:**\n*   **Clarity of Intent:** Each collection path clearly indicates the type of data and its primary access pattern. Wildcard names (`{userId}`, `{courseId}`, `{problemDate}`) are descriptive.\n*   **DBAC (No Custom Claims):** Roles are stored in the database (`/roles_admin/{uid}`). Authorization relies solely on `request.auth.uid` for both user data ownership and admin role checks.\n*   **Invariants:** The structure supports data integrity, such as `userId` in `UserPlant` ensuring explicit ownership, and `createdAt`/`updatedAt` timestamps for audit trails.\n*   **Explicit State Modeling:** While not explicitly requested for all entities, the `Course.recommended` flag serves as an explicit boolean for a clear display state. The `UserPlant.growthStage` field explicitly models the plant's lifecycle.\n*   **Predictable Schema & Consistency:** All documents adhere to well-defined schemas, and naming conventions are standardized (e.g., `userId` for owner references).\n\nThis structure ensures a robust, secure, and easily maintainable Firestore implementation for Class Hub."
+  }
+}
