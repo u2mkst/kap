@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ShieldAlert, Star, Plus, Trash2, Users, Loader2, Megaphone, BrainCircuit } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { ShieldAlert, Star, Plus, Trash2, Users, Loader2, Megaphone, BrainCircuit, UserCog, ShieldCheck } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -30,16 +31,31 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
+  // 전체 선생님 목록
   const teachersQuery = useMemoFirebase(() => {
     if (isAdminLoading || !isAdminDoc?.id) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
   }, [db, isAdminLoading, isAdminDoc?.id])
-
   const { data: teachers, isLoading: isTeachersLoading } = useCollection(teachersQuery)
+
+  // 전체 사용자 목록 (관리자만 가능)
+  const usersQuery = useMemoFirebase(() => {
+    if (isAdminLoading || !isAdminDoc?.id) return null
+    return query(collection(db, "users"), orderBy("username", "asc"))
+  }, [db, isAdminLoading, isAdminDoc?.id])
+  const { data: allUsers, isLoading: isUsersLoading } = useCollection(usersQuery)
+
+  // 전체 관리자 ID 목록
+  const adminsQuery = useMemoFirebase(() => {
+    if (isAdminLoading || !isAdminDoc?.id) return null
+    return collection(db, "roles_admin")
+  }, [db, isAdminLoading, isAdminDoc?.id])
+  const { data: adminDocs } = useCollection(adminsQuery)
+
+  const adminIds = adminDocs?.map(d => d.id) || []
 
   const [teacherName, setTeacherName] = useState("")
   const [noticeText, setNoticeText] = useState("")
-
   const [fortuneDate, setFortuneDate] = useState("")
   const [fortuneText, setFortuneText] = useState("")
 
@@ -92,6 +108,30 @@ export default function AdminPage() {
       toast({ title: "삭제 완료" })
     } catch (error) {
       console.error(error)
+    }
+  }
+
+  const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
+    if (userId === user?.uid) {
+      toast({ variant: "destructive", title: "본인의 권한은 해제할 수 없습니다." })
+      return
+    }
+    
+    try {
+      const targetAdminRef = doc(db, "roles_admin", userId)
+      if (isCurrentlyAdmin) {
+        await deleteDoc(targetAdminRef)
+        toast({ title: "관리자 권한 해제 완료" })
+      } else {
+        await setDoc(targetAdminRef, {
+          addedAt: serverTimestamp(),
+          addedBy: user?.uid
+        })
+        toast({ title: "관리자 권한 부여 완료" })
+      }
+    } catch (error) {
+      console.error(error)
+      toast({ variant: "destructive", title: "권한 변경 실패" })
     }
   }
 
@@ -179,17 +219,59 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold font-headline text-destructive">관리자 시스템</h1>
-          <p className="text-muted-foreground text-sm">인기 투표 및 콘텐츠 관리</p>
+          <p className="text-muted-foreground text-sm">학생 및 콘텐츠 전반 관리</p>
         </div>
       </div>
 
-      <Tabs defaultValue="vote" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 bg-muted/50 p-1">
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 mb-8 bg-muted/50 p-1">
+          <TabsTrigger value="users"><UserCog className="mr-2 h-4 w-4" /> 회원 관리</TabsTrigger>
           <TabsTrigger value="vote"><Users className="mr-2 h-4 w-4" /> 투표</TabsTrigger>
           <TabsTrigger value="problem"><BrainCircuit className="mr-2 h-4 w-4" /> 문제</TabsTrigger>
           <TabsTrigger value="notice"><Megaphone className="mr-2 h-4 w-4" /> 공지</TabsTrigger>
           <TabsTrigger value="fortune"><Star className="mr-2 h-4 w-4" /> 운세</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="users">
+          <Card className="border-none shadow-sm bg-white">
+            <CardHeader>
+              <CardTitle>회원 명단 및 권한 관리</CardTitle>
+              <CardDescription>학생들에게 관리자 권한을 부여하거나 해제할 수 있습니다.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isUsersLoading ? (
+                <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
+              ) : (
+                <div className="space-y-2">
+                  {allUsers?.map((u) => {
+                    const isUserAdmin = adminIds.includes(u.id);
+                    return (
+                      <div key={u.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border border-transparent hover:border-muted-foreground/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className={isUserAdmin ? "p-2 bg-primary/10 rounded-full" : "p-2 bg-muted rounded-full"}>
+                            <ShieldCheck className={isUserAdmin ? "h-5 w-5 text-primary" : "h-5 w-5 text-muted-foreground"} />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm">{u.nickname} ({u.lastName}{u.firstName})</p>
+                            <p className="text-[10px] text-muted-foreground">ID: {u.username} | {u.schoolName} {u.grade}학년</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-xs font-medium text-muted-foreground">{isUserAdmin ? "관리자" : "학생"}</span>
+                          <Switch 
+                            checked={isUserAdmin} 
+                            onCheckedChange={() => handleToggleAdmin(u.id, isUserAdmin)}
+                            disabled={u.id === user?.uid}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="vote">
           <div className="grid md:grid-cols-2 gap-8">

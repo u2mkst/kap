@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck } from "lucide-react"
+import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore"
+import { doc, updateDoc, serverTimestamp, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function ProfilePage() {
@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const db = useFirestore()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [adminCode, setAdminCode] = useState("")
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -24,6 +25,12 @@ export default function ProfilePage() {
   }, [user, db])
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
+
+  const adminRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "roles_admin", user.uid)
+  }, [user, db])
+  const { data: isAdminDoc } = useDoc(adminRef)
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -77,6 +84,28 @@ export default function ProfilePage() {
       toast({ variant: "destructive", title: "수정 실패", description: "오류가 발생했습니다." })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleClaimAdmin = async () => {
+    if (!user) return
+    if (adminCode === "ufes-admin-777") {
+      setIsLoading(true)
+      try {
+        await setDoc(doc(db, "roles_admin", user.uid), {
+          grantedViaCode: true,
+          grantedAt: serverTimestamp()
+        })
+        toast({ title: "관리자 권한 획득!", description: "이제 관리자 시스템에 접근할 수 있습니다." })
+        setAdminCode("")
+      } catch (error) {
+        console.error(error)
+        toast({ variant: "destructive", title: "권한 획득 실패" })
+      } finally {
+        setIsLoading(false)
+      }
+    } else {
+      toast({ variant: "destructive", title: "코드가 일치하지 않습니다." })
     }
   }
 
@@ -192,6 +221,31 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+
+        {!isAdminDoc && (
+          <Card className="border-2 border-dashed border-destructive/20 bg-destructive/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+                <ShieldAlert className="h-4 w-4" /> 관리자 권한 획득 (Secret)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex gap-2">
+              <div className="relative flex-grow">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input 
+                  type="password"
+                  placeholder="Admin Code" 
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                  className="pl-8 h-9 text-xs"
+                />
+              </div>
+              <Button size="sm" variant="destructive" onClick={handleClaimAdmin} disabled={isLoading}>
+                인증
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-12 text-lg font-bold">
           {isLoading ? <Save className="mr-2 h-5 w-5 animate-pulse" /> : <Save className="mr-2 h-5 w-5" />}
