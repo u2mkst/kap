@@ -305,18 +305,25 @@ export default function DashboardPage() {
           <Card className="border-none shadow-sm bg-white">
             <CardHeader className="p-4">
               <CardTitle className="text-md flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 이달의 학습왕
+                <Trophy className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 오늘의 포인트 TOP 10
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-4 pt-0">
               {[
-                { name: "박지성", points: "4,250P", rank: 1 },
-                { name: userData?.firstName || "나", points: `${userData?.points?.toLocaleString() || 0}P`, rank: 2 },
-                { name: "이강인", points: "3,120P", rank: 3 },
+                { name: "김현우", points: "15,400P", rank: 1 },
+                { name: "이지아", points: "12,850P", rank: 2 },
+                { name: "최민준", points: "11,200P", rank: 3 },
+                { name: "박서연", points: "9,800P", rank: 4 },
+                { name: "정하늘", points: "8,500P", rank: 5 },
+                { name: userData?.nickname || userData?.firstName || "나", points: `${userData?.points?.toLocaleString() || 0}P`, rank: 6 },
+                { name: "윤도현", points: "7,200P", rank: 7 },
+                { name: "한소희", points: "6,900P", rank: 8 },
+                { name: "강동원", points: "5,400P", rank: 9 },
+                { name: "임윤아", points: "4,200P", rank: 10 },
               ].map((u) => (
-                <div key={u.name} className={`flex items-center justify-between p-2 rounded-lg ${u.rank === 2 ? 'bg-primary/5 border border-primary/10' : ''}`}>
+                <div key={u.name} className={`flex items-center justify-between p-2 rounded-lg ${u.rank === 6 ? 'bg-primary/5 border border-primary/10' : ''}`}>
                   <div className="flex items-center gap-2">
-                    <span className={`font-black text-xs w-3 ${u.rank === 1 ? 'text-yellow-600' : u.rank === 2 ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <span className={`font-black text-xs w-5 ${u.rank === 1 ? 'text-yellow-600' : u.rank <= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
                       {u.rank}
                     </span>
                     <span className="text-[11px] font-bold">{u.name}</span>
@@ -331,4 +338,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
