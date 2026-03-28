@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, School, Save, ChevronLeft } from "lucide-react"
+import { User, School, Save, ChevronLeft, Fingerprint } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    username: "",
     schoolName: "",
     grade: "",
     classNum: ""
@@ -38,6 +39,7 @@ export default function ProfilePage() {
       setFormData({
         firstName: userData.firstName || "",
         lastName: userData.lastName || "",
+        username: userData.username || "",
         schoolName: userData.schoolName || "",
         grade: userData.grade || "",
         classNum: userData.classNum || ""
@@ -53,10 +55,31 @@ export default function ProfilePage() {
 
   const handleUpdate = async () => {
     if (!user || !userDocRef) return
+
+    // 아이디 유효성 검사
+    if (!formData.username.toLowerCase().startsWith("ufes")) {
+      toast({
+        variant: "destructive",
+        title: "아이디 형식 오류",
+        description: "학원 아이디는 'ufes'로 시작해야 합니다.",
+      })
+      return
+    }
+
+    if (formData.username.length < 5) {
+      toast({
+        variant: "destructive",
+        title: "아이디 길이 오류",
+        description: "아이디는 최소 5자 이상이어야 합니다.",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
       await updateDoc(userDocRef, {
         ...formData,
+        username: formData.username.toLowerCase(),
         updatedAt: serverTimestamp()
       })
       toast({ title: "정보 수정 완료", description: "성공적으로 회원 정보가 업데이트되었습니다." })
@@ -103,16 +126,32 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>성</Label>
-                <Input value={formData.lastName || ""} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
+                <Input 
+                  value={formData.lastName || ""} 
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
+                  placeholder="성"
+                />
               </div>
               <div className="space-y-2">
                 <Label>이름</Label>
-                <Input value={formData.firstName || ""} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
+                <Input 
+                  value={formData.firstName || ""} 
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
+                  placeholder="이름"
+                />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>학원 아이디</Label>
-              <Input value={userData?.username || ""} disabled className="bg-muted/50" />
+              <Label className="flex items-center gap-1.5">
+                <Fingerprint className="h-4 w-4" /> 학원 아이디 (ufes)
+              </Label>
+              <Input 
+                value={formData.username || ""} 
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                placeholder="ufes1234"
+                className="focus-visible:ring-primary"
+              />
+              <p className="text-[10px] text-muted-foreground">아이디는 'ufes'로 시작해야 하며, 로그인 시 사용됩니다.</p>
             </div>
           </CardContent>
         </Card>
@@ -127,23 +166,36 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>학교 이름</Label>
-              <Input placeholder="예: 서울고등학교" value={formData.schoolName || ""} onChange={(e) => setFormData({...formData, schoolName: e.target.value})} />
+              <Input 
+                placeholder="예: 서울고등학교" 
+                value={formData.schoolName || ""} 
+                onChange={(e) => setFormData({...formData, schoolName: e.target.value})} 
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>학년</Label>
-                <Input placeholder="1" value={formData.grade || ""} onChange={(e) => setFormData({...formData, grade: e.target.value})} />
+                <Input 
+                  placeholder="1" 
+                  value={formData.grade || ""} 
+                  onChange={(e) => setFormData({...formData, grade: e.target.value})} 
+                />
               </div>
               <div className="space-y-2">
                 <Label>반</Label>
-                <Input placeholder="3" value={formData.classNum || ""} onChange={(e) => setFormData({...formData, classNum: e.target.value})} />
+                <Input 
+                  placeholder="3" 
+                  value={formData.classNum || ""} 
+                  onChange={(e) => setFormData({...formData, classNum: e.target.value})} 
+                />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-12 text-lg font-bold">
-          {isLoading ? "저장 중..." : <><Save className="mr-2 h-5 w-5" /> 변경 사항 저장</>}
+          {isLoading ? <Save className="mr-2 h-5 w-5 animate-pulse" /> : <Save className="mr-2 h-5 w-5" />}
+          {isLoading ? "저장 중..." : "변경 사항 저장"}
         </Button>
       </div>
     </div>
