@@ -2,177 +2,149 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { 
-  MessageSquare, 
-  Heart, 
-  Send, 
-  Trash2,
-  Users,
-  ChevronRight,
-  Loader2
-} from "lucide-react"
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
-import { collection, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, query, where, orderBy, serverTimestamp } from "firebase/firestore"
+import { collection, doc, updateDoc, increment, query, orderBy } from "firebase/firestore"
+import { Loader2, Moon, Share2, Trophy } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { toast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function LoungePage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
-  
-  const userDocRef = useMemoFirebase(() => {
-    if (!user) return null
-    return doc(db, "users", user.uid)
-  }, [user, db])
-  const { data: userData } = useDoc(userDocRef)
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
-  const [newPost, setNewPost] = useState("")
-  const [isPosting, setIsPosting] = useState(false)
+  // 선생님 목록 쿼리 (득표순 정렬)
+  const teachersQuery = useMemoFirebase(() => {
+    return query(collection(db, "teachers"), orderBy("vote", "desc"))
+  }, [db])
 
-  // 학년별 쿼리 (사용자 정보와 학년 정보가 확실히 로드된 후 실행)
-  const postsQuery = useMemoFirebase(() => {
-    if (!userData?.grade) return null
-    return query(
-      collection(db, "posts"),
-      where("grade", "==", userData.grade),
-      orderBy("createdAt", "desc")
-    )
-  }, [db, userData?.grade])
+  const { data: teachers, isLoading: isTeachersLoading } = useCollection(teachersQuery)
 
-  const { data: posts, isLoading: isPostsLoading } = useCollection(postsQuery)
+  // 공지사항 데이터
+  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
+  const { data: configData } = useDoc(configRef)
 
-  const handleCreatePost = async () => {
-    if (!newPost.trim() || !user || !userData) return
-    setIsPosting(true)
-    try {
-      await addDoc(collection(db, "posts"), {
-        authorId: user.uid,
-        authorNickname: userData.nickname || "익명",
-        content: newPost,
-        grade: userData.grade,
-        likes: [],
-        createdAt: serverTimestamp(),
-      })
-      setNewPost("")
-      toast({ title: "게시글 등록", description: "성공적으로 게시되었습니다." })
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsPosting(false)
-    }
-  }
-
-  const handleLike = async (postId: string, currentLikes: string[]) => {
+  const handleVote = async (teacherId: string, teacherName: string) => {
     if (!user) return
-    const postRef = doc(db, "posts", postId)
-    const isLiked = currentLikes.includes(user.uid)
+    const teacherRef = doc(db, "teachers", teacherId)
     
     try {
-      await updateDoc(postRef, {
-        likes: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid)
+      await updateDoc(teacherRef, {
+        vote: increment(1)
+      })
+      toast({
+        title: "투표 완료!",
+        description: `${teacherName} 선생님께 소중한 한 표를 드렸습니다.`
       })
     } catch (error) {
       console.error(error)
+      toast({
+        variant: "destructive",
+        title: "투표 실패",
+        description: "권한이 없거나 오류가 발생했습니다."
+      })
     }
   }
 
-  const handleDeletePost = async (postId: string) => {
-    try {
-      await deleteDoc(doc(db, "posts", postId))
-      toast({ title: "삭제 완료", description: "게시글이 삭제되었습니다." })
-    } catch (error) {
-      console.error(error)
+  const shareVote = () => {
+    if (typeof window !== "undefined") {
+      const url = window.location.href
+      navigator.clipboard.writeText(url)
+      toast({
+        title: "링크 복사 완료",
+        description: "친구들에게 투표를 독려해보세요!"
+      })
     }
   }
 
-  if (isUserLoading || isPostsLoading) {
+  if (isUserLoading || isTeachersLoading) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2]">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black font-headline text-primary flex items-center gap-2">
-            <Users className="h-8 w-8" /> {userData?.grade}학년 전용 라운지
-          </h1>
-          <p className="text-muted-foreground mt-1">우리 학년 친구들하고만 소통하는 비밀 게시판</p>
-        </div>
-        <Badge variant="secondary" className="bg-primary/10 text-primary border-none">
-          {userData?.nickname}
-        </Badge>
-      </div>
+    <div className={cn(
+      "min-h-[calc(100vh-64px)] transition-colors duration-500 flex items-center justify-center p-4",
+      isDarkMode ? "bg-[#111]" : "bg-gradient-to-br from-[#667eea] to-[#764ba2]"
+    )}>
+      <div className={cn(
+        "w-full max-w-[420px] backdrop-blur-xl rounded-[28px] p-6 shadow-2xl transition-all",
+        isDarkMode ? "bg-[#1e1e1e] text-white" : "bg-black/40 text-white"
+      )}>
+        
+        <h1 className="text-3xl font-black text-center mb-6 cursor-pointer flex items-center justify-center gap-2">
+          🔥 선생님 인기 투표
+        </h1>
 
-      <Card className="mb-8 border-none shadow-md overflow-hidden bg-white">
-        <CardContent className="p-0">
-          <Textarea 
-            placeholder="친구들에게 하고 싶은 이야기를 남겨보세요..." 
-            className="border-none focus-visible:ring-0 min-h-[120px] p-6 text-lg resize-none"
-            value={newPost}
-            onChange={(e) => setNewPost(e.target.value)}
-          />
-        </CardContent>
-        <CardFooter className="bg-muted/30 px-6 py-3 flex justify-between items-center">
-          <span className="text-xs text-muted-foreground">매너 있는 대화를 나눠주세요.</span>
-          <Button onClick={handleCreatePost} disabled={isPosting || !newPost.trim()} className="bg-primary font-bold">
-            {isPosting ? "게시 중..." : <><Send className="mr-2 h-4 w-4" /> 게시하기</>}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <div className="space-y-6">
-        {posts?.map((post) => (
-          <Card key={post.id} className="border-none shadow-sm bg-white hover:shadow-md transition-all">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                    {post.authorNickname?.[0] || "?"}
-                  </div>
-                  <span className="font-bold text-sm">{post.authorNickname}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleString() : "방금 전"}
-                  </span>
-                </div>
-                {user?.uid === post.authorId && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeletePost(post.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="pb-4 pt-2">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
-            </CardContent>
-            <CardFooter className="border-t pt-3 pb-3 flex gap-4">
-              <button 
-                onClick={() => handleLike(post.id, post.likes || [])}
-                className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${post.likes?.includes(user?.uid) ? 'text-red-500' : 'text-muted-foreground hover:text-red-400'}`}
-              >
-                <Heart className={`h-4 w-4 ${post.likes?.includes(user?.uid) ? 'fill-current' : ''}`} /> 
-                좋아요 {post.likes?.length || 0}
-              </button>
-              <button className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors">
-                <MessageSquare className="h-4 w-4" /> 댓글
-              </button>
-            </CardFooter>
-          </Card>
-        ))}
-
-        {posts?.length === 0 && (
-          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
-            <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-            <p className="text-muted-foreground font-medium">아직 올라온 게시글이 없습니다.<br/>첫 번째 주인공이 되어보세요!</p>
+        {configData?.notice && (
+          <div className="bg-white/15 p-3 rounded-xl mb-6 text-center text-sm font-medium animate-pulse">
+            {configData.notice}
           </div>
         )}
+
+        <div className="space-y-3">
+          {teachers?.map((teacher, index) => {
+            let medal = (index + 1).toString()
+            if (index === 0) medal = "🥇"
+            else if (index === 1) medal = "🥈"
+            else if (index === 2) medal = "🥉"
+
+            return (
+              <div
+                key={teacher.id}
+                onClick={() => handleVote(teacher.id, teacher.name)}
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm",
+                  isDarkMode ? "bg-[#2b2b2b] text-white" : "bg-white/95 text-black"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-bold w-8 text-center">{medal}</span>
+                  <span className="text-lg font-bold">{teacher.name}</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-sm font-black opacity-40 uppercase">Votes</span>
+                  <span className="text-xl font-black">{teacher.vote.toLocaleString()}</span>
+                </div>
+              </div>
+            )
+          })}
+
+          {(!teachers || teachers.length === 0) && (
+            <div className="text-center py-12 opacity-50">
+              <Trophy className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>아직 후보가 등록되지 않았습니다.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Buttons */}
+      <div className="fixed bottom-8 left-8 flex flex-col gap-4">
+        <Button
+          onClick={shareVote}
+          className="h-14 w-14 rounded-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black shadow-lg"
+          size="icon"
+        >
+          <Share2 className="h-6 w-6" />
+        </Button>
+      </div>
+
+      <div className="fixed bottom-8 right-8 flex flex-col gap-4">
+        <Button
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className={cn(
+            "h-14 w-14 rounded-full shadow-lg",
+            isDarkMode ? "bg-white text-black hover:bg-white/90" : "bg-[#222] text-white hover:bg-[#222]/90"
+          )}
+          size="icon"
+        >
+          <Moon className="h-6 w-6" />
+        </Button>
       </div>
     </div>
   )
