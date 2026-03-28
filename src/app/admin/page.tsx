@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { ShieldAlert, Star, Plus, Calendar, Trash2, MessageSquare, Loader2 } from "lucide-react"
+import { ShieldAlert, Star, Plus, Trash2, MessageSquare, Loader2 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -28,7 +28,7 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
-  // 관리자 권한이 확인된 경우에만 게시글 쿼리 실행
+  // 관리자 권한이 완전히 확인된 경우에만 게시글 쿼리 실행 (에러 방지)
   const allPostsQuery = useMemoFirebase(() => {
     if (isAdminLoading || !isAdminDoc) return null
     return query(collection(db, "posts"), orderBy("createdAt", "desc"))
@@ -39,7 +39,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isUserLoading && !isAdminLoading) {
       if (!user || !isAdminDoc) {
-        toast({ variant: "destructive", title: "권한 오류", description: "관리자만 접근 가능합니다." })
+        toast({ variant: "destructive", title: "권한 오류", description: "관리자 전용 페이지입니다." })
         router.push("/dashboard")
       }
     }
@@ -99,7 +99,7 @@ export default function AdminPage() {
     if (!confirm("이 게시글을 삭제하시겠습니까?")) return
     try {
       await deleteDoc(doc(db, "posts", postId))
-      toast({ title: "관리자 권한 삭제", description: "게시글이 삭제되었습니다." })
+      toast({ title: "삭제 완료", description: "게시글이 삭제되었습니다." })
     } catch (error) { 
       console.error(error) 
     }
@@ -128,7 +128,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="lounge" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
+        <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 p-1">
           <TabsTrigger value="lounge"><MessageSquare className="mr-2 h-4 w-4" /> 게시판 관리</TabsTrigger>
           <TabsTrigger value="fortune"><Star className="mr-2 h-4 w-4" /> 운세 관리</TabsTrigger>
           <TabsTrigger value="problem"><Plus className="mr-2 h-4 w-4" /> 문제 관리</TabsTrigger>
@@ -174,10 +174,10 @@ export default function AdminPage() {
               </div>
               <div className="space-y-2">
                 <Label>오늘의 한마디</Label>
-                <Textarea value={fortuneText || ""} onChange={(e) => setFortuneText(e.target.value)} />
+                <Textarea value={fortuneText || ""} onChange={(e) => setFortuneText(e.target.value)} placeholder="오늘의 운세 또는 격려의 말을 입력하세요." />
               </div>
               <Button onClick={handleSaveFortune} disabled={isSaving} className="w-full">
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} 저장
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} 저장하기
               </Button>
             </div>
           </Card>
@@ -188,15 +188,15 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>날짜</Label>
-                <Input type="date" value={problemDate || ""} onChange={(e) => setProblemDate(e.target.value)} />
+                <Input type="date" value={problemDate || ""} onChange={(e) => setFortuneDate(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>문제 제목</Label>
-                <Input placeholder="문제 제목" value={problemTitle || ""} onChange={(e) => setProblemTitle(e.target.value)} />
+                <Input placeholder="오늘의 도전 문제 제목" value={problemTitle || ""} onChange={(e) => setProblemTitle(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>문제 내용</Label>
-                <Textarea placeholder="문제 내용" value={problemText || ""} onChange={(e) => setProblemText(e.target.value)} />
+                <Textarea placeholder="문제 내용을 입력하세요." value={problemText || ""} onChange={(e) => setProblemText(e.target.value)} />
               </div>
               <Button onClick={handleSaveProblem} disabled={isSaving} className="w-full">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} 문제 등록
