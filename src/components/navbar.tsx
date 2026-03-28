@@ -2,23 +2,25 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { 
   BookOpen, 
   User, 
   Home, 
   Gamepad2, 
   Store, 
-  Calendar,
   Menu, 
   X,
   Sprout,
-  ShieldCheck
+  ShieldCheck,
+  LogOut
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useUser } from "@/firebase"
+import { useUser, useAuth } from "@/firebase"
+import { signOut } from "firebase/auth"
+import { toast } from "@/hooks/use-toast"
 
 const navItems = [
   { name: "학생 홈", href: "/dashboard", icon: Home },
@@ -29,18 +31,29 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const { user } = useUser()
+  const auth = useAuth()
 
-  // 로그인/회원가입 페이지에서는 네비게이션 간소화
   const isAuthPage = pathname === "/" || pathname === "/login" || pathname === "/signup"
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      toast({ title: "로그아웃", description: "안전하게 로그아웃 되었습니다." })
+      router.push("/login")
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href={isAuthPage ? "/" : "/dashboard"} className="flex items-center space-x-2">
+            <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
                 <BookOpen className="h-5 w-5" />
               </div>
@@ -48,7 +61,7 @@ export function Navbar() {
             </Link>
           </div>
 
-          {!isAuthPage && (
+          {user && (
             <div className="hidden md:block">
               <div className="flex items-center space-x-1">
                 {navItems.map((item) => {
@@ -73,6 +86,14 @@ export function Navbar() {
                     <ShieldCheck className="h-4 w-4 text-destructive" />
                   </Button>
                 </Link>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full hover:bg-muted" 
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4 text-muted-foreground" />
+                </Button>
                 <Link href="/dashboard">
                   <Button variant="outline" size="icon" className="rounded-full border-primary/20 hover:border-primary transition-colors">
                     <User className="h-4 w-4 text-primary" />
@@ -82,7 +103,7 @@ export function Navbar() {
             </div>
           )}
 
-          {isAuthPage && (
+          {!user && (
             <div className="hidden md:flex space-x-2">
               <Link href="/login">
                 <Button variant="ghost" size="sm" className="font-bold">로그인</Button>
@@ -93,7 +114,7 @@ export function Navbar() {
             </div>
           )}
 
-          {!isAuthPage && (
+          {user && (
             <div className="flex md:hidden">
               <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="rounded-full">
                 {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -103,8 +124,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {!isAuthPage && isOpen && (
+      {user && isOpen && (
         <div className="md:hidden border-t bg-background p-4 space-y-2 animate-in slide-in-from-top-4 duration-200">
           {navItems.map((item) => (
             <Link
@@ -129,7 +149,16 @@ export function Navbar() {
               <span>관리자 모드</span>
             </Link>
           <div className="pt-4 border-t mt-4">
-            <Button variant="ghost" className="w-full text-destructive font-bold justify-start px-4">로그아웃</Button>
+            <Button 
+              variant="ghost" 
+              className="w-full text-destructive font-bold justify-start px-4"
+              onClick={() => {
+                setIsOpen(false)
+                handleLogout()
+              }}
+            >
+              <LogOut className="h-5 w-5 mr-3" /> 로그아웃
+            </Button>
           </div>
         </div>
       )}

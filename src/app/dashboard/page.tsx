@@ -1,7 +1,8 @@
 
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +26,13 @@ import { doc } from "firebase/firestore"
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, isUserLoading, router])
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -33,7 +41,6 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // 오늘의 날짜를 YYYY-MM-DD 형식으로 가져오기
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
 
   const fortuneRef = useMemoFirebase(() => doc(db, "daily_fortunes", todayStr), [db, todayStr])
@@ -42,7 +49,7 @@ export default function DashboardPage() {
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
 
-  if (isUserLoading || isUserDataLoading) {
+  if (isUserLoading || isUserDataLoading || !user) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -52,7 +59,6 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      {/* 상단 환영 메시지 & 포인트 */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
@@ -88,7 +94,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-12">
-        {/* 왼쪽 섹션: 학습 사이트 & 오늘의 식물 */}
         <div className="md:col-span-8 space-y-6">
           <Card className="border-none shadow-sm bg-white overflow-hidden">
             <CardHeader>
@@ -186,7 +191,6 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* 오른쪽 섹션: 식단 & 랭킹 */}
         <div className="md:col-span-4 space-y-6">
           <Card className="border-none shadow-sm bg-white">
             <CardHeader>

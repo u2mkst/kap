@@ -1,10 +1,32 @@
 
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { BookOpen, KeyRound, UserCircle } from "lucide-react"
+import { useUser } from "@/firebase"
 
 export default function Home() {
+  const { user, isUserLoading } = useUser()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push("/dashboard")
+    }
+  }, [user, isUserLoading, router])
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-background to-accent/10">
       <Card className="w-full max-w-md border-none shadow-2xl bg-white/80 backdrop-blur-sm">

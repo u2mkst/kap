@@ -1,7 +1,8 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,19 +11,24 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ShieldAlert, Send, Plus, Calendar, Star } from "lucide-react"
 import { useFirestore, useUser } from "@/firebase"
-import { doc, setDoc, collection, serverTimestamp } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function AdminPage() {
-  const { user } = useUser()
+  const { user, isUserLoading } = useUser()
   const db = useFirestore()
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  // 오늘의 한마디 (Fortune)
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, isUserLoading, router])
+
   const [fortuneDate, setFortuneDate] = useState(new Date().toISOString().split('T')[0])
   const [fortuneText, setFortuneText] = useState("")
 
-  // 오늘의 문제 (Problem)
   const [problemDate, setProblemDate] = useState(new Date().toISOString().split('T')[0])
   const [problemTitle, setProblemTitle] = useState("")
   const [problemText, setProblemText] = useState("")
@@ -72,6 +78,14 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (

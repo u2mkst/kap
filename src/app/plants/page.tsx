@@ -1,7 +1,8 @@
 
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,8 +23,15 @@ import { toast } from "@/hooks/use-toast"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 
 export default function PlantsPage() {
-  const { user } = useUser()
+  const { user, isUserLoading } = useUser()
   const db = useFirestore()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, isUserLoading, router])
 
   const plantsRef = useMemoFirebase(() => {
     if (!user) return null
@@ -52,12 +60,10 @@ export default function PlantsPage() {
     }
 
     try {
-      // Deduct points
       await updateDoc(userDocRef!, {
         points: increment(-cost)
       })
 
-      // Add new plant
       await addDoc(plantsRef, {
         userId: user.uid,
         plantName: "새로운 친구",
@@ -143,6 +149,14 @@ export default function PlantsPage() {
     }
   }
 
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
@@ -219,7 +233,6 @@ export default function PlantsPage() {
           )
         })}
 
-        {/* 새 식물 추가 카드 */}
         <Card 
           className="border-2 border-dashed border-muted hover:border-primary hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-12 h-full min-h-[400px]"
           onClick={handleAddPlant}

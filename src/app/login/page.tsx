@@ -1,15 +1,15 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { BookOpen, AlertCircle } from "lucide-react"
-import { useAuth } from "@/firebase"
+import { BookOpen } from "lucide-react"
+import { useAuth, useUser } from "@/firebase"
 import { signInWithEmailAndPassword } from "firebase/auth"
 import { toast } from "@/hooks/use-toast"
 
@@ -18,7 +18,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const auth = useAuth()
+  const { user, isUserLoading } = useUser()
   const router = useRouter()
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push("/dashboard")
+    }
+  }, [user, isUserLoading, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,7 +40,6 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
-      // Firebase Auth expects an email. For this prototype, we'll simulate email by appending a domain.
       const fakeEmail = `${username}@classhub.edu`
       await signInWithEmailAndPassword(auth, fakeEmail, password)
       router.push("/dashboard")
@@ -46,6 +52,14 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
