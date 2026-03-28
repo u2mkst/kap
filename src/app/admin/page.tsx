@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ShieldAlert, Star, Plus, Calendar, Trash2, MessageSquare, ShieldCheck } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ShieldAlert, Star, Plus, Calendar, Trash2, MessageSquare, Loader2 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -18,7 +19,7 @@ export default function AdminPage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const adminRef = useMemoFirebase(() => {
     if (!user) return null
@@ -27,14 +28,20 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
-  // 모든 게시글 모니터링
-  const allPostsQuery = useMemoFirebase(() => query(collection(db, "posts"), orderBy("createdAt", "desc")), [db])
-  const { data: allPosts } = useCollection(allPostsQuery)
+  // 관리자 권한이 확인된 경우에만 게시글 쿼리 실행
+  const allPostsQuery = useMemoFirebase(() => {
+    if (isAdminLoading || !isAdminDoc) return null
+    return query(collection(db, "posts"), orderBy("createdAt", "desc"))
+  }, [db, isAdminLoading, isAdminDoc])
+
+  const { data: allPosts, isLoading: isPostsLoading } = useCollection(allPostsQuery)
 
   useEffect(() => {
-    if (!isUserLoading && !isAdminLoading && user && !isAdminDoc) {
-      toast({ variant: "destructive", title: "권한 오류", description: "관리자만 접근 가능합니다." })
-      router.push("/dashboard")
+    if (!isUserLoading && !isAdminLoading) {
+      if (!user || !isAdminDoc) {
+        toast({ variant: "destructive", title: "권한 오류", description: "관리자만 접근 가능합니다." })
+        router.push("/dashboard")
+      }
     }
   }, [user, isAdminDoc, isUserLoading, isAdminLoading, router])
 
@@ -48,7 +55,7 @@ export default function AdminPage() {
 
   const handleSaveFortune = async () => {
     if (!fortuneText) return
-    setIsLoading(true)
+    setIsSaving(true)
     try {
       await setDoc(doc(db, "daily_fortunes", fortuneDate), {
         id: fortuneDate,
@@ -58,12 +65,16 @@ export default function AdminPage() {
       })
       toast({ title: "저장 완료" })
       setFortuneText("")
-    } catch (error) { console.error(error) } finally { setIsLoading(false) }
+    } catch (error) { 
+      console.error(error) 
+    } finally { 
+      setIsSaving(false) 
+    }
   }
 
   const handleSaveProblem = async () => {
     if (!problemTitle || !problemText) return
-    setIsLoading(true)
+    setIsSaving(true)
     try {
       await setDoc(doc(db, "daily_problems", problemDate), {
         id: problemDate,
@@ -77,7 +88,11 @@ export default function AdminPage() {
       toast({ title: "문제 등록 완료" })
       setProblemTitle("")
       setProblemText("")
-    } catch (error) { console.error(error) } finally { setIsLoading(false) }
+    } catch (error) { 
+      console.error(error) 
+    } finally { 
+      setIsSaving(false) 
+    }
   }
 
   const handleDeletePost = async (postId: string) => {
@@ -85,10 +100,20 @@ export default function AdminPage() {
     try {
       await deleteDoc(doc(db, "posts", postId))
       toast({ title: "관리자 권한 삭제", description: "게시글이 삭제되었습니다." })
-    } catch (error) { console.error(error) }
+    } catch (error) { 
+      console.error(error) 
+    }
   }
 
-  if (isUserLoading || isAdminLoading) return null
+  if (isUserLoading || isAdminLoading) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!isAdminDoc) return null
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -116,20 +141,26 @@ export default function AdminPage() {
               <CardDescription>전체 학년의 게시글을 확인하고 부적절한 내용을 관리합니다.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {allPosts?.map((post) => (
-                <div key={post.id} className="p-4 rounded-xl border flex items-start justify-between bg-muted/5">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{post.grade}학년</Badge>
-                      <span className="font-bold text-sm">{post.authorNickname}</span>
+              {isPostsLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : allPosts?.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">게시글이 없습니다.</div>
+              ) : (
+                allPosts?.map((post) => (
+                  <div key={post.id} className="p-4 rounded-xl border flex items-start justify-between bg-muted/5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{post.grade}학년</Badge>
+                        <span className="font-bold text-sm">{post.authorNickname}</span>
+                      </div>
+                      <p className="text-sm">{post.content}</p>
                     </div>
-                    <p className="text-sm">{post.content}</p>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeletePost(post.id)} className="text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeletePost(post.id)} className="text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -145,7 +176,9 @@ export default function AdminPage() {
                 <Label>오늘의 한마디</Label>
                 <Textarea value={fortuneText} onChange={(e) => setFortuneText(e.target.value)} />
               </div>
-              <Button onClick={handleSaveFortune} disabled={isLoading} className="w-full">저장</Button>
+              <Button onClick={handleSaveFortune} disabled={isSaving} className="w-full">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} 저장
+              </Button>
             </div>
           </Card>
         </TabsContent>
@@ -153,9 +186,21 @@ export default function AdminPage() {
         <TabsContent value="problem">
           <Card className="border-none shadow-sm bg-white p-6">
             <div className="space-y-4">
-              <Input placeholder="문제 제목" value={problemTitle} onChange={(e) => setProblemTitle(e.target.value)} />
-              <Textarea placeholder="문제 내용" value={problemText} onChange={(e) => setProblemText(e.target.value)} />
-              <Button onClick={handleSaveProblem} disabled={isLoading} className="w-full">문제 등록</Button>
+              <div className="space-y-2">
+                <Label>날짜</Label>
+                <Input type="date" value={problemDate} onChange={(e) => setProblemDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>문제 제목</Label>
+                <Input placeholder="문제 제목" value={problemTitle} onChange={(e) => setProblemTitle(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>문제 내용</Label>
+                <Textarea placeholder="문제 내용" value={problemText} onChange={(e) => setProblemText(e.target.value)} />
+              </div>
+              <Button onClick={handleSaveProblem} disabled={isSaving} className="w-full">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} 문제 등록
+              </Button>
             </div>
           </Card>
         </TabsContent>

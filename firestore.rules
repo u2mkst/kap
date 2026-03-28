@@ -14,6 +14,8 @@ service cloud.firestore {
     }
 
     match /posts/{postId} {
+      // 일반 사용자는 조회가 가능하지만, 전체 목록 조회(list) 시에는 특정 필터가 필요할 수 있음
+      // 여기서는 관리자이거나 로그인한 사용자면 조회를 허용하되, Admin 페이지의 무차별 list는 위단에서 막음
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
