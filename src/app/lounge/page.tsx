@@ -33,15 +33,15 @@ export default function LoungePage() {
   const [newPost, setNewPost] = useState("")
   const [isPosting, setIsPosting] = useState(false)
 
-  // 학년별 쿼리
+  // 학년별 쿼리 (사용자 정보가 완전히 로드된 후 실행)
   const postsQuery = useMemoFirebase(() => {
-    if (!userData?.grade) return null
+    if (!userData || !userData.grade) return null
     return query(
       collection(db, "posts"),
       where("grade", "==", userData.grade),
       orderBy("createdAt", "desc")
     )
-  }, [db, userData?.grade])
+  }, [db, userData])
 
   const { data: posts, isLoading: isPostsLoading } = useCollection(postsQuery)
 
@@ -135,7 +135,7 @@ export default function LoungePage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                    {post.authorNickname[0]}
+                    {post.authorNickname?.[0] || "?"}
                   </div>
                   <span className="font-bold text-sm">{post.authorNickname}</span>
                   <span className="text-[10px] text-muted-foreground">

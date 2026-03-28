@@ -18,20 +18,22 @@ service cloud.firestore {
     }
 
     match /posts/{postId} {
-      allow read: if isSignedIn();
+      // 명시적으로 get과 list를 isSignedIn()인 사용자에게 허용
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
+      // 작성자이거나 좋아요(likes) 필드만 업데이트하는 경우 허용
       allow update: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
       allow delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
 
       match /comments/{commentId} {
-        allow read: if isSignedIn();
+        allow get, list: if isSignedIn();
         allow create: if isSignedIn();
         allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
       }
     }
 
     match /daily_fortunes/{fortuneDate} { allow read: if isSignedIn(); allow write: if isAdmin(); }
-    match /daily_problems/{problemDate} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /daily_problems/{fortuneDate} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /roles_admin/{adminId} { allow get: if isSignedIn(); allow write: if false; }
   }
 }
