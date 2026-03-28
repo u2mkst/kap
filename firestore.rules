@@ -31,13 +31,16 @@ service cloud.firestore {
     // 게시글 (라운지)
     match /posts/{postId} {
       // 모든 로그인 사용자는 게시글 목록과 상세를 볼 수 있음
+      // list와 get을 명시적으로 허용하여 권한 오류 방지
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
+      
       // 작성자 본인 또는 좋아요 필드만 업데이트하는 경우 허용
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.authorId || 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
       );
+      
       // 작성자 또는 관리자만 삭제 가능
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
 

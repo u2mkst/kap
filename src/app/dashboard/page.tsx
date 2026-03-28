@@ -65,7 +65,7 @@ export default function DashboardPage() {
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
 
-  // 포인트 TOP 10 데이터 (내림차순 정렬)
+  // 포인트 TOP 10 데이터 (내림차순 정렬 및 디자인 최적화)
   const leaderboard = useMemo(() => {
     const rawData = [
       { name: "김현우", points: 15400 },
@@ -79,6 +79,7 @@ export default function DashboardPage() {
       { name: "강동원", points: 5400 },
       { name: "임윤아", points: 4200 },
     ]
+    // 포인트 기준 내림차순 정렬
     return rawData.sort((a, b) => b.points - a.points).slice(0, 10)
   }, [userData])
 
