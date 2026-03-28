@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { BookOpen } from "lucide-react"
+import { BookOpen, School, GraduationCap } from "lucide-react"
 import { useAuth, useFirestore } from "@/firebase"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
@@ -19,6 +19,9 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
+  const [schoolName, setSchoolName] = useState("")
+  const [grade, setGrade] = useState("")
+  const [classNum, setClassNum] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   
   const auth = useAuth()
@@ -42,14 +45,15 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, fakeEmail, password)
       const user = userCredential.user
 
-      // Create user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         username,
         firstName,
         lastName,
-        points: 1000, // Initial points for new users
-        registeredCourseIds: [],
+        schoolName,
+        grade,
+        classNum,
+        points: 1000,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
@@ -77,54 +81,55 @@ export default function SignupPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-foreground">
             <BookOpen className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-bold font-headline">회원가입</CardTitle>
-          <CardDescription>학원 전용 아이디로 가입하세요.</CardDescription>
+          <CardTitle className="text-2xl font-bold font-headline">학생 회원가입</CardTitle>
+          <CardDescription>학원 전용 아이디와 학교 정보를 입력하세요.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto px-6 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="first-name">성</Label>
-                <Input 
-                  id="last-name" 
-                  placeholder="홍" 
-                  value={lastName} 
-                  onChange={(e) => setLastName(e.target.value)} 
-                  required 
-                />
+                <Label htmlFor="last-name">성</Label>
+                <Input id="last-name" placeholder="홍" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="last-name">이름</Label>
-                <Input 
-                  id="first-name" 
-                  placeholder="길동" 
-                  value={firstName} 
-                  onChange={(e) => setFirstName(e.target.value)} 
-                  required 
-                />
+                <Label htmlFor="first-name">이름</Label>
+                <Input id="first-name" placeholder="길동" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
               </div>
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="username">학원 아이디 (ufes---)</Label>
-              <Input 
-                id="username" 
-                placeholder="ufes---" 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-                required 
-              />
+              <Input id="username" placeholder="ufes---" value={username} onChange={(e) => setUsername(e.target.value)} required />
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="password">비밀번호</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
-              />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 mt-4" disabled={isLoading}>
+
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
+                <School className="h-4 w-4" /> 학교 정보
+              </h3>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>학교 이름</Label>
+                  <Input placeholder="예: 서울고등학교" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>학년</Label>
+                    <Input placeholder="1" value={grade} onChange={(e) => setGrade(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>반</Label>
+                    <Input placeholder="3" value={classNum} onChange={(e) => setClassNum(e.target.value)} required />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 mt-6" disabled={isLoading}>
               {isLoading ? "가입 중..." : "계정 생성하기"}
             </Button>
           </CardContent>

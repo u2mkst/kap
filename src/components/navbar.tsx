@@ -12,7 +12,8 @@ import {
   X,
   Sprout,
   ShieldCheck,
-  LogOut
+  LogOut,
+  UserCircle
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -23,7 +24,7 @@ import { doc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 const navItems = [
-  { name: "학생 홈", href: "/dashboard", icon: Home },
+  { name: "홈", href: "/dashboard", icon: Home },
   { name: "나의 정원", href: "/plants", icon: Sprout },
   { name: "라운지", href: "/lounge", icon: Gamepad2 },
 ]
@@ -54,76 +55,74 @@ export function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+      <div className="container mx-auto px-4">
+        <div className="flex h-14 items-center justify-between">
           <div className="flex items-center">
             <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                <BookOpen className="h-5 w-5" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+                <BookOpen className="h-4 w-4" />
               </div>
-              <span className="text-xl font-black tracking-tight text-primary font-headline">STUDENT HUB</span>
+              <span className="text-lg font-black tracking-tight text-primary font-headline">STUDENT HUB</span>
             </Link>
           </div>
 
           {user && (
-            <div className="hidden md:block">
-              <div className="flex items-center space-x-1">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center space-x-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:bg-muted",
-                        isActive ? "text-primary bg-primary/10 shadow-sm" : "text-muted-foreground"
-                      )}
-                    >
-                      <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                      <span>{item.name}</span>
-                    </Link>
-                  )
-                })}
-                <div className="h-6 w-px bg-border mx-4" />
-                {isAdminDoc && (
-                  <Link href="/admin">
-                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10 mr-2">
-                      <ShieldCheck className="h-4 w-4 text-destructive" />
-                    </Button>
+            <div className="hidden md:flex items-center space-x-1">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-sm font-bold transition-all hover:bg-muted",
+                      isActive ? "text-primary bg-primary/10" : "text-muted-foreground"
+                    )}
+                  >
+                    <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                    <span>{item.name}</span>
                   </Link>
-                )}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="rounded-full hover:bg-muted" 
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4 text-muted-foreground" />
-                </Button>
-                <Link href="/dashboard">
-                  <Button variant="outline" size="icon" className="rounded-full border-primary/20 hover:border-primary transition-colors ml-2">
-                    <User className="h-4 w-4 text-primary" />
+                )
+              })}
+              <div className="h-4 w-px bg-border mx-2" />
+              {isAdminDoc && (
+                <Link href="/admin">
+                  <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10">
+                    <ShieldCheck className="h-4 w-4 text-destructive" />
                   </Button>
                 </Link>
-              </div>
+              )}
+              <Link href="/profile">
+                <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
+                  <UserCircle className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </Link>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-full hover:bg-muted" 
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4 text-muted-foreground" />
+              </Button>
             </div>
           )}
 
           {!user && (
             <div className="hidden md:flex space-x-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm" className="font-bold">로그인</Button>
+                <Button variant="ghost" size="sm" className="text-xs font-bold">로그인</Button>
               </Link>
               <Link href="/signup">
-                <Button size="sm" className="bg-primary font-bold rounded-full">회원가입</Button>
+                <Button size="sm" className="bg-primary font-bold rounded-full text-xs">회원가입</Button>
               </Link>
             </div>
           )}
 
           {user && (
             <div className="flex md:hidden">
-              <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="rounded-full">
-                {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="rounded-full h-8 w-8">
+                {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
             </div>
           )}
@@ -131,41 +130,49 @@ export function Navbar() {
       </div>
 
       {user && isOpen && (
-        <div className="md:hidden border-t bg-background p-4 space-y-2 animate-in slide-in-from-top-4 duration-200">
+        <div className="md:hidden border-t bg-background p-3 space-y-1 animate-in slide-in-from-top-4 duration-200">
           {navItems.map((item) => (
             <Link
               key={item.name}
               href={item.href}
               onClick={() => setIsOpen(false)}
               className={cn(
-                "flex items-center space-x-3 p-4 rounded-xl text-base font-bold transition-all",
+                "flex items-center space-x-3 p-3 rounded-lg text-sm font-bold transition-all",
                 pathname === item.href ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className="h-4 w-4" />
               <span>{item.name}</span>
             </Link>
           ))}
+          <Link
+            href="/profile"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted"
+          >
+            <UserCircle className="h-4 w-4" />
+            <span>마이페이지 (학교 설정)</span>
+          </Link>
           {isAdminDoc && (
             <Link
               href="/admin"
               onClick={() => setIsOpen(false)}
-              className="flex items-center space-x-3 p-4 rounded-xl text-base font-bold text-destructive hover:bg-destructive/5"
+              className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-destructive hover:bg-destructive/5"
             >
-              <ShieldCheck className="h-5 w-5" />
+              <ShieldCheck className="h-4 w-4" />
               <span>관리자 모드</span>
             </Link>
           )}
-          <div className="pt-4 border-t mt-4">
+          <div className="pt-2 border-t mt-2">
             <Button 
               variant="ghost" 
-              className="w-full text-destructive font-bold justify-start px-4"
+              className="w-full text-destructive font-bold justify-start px-3 h-10 text-sm"
               onClick={() => {
                 setIsOpen(false)
                 handleLogout()
               }}
             >
-              <LogOut className="h-5 w-5 mr-3" /> 로그아웃
+              <LogOut className="h-4 w-4 mr-3" /> 로그아웃
             </Button>
           </div>
         </div>
