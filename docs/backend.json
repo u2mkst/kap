@@ -21,6 +21,23 @@
       },
       "required": ["id", "username", "nickname", "points"]
     },
+    "Plant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Plant",
+      "type": "object",
+      "description": "A virtual plant belonging to a user.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "plantName": { "type": "string" },
+        "plantType": { "type": "string" },
+        "growthStage": { "type": "string", "enum": ["Seed", "Sprout", "Sapling", "Mature"] },
+        "pointsInvested": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "plantName", "growthStage", "pointsInvested"]
+    },
     "Post": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Post",
@@ -59,6 +76,14 @@
           "entityName": "User",
           "schema": { "$ref": "#/backend/entities/User" },
           "description": "User profiles."
+        }
+      },
+      {
+        "path": "/users/{userId}/plants/{plantId}",
+        "definition": {
+          "entityName": "Plant",
+          "schema": { "$ref": "#/backend/entities/Plant" },
+          "description": "Virtual plants grown by users."
         }
       },
       {
