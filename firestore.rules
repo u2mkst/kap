@@ -26,9 +26,7 @@ service cloud.firestore {
     }
 
     match /teachers/{teacherId} {
-      // 모든 로그인한 사용자는 목록 조회 및 개별 조회가 가능함
       allow read: if isAuthenticated();
-      // 투표는 로그인한 사용자만 가능하며, vote 필드만 1씩 증가시킬 수 있음
       allow update: if isAuthenticated() 
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vote'])
         && request.resource.data.vote == resource.data.vote + 1;
@@ -42,15 +40,18 @@ service cloud.firestore {
 
     match /roles_admin/{adminId} {
       allow get: if isAuthenticated();
-      allow list: if isAdmin();
+      // 비밀 코드를 통한 최초 권한 획득을 위해 본인의 문서 생성 허용
+      allow create: if isAuthenticated() && request.auth.uid == adminId;
+      // 목록 조회 및 타인 권한 관리는 기존 관리자만 가능
+      allow list, update, delete: if isAdmin();
     }
 
-    // 일일 운세 및 문제 데이터 접근 권한
     match /daily_fortunes/{date} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
-    match /daily_problems/{date} {
+    
+    match /daily_problems/{problemId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }

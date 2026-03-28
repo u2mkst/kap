@@ -16,6 +16,8 @@ import { ShieldAlert, Star, Plus, Trash2, Users, Loader2, Megaphone, BrainCircui
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -83,122 +85,181 @@ export default function AdminPage() {
     }
   }, [user, isAdminDoc, isUserLoading, isAdminLoading, isMounted, router])
 
-  const handleAddTeacher = async () => {
+  const handleAddTeacher = () => {
     if (!teacherName.trim()) return
     setIsSaving(true)
-    try {
-      await addDoc(collection(db, "teachers"), {
-        name: teacherName,
-        vote: 0,
-        createdAt: serverTimestamp()
+    const teacherData = {
+      name: teacherName,
+      vote: 0,
+      createdAt: serverTimestamp()
+    }
+    const teachersCol = collection(db, "teachers")
+    
+    addDoc(teachersCol, teacherData)
+      .then(() => {
+        toast({ title: "선생님 등록 완료" })
+        setTeacherName("")
       })
-      toast({ title: "선생님 등록 완료" })
-      setTeacherName("")
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsSaving(false)
-    }
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: teachersCol.path,
+          operation: 'create',
+          requestResourceData: teacherData
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setIsSaving(false)
+      })
   }
 
-  const handleDeleteTeacher = async (id: string) => {
+  const handleDeleteTeacher = (id: string) => {
     if (!confirm("삭제하시겠습니까?")) return
-    try {
-      await deleteDoc(doc(db, "teachers", id))
-      toast({ title: "삭제 완료" })
-    } catch (error) {
-      console.error(error)
-    }
+    const teacherRef = doc(db, "teachers", id)
+    deleteDoc(teacherRef)
+      .then(() => {
+        toast({ title: "삭제 완료" })
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: teacherRef.path,
+          operation: 'delete'
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
   }
 
-  const handleToggleAdmin = async (userId: string, isCurrentlyAdmin: boolean) => {
+  const handleToggleAdmin = (userId: string, isCurrentlyAdmin: boolean) => {
     if (userId === user?.uid) {
       toast({ variant: "destructive", title: "본인의 권한은 해제할 수 없습니다." })
       return
     }
     
-    try {
-      const targetAdminRef = doc(db, "roles_admin", userId)
-      if (isCurrentlyAdmin) {
-        await deleteDoc(targetAdminRef)
-        toast({ title: "관리자 권한 해제 완료" })
-      } else {
-        await setDoc(targetAdminRef, {
-          addedAt: serverTimestamp(),
-          addedBy: user?.uid
+    const targetAdminRef = doc(db, "roles_admin", userId)
+    if (isCurrentlyAdmin) {
+      deleteDoc(targetAdminRef)
+        .then(() => {
+          toast({ title: "관리자 권한 해제 완료" })
         })
-        toast({ title: "관리자 권한 부여 완료" })
+        .catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: targetAdminRef.path,
+            operation: 'delete'
+          })
+          errorEmitter.emit('permission-error', permissionError)
+        })
+    } else {
+      const adminData = {
+        addedAt: serverTimestamp(),
+        addedBy: user?.uid
       }
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "권한 변경 실패" })
+      setDoc(targetAdminRef, adminData)
+        .then(() => {
+          toast({ title: "관리자 권한 부여 완료" })
+        })
+        .catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: targetAdminRef.path,
+            operation: 'create',
+            requestResourceData: adminData
+          })
+          errorEmitter.emit('permission-error', permissionError)
+        })
     }
   }
 
-  const handleUpdateNotice = async () => {
+  const handleUpdateNotice = () => {
     if (!noticeText.trim()) return
     setIsSaving(true)
-    try {
-      await setDoc(doc(db, "metadata", "config"), {
-        notice: noticeText
-      }, { merge: true })
-      toast({ title: "공지 업데이트 완료" })
-      setNoticeText("")
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsSaving(false)
-    }
+    const configRef = doc(db, "metadata", "config")
+    const noticeData = { notice: noticeText }
+    
+    setDoc(configRef, noticeData, { merge: true })
+      .then(() => {
+        toast({ title: "공지 업데이트 완료" })
+        setNoticeText("")
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: configRef.path,
+          operation: 'update',
+          requestResourceData: noticeData
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setIsSaving(false)
+      })
   }
 
-  const handleSaveFortune = async () => {
+  const handleSaveFortune = () => {
     if (!fortuneText || !fortuneDate) return
     setIsSaving(true)
-    try {
-      await setDoc(doc(db, "daily_fortunes", fortuneDate), {
-        id: fortuneDate,
-        date: fortuneDate,
-        fortuneText,
-        createdAt: serverTimestamp(),
-      })
-      toast({ title: "운세 저장 완료" })
-      setFortuneText("")
-    } catch (error) { 
-      console.error(error) 
-    } finally { 
-      setIsSaving(false) 
+    const fortuneRef = doc(db, "daily_fortunes", fortuneDate)
+    const fortuneData = {
+      id: fortuneDate,
+      date: fortuneDate,
+      fortuneText,
+      createdAt: serverTimestamp(),
     }
+
+    setDoc(fortuneRef, fortuneData)
+      .then(() => {
+        toast({ title: "운세 저장 완료" })
+        setFortuneText("")
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: fortuneRef.path,
+          operation: 'create',
+          requestResourceData: fortuneData
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setIsSaving(false)
+      })
   }
 
-  const handleSaveProblem = async () => {
+  const handleSaveProblem = () => {
     if (!probDate || !probGrade || !probTitle || !probText || !probAnswer) {
       toast({ variant: "destructive", title: "모든 항목을 입력해주세요." })
       return
     }
     setIsSaving(true)
-    try {
-      const docId = `${probDate}_${probGrade}`
-      await setDoc(doc(db, "daily_problems", docId), {
-        id: docId,
-        date: probDate,
-        grade: probGrade,
-        title: probTitle,
-        topic: probTopic || "일반",
-        difficulty: probDiff,
-        problemText: probText,
-        answer: probAnswer.trim(),
-        rewardPoints: 100,
-        createdAt: serverTimestamp(),
-      })
-      toast({ title: "문제 등록 완료" })
-      setProbTitle("")
-      setProbText("")
-      setProbAnswer("")
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsSaving(false)
+    const docId = `${probDate}_${probGrade}`
+    const problemRef = doc(db, "daily_problems", docId)
+    const problemData = {
+      id: docId,
+      date: probDate,
+      grade: probGrade,
+      title: probTitle,
+      topic: probTopic || "일반",
+      difficulty: probDiff,
+      problemText: probText,
+      answer: probAnswer.trim(),
+      rewardPoints: 100,
+      createdAt: serverTimestamp(),
     }
+
+    setDoc(problemRef, problemData)
+      .then(() => {
+        toast({ title: "문제 등록 완료" })
+        setProbTitle("")
+        setProbText("")
+        setProbAnswer("")
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: problemRef.path,
+          operation: 'create',
+          requestResourceData: problemData
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setIsSaving(false)
+      })
   }
 
   if (isUserLoading || isAdminLoading || !isMounted) {
@@ -430,7 +491,7 @@ export default function AdminPage() {
                 <Input value={fortuneText} onChange={(e) => setFortuneText(e.target.value)} placeholder="운세 내용을 입력하세요." />
               </div>
               <Button onClick={handleSaveFortune} disabled={isSaving} className="w-full">
-                저장하기
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "저장하기"}
               </Button>
             </div>
           </Card>

@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key } from "lucide-react"
+import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, serverTimestamp, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser()
@@ -60,7 +62,7 @@ export default function ProfilePage() {
     }
   }, [user, isUserLoading, router])
 
-  const handleUpdate = async () => {
+  const handleUpdate = () => {
     if (!user || !userDocRef) return
 
     if (formData.nickname.length < 2) {
@@ -73,37 +75,55 @@ export default function ProfilePage() {
     }
 
     setIsLoading(true)
-    try {
-      await updateDoc(userDocRef, {
-        ...formData,
-        updatedAt: serverTimestamp()
-      })
-      toast({ title: "정보 수정 완료", description: "성공적으로 회원 정보가 업데이트되었습니다." })
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "수정 실패", description: "오류가 발생했습니다." })
-    } finally {
-      setIsLoading(false)
+    const updateData = {
+      ...formData,
+      updatedAt: serverTimestamp()
     }
+
+    updateDoc(userDocRef, updateData)
+      .then(() => {
+        toast({ title: "정보 수정 완료", description: "성공적으로 회원 정보가 업데이트되었습니다." })
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
   }
 
-  const handleClaimAdmin = async () => {
+  const handleClaimAdmin = () => {
     if (!user) return
     if (adminCode === "ufes-admin-777") {
       setIsLoading(true)
-      try {
-        await setDoc(doc(db, "roles_admin", user.uid), {
-          grantedViaCode: true,
-          grantedAt: serverTimestamp()
-        })
-        toast({ title: "관리자 권한 획득!", description: "이제 관리자 시스템에 접근할 수 있습니다." })
-        setAdminCode("")
-      } catch (error) {
-        console.error(error)
-        toast({ variant: "destructive", title: "권한 획득 실패" })
-      } finally {
-        setIsLoading(false)
+      const targetAdminRef = doc(db, "roles_admin", user.uid)
+      const claimData = {
+        grantedViaCode: true,
+        grantedAt: serverTimestamp()
       }
+
+      setDoc(targetAdminRef, claimData)
+        .then(() => {
+          toast({ title: "관리자 권한 획득!", description: "이제 관리자 시스템에 접근할 수 있습니다." })
+          setAdminCode("")
+        })
+        .catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: targetAdminRef.path,
+            operation: 'create',
+            requestResourceData: claimData
+          })
+          errorEmitter.emit('permission-error', permissionError)
+          toast({ variant: "destructive", title: "권한 획득 실패", description: "보안 규칙에 의해 거부되었습니다." })
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
     } else {
       toast({ variant: "destructive", title: "코드가 일치하지 않습니다." })
     }
@@ -112,7 +132,7 @@ export default function ProfilePage() {
   if (isUserLoading || isUserDataLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
       </div>
     )
   }
@@ -248,7 +268,7 @@ export default function ProfilePage() {
         )}
 
         <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-12 text-lg font-bold">
-          {isLoading ? <Save className="mr-2 h-5 w-5 animate-pulse" /> : <Save className="mr-2 h-5 w-5" />}
+          {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
           {isLoading ? "저장 중..." : "변경 사항 저장"}
         </Button>
       </div>
