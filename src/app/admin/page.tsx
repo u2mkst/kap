@@ -170,11 +170,11 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>날짜</Label>
-                <Input type="date" value={fortuneDate} onChange={(e) => setFortuneDate(e.target.value)} />
+                <Input type="date" value={fortuneDate || ""} onChange={(e) => setFortuneDate(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>오늘의 한마디</Label>
-                <Textarea value={fortuneText} onChange={(e) => setFortuneText(e.target.value)} />
+                <Textarea value={fortuneText || ""} onChange={(e) => setFortuneText(e.target.value)} />
               </div>
               <Button onClick={handleSaveFortune} disabled={isSaving} className="w-full">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} 저장
@@ -188,15 +188,15 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>날짜</Label>
-                <Input type="date" value={problemDate} onChange={(e) => setProblemDate(e.target.value)} />
+                <Input type="date" value={problemDate || ""} onChange={(e) => setProblemDate(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>문제 제목</Label>
-                <Input placeholder="문제 제목" value={problemTitle} onChange={(e) => setProblemTitle(e.target.value)} />
+                <Input placeholder="문제 제목" value={problemTitle || ""} onChange={(e) => setProblemTitle(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>문제 내용</Label>
-                <Textarea placeholder="문제 내용" value={problemText} onChange={(e) => setProblemText(e.target.value)} />
+                <Textarea placeholder="문제 내용" value={problemText || ""} onChange={(e) => setProblemText(e.target.value)} />
               </div>
               <Button onClick={handleSaveProblem} disabled={isSaving} className="w-full">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} 문제 등록

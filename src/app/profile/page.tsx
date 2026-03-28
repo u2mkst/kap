@@ -103,16 +103,16 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>성</Label>
-                <Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
+                <Input value={formData.lastName || ""} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label>이름</Label>
-                <Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
+                <Input value={formData.firstName || ""} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
               </div>
             </div>
             <div className="space-y-2">
               <Label>학원 아이디</Label>
-              <Input value={userData?.username} disabled className="bg-muted/50" />
+              <Input value={userData?.username || ""} disabled className="bg-muted/50" />
             </div>
           </CardContent>
         </Card>
@@ -127,16 +127,16 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>학교 이름</Label>
-              <Input placeholder="예: 서울고등학교" value={formData.schoolName} onChange={(e) => setFormData({...formData, schoolName: e.target.value})} />
+              <Input placeholder="예: 서울고등학교" value={formData.schoolName || ""} onChange={(e) => setFormData({...formData, schoolName: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>학년</Label>
-                <Input placeholder="1" value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} />
+                <Input placeholder="1" value={formData.grade || ""} onChange={(e) => setFormData({...formData, grade: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label>반</Label>
-                <Input placeholder="3" value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} />
+                <Input placeholder="3" value={formData.classNum || ""} onChange={(e) => setFormData({...formData, classNum: e.target.value})} />
               </div>
             </div>
           </CardContent>
