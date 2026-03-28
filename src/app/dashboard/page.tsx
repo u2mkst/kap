@@ -19,7 +19,7 @@ import {
   Calendar,
   School,
   Settings,
-  AlertCircle
+  CircleUser
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
@@ -36,6 +36,11 @@ export default function DashboardPage() {
   const [mealData, setMealData] = useState<string>("")
   const [scheduleData, setScheduleData] = useState<string>("")
   const [isSearching, setIsSearching] = useState(false)
+  const [todayStr, setTodayStr] = useState<string | null>(null)
+
+  useEffect(() => {
+    setTodayStr(new Date().toISOString().split('T')[0])
+  }, [])
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -44,18 +49,26 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
-  const todayCompact = useMemo(() => todayStr.replace(/-/g, ""), [todayStr])
+  const todayCompact = useMemo(() => todayStr?.replace(/-/g, "") || "", [todayStr])
 
-  const fortuneRef = useMemoFirebase(() => doc(db, "daily_fortunes", todayStr), [db, todayStr])
-  const problemRef = useMemoFirebase(() => doc(db, "daily_problems", todayStr), [db, todayStr])
+  const fortuneRef = useMemoFirebase(() => {
+    if (!db || !todayStr) return null
+    return doc(db, "daily_fortunes", todayStr)
+  }, [db, todayStr])
+
+  const problemRef = useMemoFirebase(() => {
+    if (!db || !todayStr) return null
+    return doc(db, "daily_problems", todayStr)
+  }, [db, todayStr])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
 
   const loadSchoolInfo = useCallback(async (sName: string) => {
-    if (!sName || NEIS_KEY === "여기에_NEIS_API_KEY") {
-      setMealData("NEIS API 키가 설정되지 않았거나 학교명이 없습니다.");
+    if (!sName || NEIS_KEY === "여기에_NEIS_API_KEY" || !todayCompact) {
+      if (NEIS_KEY === "여기에_NEIS_API_KEY") {
+        setMealData("NEIS API 키가 설정되지 않았습니다.");
+      }
       return;
     }
     setIsSearching(true)
@@ -107,12 +120,12 @@ export default function DashboardPage() {
   }, [user, isUserLoading, router])
 
   useEffect(() => {
-    if (userData?.schoolName) {
+    if (userData?.schoolName && todayCompact) {
       loadSchoolInfo(userData.schoolName)
     }
-  }, [userData, loadSchoolInfo])
+  }, [userData, todayCompact, loadSchoolInfo])
 
-  if (isUserLoading || isUserDataLoading || !user) {
+  if (isUserLoading || isUserDataLoading || !user || !todayStr) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -126,7 +139,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <Avatar className="h-14 w-14 border-4 border-white shadow-md">
             <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/100/100`} />
-            <AvatarFallback>{userData?.firstName || "학생"}</AvatarFallback>
+            <AvatarFallback>{userData?.firstName?.charAt(0) || "H"}</AvatarFallback>
           </Avatar>
           <div>
             <h1 className="text-xl md:text-2xl font-bold font-headline">반가워요, {userData?.firstName}님!</h1>
@@ -187,17 +200,17 @@ export default function DashboardPage() {
                   <h3 className="font-bold text-orange-700 flex items-center gap-2 mb-2 text-sm">
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
-                  <p className="text-xs text-orange-900 leading-relaxed min-h-[40px]">
+                  <div className="text-xs text-orange-900 leading-relaxed min-h-[40px]">
                     {mealData || (isSearching ? "로딩 중..." : "정보가 없습니다.")}
-                  </p>
+                  </div>
                 </div>
                 <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
                   <h3 className="font-bold text-blue-700 flex items-center gap-2 mb-2 text-sm">
                     <Calendar className="h-4 w-4" /> 오늘 학사일정
                   </h3>
-                  <p className="text-xs text-blue-900 leading-relaxed min-h-[40px]">
+                  <div className="text-xs text-blue-900 leading-relaxed min-h-[40px]">
                     {scheduleData || (isSearching ? "로딩 중..." : "일정이 없습니다.")}
-                  </p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -318,3 +331,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+

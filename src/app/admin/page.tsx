@@ -20,6 +20,7 @@ export default function AdminPage() {
   const db = useFirestore()
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   const adminRef = useMemoFirebase(() => {
     if (!user) return null
@@ -36,25 +37,32 @@ export default function AdminPage() {
 
   const { data: allPosts, isLoading: isPostsLoading } = useCollection(allPostsQuery)
 
+  const [fortuneDate, setFortuneDate] = useState("")
+  const [fortuneText, setFortuneText] = useState("")
+
+  const [problemDate, setProblemDate] = useState("")
+  const [problemTitle, setProblemTitle] = useState("")
+  const [problemText, setProblemText] = useState("")
+  const [problemTopic, setProblemTopic] = useState("수학")
+
   useEffect(() => {
-    if (!isUserLoading && !isAdminLoading) {
+    setIsMounted(true)
+    const today = new Date().toISOString().split('T')[0]
+    setFortuneDate(today)
+    setProblemDate(today)
+  }, [])
+
+  useEffect(() => {
+    if (!isUserLoading && !isAdminLoading && isMounted) {
       if (!user || !isAdminDoc) {
         toast({ variant: "destructive", title: "권한 오류", description: "관리자 전용 페이지입니다." })
         router.push("/dashboard")
       }
     }
-  }, [user, isAdminDoc, isUserLoading, isAdminLoading, router])
-
-  const [fortuneDate, setFortuneDate] = useState(new Date().toISOString().split('T')[0])
-  const [fortuneText, setFortuneText] = useState("")
-
-  const [problemDate, setProblemDate] = useState(new Date().toISOString().split('T')[0])
-  const [problemTitle, setProblemTitle] = useState("")
-  const [problemText, setProblemText] = useState("")
-  const [problemTopic, setProblemTopic] = useState("수학")
+  }, [user, isAdminDoc, isUserLoading, isAdminLoading, isMounted, router])
 
   const handleSaveFortune = async () => {
-    if (!fortuneText) return
+    if (!fortuneText || !fortuneDate) return
     setIsSaving(true)
     try {
       await setDoc(doc(db, "daily_fortunes", fortuneDate), {
@@ -73,7 +81,7 @@ export default function AdminPage() {
   }
 
   const handleSaveProblem = async () => {
-    if (!problemTitle || !problemText) return
+    if (!problemTitle || !problemText || !problemDate) return
     setIsSaving(true)
     try {
       await setDoc(doc(db, "daily_problems", problemDate), {
@@ -105,7 +113,7 @@ export default function AdminPage() {
     }
   }
 
-  if (isUserLoading || isAdminLoading) {
+  if (isUserLoading || isAdminLoading || !isMounted) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -188,7 +196,7 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>날짜</Label>
-                <Input type="date" value={problemDate || ""} onChange={(e) => setFortuneDate(e.target.value)} />
+                <Input type="date" value={problemDate || ""} onChange={(e) => setProblemDate(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>문제 제목</Label>
@@ -208,3 +216,4 @@ export default function AdminPage() {
     </div>
   )
 }
+
