@@ -31,7 +31,7 @@ export default function AdminPage() {
 
   // 관리자 권한이 완전히 확인된 경우에만 게시글 쿼리 실행 (에러 방지)
   const allPostsQuery = useMemoFirebase(() => {
-    if (isAdminLoading || !isAdminDoc) return null
+    if (isAdminLoading || !isAdminDoc || !isAdminDoc.id) return null
     return query(collection(db, "posts"), orderBy("createdAt", "desc"))
   }, [db, isAdminLoading, isAdminDoc])
 
@@ -216,4 +216,3 @@ export default function AdminPage() {
     </div>
   )
 }
-
