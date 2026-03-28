@@ -11,23 +11,26 @@ import {
   Store, 
   Calendar,
   Menu, 
-  X 
+  X,
+  Sprout,
+  ShieldCheck
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useUser } from "@/firebase"
 
 const navItems = [
   { name: "학생 홈", href: "/dashboard", icon: Home },
-  { name: "내 학습", href: "/courses", icon: BookOpen },
+  { name: "나의 정원", href: "/plants", icon: Sprout },
   { name: "라운지", href: "/lounge", icon: Gamepad2 },
   { name: "포인트 샵", href: "/shop", icon: Store },
-  { name: "일정", href: "/calendar", icon: Calendar },
 ]
 
 export function Navbar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const { user } = useUser()
 
   // 로그인/회원가입 페이지에서는 네비게이션 간소화
   const isAuthPage = pathname === "/" || pathname === "/login" || pathname === "/signup"
@@ -65,6 +68,11 @@ export function Navbar() {
                   )
                 })}
                 <div className="h-6 w-px bg-border mx-4" />
+                <Link href="/admin">
+                  <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10">
+                    <ShieldCheck className="h-4 w-4 text-destructive" />
+                  </Button>
+                </Link>
                 <Link href="/dashboard">
                   <Button variant="outline" size="icon" className="rounded-full border-primary/20 hover:border-primary transition-colors">
                     <User className="h-4 w-4 text-primary" />
@@ -112,6 +120,14 @@ export function Navbar() {
               <span>{item.name}</span>
             </Link>
           ))}
+          <Link
+              href="/admin"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center space-x-3 p-4 rounded-xl text-base font-bold text-destructive hover:bg-destructive/5"
+            >
+              <ShieldCheck className="h-5 w-5" />
+              <span>관리자 모드</span>
+            </Link>
           <div className="pt-4 border-t mt-4">
             <Button variant="ghost" className="w-full text-destructive font-bold justify-start px-4">로그아웃</Button>
           </div>
