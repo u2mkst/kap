@@ -52,7 +52,8 @@
       "title": "AppMetadata",
       "type": "object",
       "properties": {
-        "notice": { "type": "string" }
+        "notice": { "type": "string" },
+        "adminSecret": { "type": "string", "description": "Secret code to claim admin role." }
       }
     }
   },
@@ -70,7 +71,7 @@
     },
     "/metadata/config": {
       "schema": { "$ref": "#/backend/entities/AppMetadata" },
-      "description": "Global app configurations like notices."
+      "description": "Global app configurations like notices and secrets."
     },
     "/daily_problems/{problemId}": {
       "schema": { "$ref": "#/backend/entities/DailyProblem" },

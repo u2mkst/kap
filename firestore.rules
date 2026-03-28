@@ -28,8 +28,10 @@ service cloud.firestore {
     match /teachers/{teacherId} {
       allow read: if isAuthenticated();
       allow update: if isAuthenticated() 
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vote'])
-        && request.resource.data.vote == resource.data.vote + 1;
+        && (
+          isAdmin() || 
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vote']) && request.resource.data.vote == resource.data.vote + 1)
+        );
       allow create, delete: if isAdmin();
     }
 
@@ -40,9 +42,7 @@ service cloud.firestore {
 
     match /roles_admin/{adminId} {
       allow get: if isAuthenticated();
-      // 비밀 코드를 통한 최초 권한 획득을 위해 본인의 문서 생성 허용
       allow create: if isAuthenticated() && request.auth.uid == adminId;
-      // 목록 조회 및 타인 권한 관리는 기존 관리자만 가능
       allow list, update, delete: if isAdmin();
     }
 

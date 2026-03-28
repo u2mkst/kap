@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2 } from "lucide-react"
+import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, serverTimestamp, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -20,6 +20,8 @@ export default function ProfilePage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [adminCode, setAdminCode] = useState("")
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [showCode, setShowCode] = useState(false)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -27,6 +29,9 @@ export default function ProfilePage() {
   }, [user, db])
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
+
+  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
+  const { data: configData } = useDoc(configRef)
 
   const adminRef = useMemoFirebase(() => {
     if (!user) return null
@@ -64,26 +69,10 @@ export default function ProfilePage() {
 
   const handleUpdate = () => {
     if (!user || !userDocRef) return
-
-    if (formData.nickname.length < 2) {
-      toast({
-        variant: "destructive",
-        title: "닉네임 오류",
-        description: "닉네임은 최소 2자 이상이어야 합니다.",
-      })
-      return
-    }
-
     setIsLoading(true)
-    const updateData = {
-      ...formData,
-      updatedAt: serverTimestamp()
-    }
-
+    const updateData = { ...formData, updatedAt: serverTimestamp() }
     updateDoc(userDocRef, updateData)
-      .then(() => {
-        toast({ title: "정보 수정 완료", description: "성공적으로 회원 정보가 업데이트되었습니다." })
-      })
+      .then(() => toast({ title: "정보 수정 완료" }))
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
@@ -92,38 +81,23 @@ export default function ProfilePage() {
         })
         errorEmitter.emit('permission-error', permissionError)
       })
-      .finally(() => {
-        setIsLoading(false)
-      })
+      .finally(() => setIsLoading(false))
   }
 
   const handleClaimAdmin = () => {
-    if (!user) return
-    if (adminCode === "ufes-admin-777") {
+    if (!user || !configData) return
+    const secret = configData.adminSecret || "ufes-admin-777"
+    if (adminCode === secret) {
       setIsLoading(true)
       const targetAdminRef = doc(db, "roles_admin", user.uid)
-      const claimData = {
-        grantedViaCode: true,
-        grantedAt: serverTimestamp()
-      }
-
+      const claimData = { grantedViaCode: true, grantedAt: serverTimestamp() }
       setDoc(targetAdminRef, claimData)
         .then(() => {
-          toast({ title: "관리자 권한 획득!", description: "이제 관리자 시스템에 접근할 수 있습니다." })
+          toast({ title: "관리자 권한 획득!", description: "이제 시스템 관리가 가능합니다." })
           setAdminCode("")
+          setShowAdminPanel(false)
         })
-        .catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: targetAdminRef.path,
-            operation: 'create',
-            requestResourceData: claimData
-          })
-          errorEmitter.emit('permission-error', permissionError)
-          toast({ variant: "destructive", title: "권한 획득 실패", description: "보안 규칙에 의해 거부되었습니다." })
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
+        .finally(() => setIsLoading(false))
     } else {
       toast({ variant: "destructive", title: "코드가 일치하지 않습니다." })
     }
@@ -149,7 +123,7 @@ export default function ProfilePage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold font-headline">마이페이지</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">나의 정보와 학교 설정을 관리합니다.</p>
+          <p className="text-muted-foreground text-sm">개인 정보 및 학교 설정을 관리합니다.</p>
         </div>
       </div>
 
@@ -172,34 +146,18 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                라운지 닉네임
-              </Label>
-              <Input 
-                value={formData.nickname} 
-                onChange={(e) => setFormData({...formData, nickname: e.target.value})}
-                placeholder="멋진학생"
-                className="focus-visible:ring-primary"
-              />
-              <p className="text-[10px] text-muted-foreground">라운지 게시판에서 사용되는 별명입니다.</p>
+              <Label>라운지 닉네임</Label>
+              <Input value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>성</Label>
-                <Input 
-                  value={formData.lastName} 
-                  onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
-                  placeholder="성"
-                />
+                <Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label>이름</Label>
-                <Input 
-                  value={formData.firstName} 
-                  onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
-                  placeholder="이름"
-                />
+                <Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
               </div>
             </div>
           </CardContent>
@@ -210,67 +168,73 @@ export default function ProfilePage() {
             <CardTitle className="text-lg flex items-center gap-2">
               <School className="h-5 w-5 text-primary" /> 학교 정보 설정
             </CardTitle>
-            <CardDescription>이 정보는 대시보드에서 급식과 시간표를 불러오는 데 사용됩니다.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>학교 이름</Label>
-              <Input 
-                placeholder="예: 서울고등학교" 
-                value={formData.schoolName} 
-                onChange={(e) => setFormData({...formData, schoolName: e.target.value})} 
-              />
+              <Input placeholder="예: 서울고등학교" value={formData.schoolName} onChange={(e) => setFormData({...formData, schoolName: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>학년</Label>
-                <Input 
-                  placeholder="1" 
-                  value={formData.grade} 
-                  onChange={(e) => setFormData({...formData, grade: e.target.value})} 
-                />
+                <Input value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label>반</Label>
-                <Input 
-                  placeholder="3" 
-                  value={formData.classNum} 
-                  onChange={(e) => setFormData({...formData, classNum: e.target.value})} 
-                />
+                <Input value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {!isAdminDoc && (
-          <Card className="border-2 border-dashed border-destructive/20 bg-destructive/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                <ShieldAlert className="h-4 w-4" /> 관리자 권한 획득 (Secret)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex gap-2">
-              <div className="relative flex-grow">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input 
-                  type="password"
-                  placeholder="Admin Code" 
-                  value={adminCode}
-                  onChange={(e) => setAdminCode(e.target.value)}
-                  className="pl-8 h-9 text-xs"
-                />
-              </div>
-              <Button size="sm" variant="destructive" onClick={handleClaimAdmin} disabled={isLoading}>
-                인증
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
         <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-12 text-lg font-bold">
-          {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-          {isLoading ? "저장 중..." : "변경 사항 저장"}
+          {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "변경 사항 저장"}
         </Button>
+
+        {!isAdminDoc && (
+          <div className="pt-10">
+            {!showAdminPanel ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full text-muted-foreground hover:bg-transparent"
+                onClick={() => setShowAdminPanel(true)}
+              >
+                권한 획득이 필요하신가요?
+              </Button>
+            ) : (
+              <Card className="border-2 border-dashed border-destructive/20 bg-destructive/5 animate-in fade-in duration-300">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+                    <ShieldAlert className="h-4 w-4" /> 관리자 코드 인증
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowAdminPanel(false)}>닫기</Button>
+                </CardHeader>
+                <CardContent className="flex gap-2">
+                  <div className="relative flex-grow">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                    <Input 
+                      type={showCode ? "text" : "password"}
+                      placeholder="Admin Code" 
+                      value={adminCode}
+                      onChange={(e) => setAdminCode(e.target.value)}
+                      className="pl-8 h-9 text-xs"
+                    />
+                    <button 
+                      onClick={() => setShowCode(!showCode)} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    >
+                      {showCode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    </button>
+                  </div>
+                  <Button size="sm" variant="destructive" onClick={handleClaimAdmin} disabled={isLoading}>
+                    인증
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

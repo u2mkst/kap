@@ -12,9 +12,23 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { ShieldAlert, Star, Plus, Trash2, Users, Loader2, Megaphone, BrainCircuit, UserCog, ShieldCheck } from "lucide-react"
+import { 
+  ShieldAlert, 
+  Plus, 
+  Trash2, 
+  Users, 
+  Loader2, 
+  Megaphone, 
+  BrainCircuit, 
+  UserCog, 
+  ShieldCheck, 
+  RefreshCcw, 
+  Key, 
+  ClipboardPaste,
+  Star
+} from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc } from "firebase/firestore"
+import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -33,21 +47,21 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
-  // 전체 선생님 목록
+  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
+  const { data: configData } = useDoc(configRef)
+
   const teachersQuery = useMemoFirebase(() => {
     if (isAdminLoading || !isAdminDoc?.id) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
   }, [db, isAdminLoading, isAdminDoc?.id])
   const { data: teachers, isLoading: isTeachersLoading } = useCollection(teachersQuery)
 
-  // 전체 사용자 목록 (관리자만 가능)
   const usersQuery = useMemoFirebase(() => {
     if (isAdminLoading || !isAdminDoc?.id) return null
     return query(collection(db, "users"), orderBy("username", "asc"))
   }, [db, isAdminLoading, isAdminDoc?.id])
   const { data: allUsers, isLoading: isUsersLoading } = useCollection(usersQuery)
 
-  // 전체 관리자 ID 목록
   const adminsQuery = useMemoFirebase(() => {
     if (isAdminLoading || !isAdminDoc?.id) return null
     return collection(db, "roles_admin")
@@ -58,24 +72,19 @@ export default function AdminPage() {
 
   const [teacherName, setTeacherName] = useState("")
   const [noticeText, setNoticeText] = useState("")
-  const [fortuneDate, setFortuneDate] = useState("")
-  const [fortuneText, setFortuneText] = useState("")
+  const [adminSecretCode, setAdminSecretCode] = useState("")
 
-  // 오늘의 문제 상태
-  const [probDate, setProbDate] = useState("")
-  const [probGrade, setProbGrade] = useState("1")
-  const [probTitle, setProbTitle] = useState("")
-  const [probTopic, setProbTopic] = useState("")
-  const [probDiff, setProbDiff] = useState("보통")
-  const [probText, setProbText] = useState("")
-  const [probAnswer, setProbAnswer] = useState("")
+  // 일괄 등록용 텍스트
+  const [bulkProblemText, setBulkProblemText] = useState("")
+  const [bulkFortuneText, setBulkFortuneText] = useState("")
 
   useEffect(() => {
     setIsMounted(true)
-    const today = new Date().toISOString().split('T')[0]
-    setFortuneDate(today)
-    setProbDate(today)
-  }, [])
+    if (configData) {
+      setNoticeText(configData.notice || "")
+      setAdminSecretCode(configData.adminSecret || "ufes-admin-777")
+    }
+  }, [configData])
 
   useEffect(() => {
     if (!isUserLoading && !isAdminLoading && isMounted) {
@@ -88,178 +97,108 @@ export default function AdminPage() {
   const handleAddTeacher = () => {
     if (!teacherName.trim()) return
     setIsSaving(true)
-    const teacherData = {
-      name: teacherName,
-      vote: 0,
-      createdAt: serverTimestamp()
-    }
-    const teachersCol = collection(db, "teachers")
-    
-    addDoc(teachersCol, teacherData)
+    const teacherData = { name: teacherName, vote: 0, createdAt: serverTimestamp() }
+    addDoc(collection(db, "teachers"), teacherData)
       .then(() => {
         toast({ title: "선생님 등록 완료" })
         setTeacherName("")
       })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: teachersCol.path,
-          operation: 'create',
-          requestResourceData: teacherData
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
-      .finally(() => {
-        setIsSaving(false)
-      })
+      .finally(() => setIsSaving(false))
   }
 
   const handleDeleteTeacher = (id: string) => {
     if (!confirm("삭제하시겠습니까?")) return
-    const teacherRef = doc(db, "teachers", id)
-    deleteDoc(teacherRef)
-      .then(() => {
-        toast({ title: "삭제 완료" })
+    deleteDoc(doc(db, "teachers", id)).then(() => toast({ title: "삭제 완료" }))
+  }
+
+  const handleResetVotes = async () => {
+    if (!confirm("모든 투표수를 0으로 초기화하시겠습니까?")) return
+    setIsSaving(true)
+    try {
+      const batch = writeBatch(db)
+      const snapshot = await getDocs(collection(db, "teachers"))
+      snapshot.forEach((doc) => {
+        batch.update(doc.ref, { vote: 0 })
       })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: teacherRef.path,
-          operation: 'delete'
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
+      await batch.commit()
+      toast({ title: "투표수 초기화 완료" })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleUpdateConfig = () => {
+    setIsSaving(true)
+    const configDataUpdate = { notice: noticeText, adminSecret: adminSecretCode }
+    setDoc(configRef, configDataUpdate, { merge: true })
+      .then(() => toast({ title: "설정 업데이트 완료" }))
+      .finally(() => setIsSaving(false))
   }
 
   const handleToggleAdmin = (userId: string, isCurrentlyAdmin: boolean) => {
-    if (userId === user?.uid) {
-      toast({ variant: "destructive", title: "본인의 권한은 해제할 수 없습니다." })
-      return
-    }
-    
+    if (userId === user?.uid) return
     const targetAdminRef = doc(db, "roles_admin", userId)
     if (isCurrentlyAdmin) {
-      deleteDoc(targetAdminRef)
-        .then(() => {
-          toast({ title: "관리자 권한 해제 완료" })
-        })
-        .catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: targetAdminRef.path,
-            operation: 'delete'
-          })
-          errorEmitter.emit('permission-error', permissionError)
-        })
+      deleteDoc(targetAdminRef).then(() => toast({ title: "권한 해제" }))
     } else {
-      const adminData = {
-        addedAt: serverTimestamp(),
-        addedBy: user?.uid
-      }
-      setDoc(targetAdminRef, adminData)
-        .then(() => {
-          toast({ title: "관리자 권한 부여 완료" })
-        })
-        .catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: targetAdminRef.path,
-            operation: 'create',
-            requestResourceData: adminData
+      setDoc(targetAdminRef, { addedAt: serverTimestamp(), addedBy: user?.uid })
+        .then(() => toast({ title: "권한 부여" }))
+    }
+  }
+
+  const handleBulkProblems = async () => {
+    if (!bulkProblemText.trim()) return
+    setIsSaving(true)
+    try {
+      const batch = writeBatch(db)
+      const lines = bulkProblemText.trim().split("\n")
+      lines.forEach(line => {
+        // 형식: 날짜|학년|제목|토픽|난이도|문제내용|정답
+        const [date, grade, title, topic, diff, text, answer] = line.split("|")
+        if (date && grade && title && text && answer) {
+          const docId = `${date}_${grade}`
+          const ref = doc(db, "daily_problems", docId)
+          batch.set(ref, {
+            id: docId, date, grade, title, topic: topic || "일반",
+            difficulty: diff || "보통", problemText: text, answer: answer.trim(),
+            rewardPoints: 100, createdAt: serverTimestamp()
           })
-          errorEmitter.emit('permission-error', permissionError)
-        })
+        }
+      })
+      await batch.commit()
+      toast({ title: "문제 일괄 등록 완료" })
+      setBulkProblemText("")
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const handleUpdateNotice = () => {
-    if (!noticeText.trim()) return
+  const handleBulkFortunes = async () => {
+    if (!bulkFortuneText.trim()) return
     setIsSaving(true)
-    const configRef = doc(db, "metadata", "config")
-    const noticeData = { notice: noticeText }
-    
-    setDoc(configRef, noticeData, { merge: true })
-      .then(() => {
-        toast({ title: "공지 업데이트 완료" })
-        setNoticeText("")
+    try {
+      const batch = writeBatch(db)
+      const lines = bulkFortuneText.trim().split("\n")
+      lines.forEach(line => {
+        // 형식: 날짜|내용
+        const [date, text] = line.split("|")
+        if (date && text) {
+          const ref = doc(db, "daily_fortunes", date)
+          batch.set(ref, { id: date, date, fortuneText: text, createdAt: serverTimestamp() })
+        }
       })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: configRef.path,
-          operation: 'update',
-          requestResourceData: noticeData
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
-      .finally(() => {
-        setIsSaving(false)
-      })
-  }
-
-  const handleSaveFortune = () => {
-    if (!fortuneText || !fortuneDate) return
-    setIsSaving(true)
-    const fortuneRef = doc(db, "daily_fortunes", fortuneDate)
-    const fortuneData = {
-      id: fortuneDate,
-      date: fortuneDate,
-      fortuneText,
-      createdAt: serverTimestamp(),
+      await batch.commit()
+      toast({ title: "운세 일괄 등록 완료" })
+      setBulkFortuneText("")
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSaving(false)
     }
-
-    setDoc(fortuneRef, fortuneData)
-      .then(() => {
-        toast({ title: "운세 저장 완료" })
-        setFortuneText("")
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: fortuneRef.path,
-          operation: 'create',
-          requestResourceData: fortuneData
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
-      .finally(() => {
-        setIsSaving(false)
-      })
-  }
-
-  const handleSaveProblem = () => {
-    if (!probDate || !probGrade || !probTitle || !probText || !probAnswer) {
-      toast({ variant: "destructive", title: "모든 항목을 입력해주세요." })
-      return
-    }
-    setIsSaving(true)
-    const docId = `${probDate}_${probGrade}`
-    const problemRef = doc(db, "daily_problems", docId)
-    const problemData = {
-      id: docId,
-      date: probDate,
-      grade: probGrade,
-      title: probTitle,
-      topic: probTopic || "일반",
-      difficulty: probDiff,
-      problemText: probText,
-      answer: probAnswer.trim(),
-      rewardPoints: 100,
-      createdAt: serverTimestamp(),
-    }
-
-    setDoc(problemRef, problemData)
-      .then(() => {
-        toast({ title: "문제 등록 완료" })
-        setProbTitle("")
-        setProbText("")
-        setProbAnswer("")
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: problemRef.path,
-          operation: 'create',
-          requestResourceData: problemData
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
-      .finally(() => {
-        setIsSaving(false)
-      })
   }
 
   if (isUserLoading || isAdminLoading || !isMounted) {
@@ -280,17 +219,17 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold font-headline text-destructive">관리자 시스템</h1>
-          <p className="text-muted-foreground text-sm">학생 및 콘텐츠 전반 관리</p>
+          <p className="text-muted-foreground text-sm">학원 운영 및 콘텐츠 통합 관리</p>
         </div>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-8 bg-muted/50 p-1">
-          <TabsTrigger value="users"><UserCog className="mr-2 h-4 w-4" /> 회원 관리</TabsTrigger>
-          <TabsTrigger value="vote"><Users className="mr-2 h-4 w-4" /> 투표</TabsTrigger>
-          <TabsTrigger value="problem"><BrainCircuit className="mr-2 h-4 w-4" /> 문제</TabsTrigger>
-          <TabsTrigger value="notice"><Megaphone className="mr-2 h-4 w-4" /> 공지</TabsTrigger>
-          <TabsTrigger value="fortune"><Star className="mr-2 h-4 w-4" /> 운세</TabsTrigger>
+          <TabsTrigger value="users"><UserCog className="mr-2 h-4 w-4" /> 회원/보안</TabsTrigger>
+          <TabsTrigger value="vote"><Users className="mr-2 h-4 w-4" /> 투표 관리</TabsTrigger>
+          <TabsTrigger value="bulk"><ClipboardPaste className="mr-2 h-4 w-4" /> 일괄 등록</TabsTrigger>
+          <TabsTrigger value="notice"><Megaphone className="mr-2 h-4 w-4" /> 공지 관리</TabsTrigger>
+          <TabsTrigger value="config"><Key className="mr-2 h-4 w-4" /> 시스템 설정</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -317,14 +256,11 @@ export default function AdminPage() {
                             <p className="text-[10px] text-muted-foreground">ID: {u.username} | {u.schoolName} {u.grade}학년</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-xs font-medium text-muted-foreground">{isUserAdmin ? "관리자" : "학생"}</span>
-                          <Switch 
-                            checked={isUserAdmin} 
-                            onCheckedChange={() => handleToggleAdmin(u.id, isUserAdmin)}
-                            disabled={u.id === user?.uid}
-                          />
-                        </div>
+                        <Switch 
+                          checked={isUserAdmin} 
+                          onCheckedChange={() => handleToggleAdmin(u.id, isUserAdmin)}
+                          disabled={u.id === user?.uid}
+                        />
                       </div>
                     )
                   })}
@@ -338,28 +274,27 @@ export default function AdminPage() {
           <div className="grid md:grid-cols-2 gap-8">
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
-                <CardTitle>새 후보 등록</CardTitle>
-                <CardDescription>투표에 참여할 선생님 성함을 입력하세요.</CardDescription>
+                <CardTitle>후보 추가</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>선생님 성함</Label>
-                  <Input 
-                    placeholder="홍길동" 
-                    value={teacherName} 
-                    onChange={(e) => setTeacherName(e.target.value)}
-                  />
+                  <Input placeholder="홍길동" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} />
                 </div>
                 <Button onClick={handleAddTeacher} disabled={isSaving} className="w-full">
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="mr-2 h-4 w-4" />} 후보 추가
+                  <Plus className="mr-2 h-4 w-4" /> 후보 추가
                 </Button>
+                <div className="pt-4 border-t mt-4">
+                  <Button variant="destructive" onClick={handleResetVotes} disabled={isSaving} className="w-full">
+                    <RefreshCcw className="mr-2 h-4 w-4" /> 모든 투표수 초기화 (0P)
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
-                <CardTitle>현재 순위</CardTitle>
-                <CardDescription>투표 현황을 실시간으로 확인합니다.</CardDescription>
+                <CardTitle>투표 현황</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {isTeachersLoading ? (
@@ -368,7 +303,7 @@ export default function AdminPage() {
                   teachers?.map((t, i) => (
                     <div key={t.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="h-6 w-6 rounded-full flex items-center justify-center p-0">{i + 1}</Badge>
+                        <Badge variant="outline" className="h-6 w-6 rounded-full p-0 flex items-center justify-center">{i + 1}</Badge>
                         <span className="font-bold">{t.name}</span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -385,115 +320,90 @@ export default function AdminPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="problem">
-          <Card className="border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle>오늘의 도전 문제 등록</CardTitle>
-              <CardDescription>학년별로 다른 문제를 제공할 수 있습니다.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>날짜</Label>
-                  <Input type="date" value={probDate} onChange={(e) => setProbDate(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>학년</Label>
-                  <Select value={probGrade} onValueChange={setProbGrade}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="학년 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1학년</SelectItem>
-                      <SelectItem value="2">2학년</SelectItem>
-                      <SelectItem value="3">3학년</SelectItem>
-                      <SelectItem value="4">4학년</SelectItem>
-                      <SelectItem value="5">5학년</SelectItem>
-                      <SelectItem value="6">6학년</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>제목</Label>
-                  <Input placeholder="미적분 기초 퀴즈" value={probTitle} onChange={(e) => setProbTitle(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>과목/토픽</Label>
-                  <Input placeholder="수학" value={probTopic} onChange={(e) => setProbTopic(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>난이도</Label>
-                <Select value={probDiff} onValueChange={setProbDiff}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="난이도" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="쉬움">쉬움</SelectItem>
-                    <SelectItem value="보통">보통</SelectItem>
-                    <SelectItem value="어려움">어려움</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>문제 내용</Label>
+        <TabsContent value="bulk">
+          <div className="grid gap-8">
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <BrainCircuit className="h-5 w-5" /> 오늘의 문제 일괄 등록
+                </CardTitle>
+                <CardDescription>형식: <b>날짜|학년|제목|토픽|난이도|문제내용|정답</b> (한 줄에 하나씩)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <Textarea 
-                  placeholder="문제 설명을 입력하세요..." 
-                  className="min-h-[120px]" 
-                  value={probText} 
-                  onChange={(e) => setProbText(e.target.value)}
+                  placeholder="2024-05-20|1|수학 퀴즈|연산|쉬움|1+1은?|2"
+                  className="min-h-[150px] font-mono text-xs"
+                  value={bulkProblemText}
+                  onChange={(e) => setBulkProblemText(e.target.value)}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>정답 (텍스트 일치 확인)</Label>
-                <Input placeholder="정답을 입력하세요" value={probAnswer} onChange={(e) => setProbAnswer(e.target.value)} />
-              </div>
-              <Button onClick={handleSaveProblem} disabled={isSaving} className="w-full">
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "문제 등록하기"}
-              </Button>
-            </CardContent>
-          </Card>
+                <Button onClick={handleBulkProblems} disabled={isSaving} className="w-full">
+                  등록하기
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-600">
+                  <Star className="h-5 w-5" /> 오늘의 운세 일괄 등록
+                </CardTitle>
+                <CardDescription>형식: <b>날짜|내용</b> (한 줄에 하나씩)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea 
+                  placeholder="2024-05-20|오늘은 행운이 가득한 날입니다!"
+                  className="min-h-[120px] font-mono text-xs"
+                  value={bulkFortuneText}
+                  onChange={(e) => setBulkFortuneText(e.target.value)}
+                />
+                <Button onClick={handleBulkFortunes} disabled={isSaving} className="w-full bg-orange-600 hover:bg-orange-700">
+                  등록하기
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="notice">
           <Card className="border-none shadow-sm bg-white">
             <CardHeader>
-              <CardTitle>라운지 공지사항</CardTitle>
-              <CardDescription>투표 화면 상단에 노출될 한 줄 공지를 설정합니다.</CardDescription>
+              <CardTitle>라운지 실시간 공지</CardTitle>
+              <CardDescription>투표 화면 상단에 노출됩니다.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>공지 내용</Label>
-                <Input 
-                  placeholder="예: 이번 주 금요일까지 투표 마감입니다! 🔥" 
-                  value={noticeText} 
-                  onChange={(e) => setNoticeText(e.target.value)}
-                />
-              </div>
-              <Button onClick={handleUpdateNotice} disabled={isSaving} className="w-full">
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "공지 업데이트"}
-              </Button>
+              <Input 
+                placeholder="예: 이번 주 금요일 투표 마감!" 
+                value={noticeText} 
+                onChange={(e) => setNoticeText(e.target.value)}
+              />
+              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full">업데이트</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="fortune">
-          <Card className="border-none shadow-sm bg-white p-6">
-            <div className="space-y-4">
+        <TabsContent value="config">
+          <Card className="border-none shadow-sm bg-white">
+            <CardHeader>
+              <CardTitle>시스템 보안 설정</CardTitle>
+              <CardDescription>관리자 권한 획득을 위한 코드를 설정합니다.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>날짜</Label>
-                <Input type="date" value={fortuneDate} onChange={(e) => setFortuneDate(e.target.value)} />
+                <Label>관리자 비밀 코드 (Admin Secret)</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    type="password"
+                    placeholder="비밀 코드를 입력하세요" 
+                    value={adminSecretCode} 
+                    onChange={(e) => setAdminSecretCode(e.target.value)}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">이 코드를 마이페이지에서 입력하면 관리자 권한을 즉시 획득할 수 있습니다.</p>
               </div>
-              <div className="space-y-2">
-                <Label>오늘의 한마디</Label>
-                <Input value={fortuneText} onChange={(e) => setFortuneText(e.target.value)} placeholder="운세 내용을 입력하세요." />
-              </div>
-              <Button onClick={handleSaveFortune} disabled={isSaving} className="w-full">
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "저장하기"}
+              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full bg-primary h-12">
+                설정 저장
               </Button>
-            </div>
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
