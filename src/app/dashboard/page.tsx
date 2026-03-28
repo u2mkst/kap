@@ -1,13 +1,13 @@
-
 "use client"
 
-import { useMemo, useEffect, useState, useCallback } from "react"
+import { useMemo, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { 
   Trophy, 
   Utensils, 
@@ -24,8 +24,8 @@ import {
   Loader2
 } from "lucide-react"
 import Link from "next/link"
-import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore"
+import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function DashboardPage() {
@@ -33,9 +33,6 @@ export default function DashboardPage() {
   const db = useFirestore()
   const router = useRouter()
 
-  const [mealData, setMealData] = useState<string>("")
-  const [scheduleData, setScheduleData] = useState<string>("")
-  const [isSearching, setIsSearching] = useState(false)
   const [todayStr, setTodayStr] = useState<string | null>(null)
   const [userAnswer, setUserAnswer] = useState("")
   const [isSolving, setIsSolving] = useState(false)
@@ -52,14 +49,17 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  const todayCompact = useMemo(() => todayStr?.replace(/-/g, "") || "", [todayStr])
+  // 실시간 랭킹 데이터 가져오기 (포인트 높은 순 상위 10명)
+  const leaderboardQuery = useMemoFirebase(() => {
+    return query(collection(db, "users"), orderBy("points", "desc"), limit(10))
+  }, [db])
+  const { data: topUsers, isLoading: isLeaderboardLoading } = useCollection(leaderboardQuery)
 
   const fortuneRef = useMemoFirebase(() => {
     if (!db || !todayStr) return null
     return doc(db, "daily_fortunes", todayStr)
   }, [db, todayStr])
 
-  // 학년별 문제 참조
   const problemRef = useMemoFirebase(() => {
     if (!db || !todayStr || !userData?.grade) return null
     return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
@@ -67,22 +67,6 @@ export default function DashboardPage() {
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
-
-  const leaderboard = useMemo(() => {
-    const rawData = [
-      { name: "김현우", points: 15400 },
-      { name: "이지아", points: 12850 },
-      { name: "최민준", points: 11200 },
-      { name: "박서연", points: 9800 },
-      { name: "정하늘", points: 8500 },
-      { name: userData?.nickname || userData?.firstName || "나", points: userData?.points || 0 },
-      { name: "윤도현", points: 7200 },
-      { name: "한소희", points: 6900 },
-      { name: "강동원", points: 5400 },
-      { name: "임윤아", points: 4200 },
-    ]
-    return rawData.sort((a, b) => b.points - a.points).slice(0, 10)
-  }, [userData])
 
   const handleSolveProblem = async () => {
     if (!problemData || !userAnswer.trim() || isSolved) return
@@ -188,7 +172,7 @@ export default function DashboardPage() {
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
                   <div className="text-xs text-orange-900 leading-relaxed flex-grow">
-                    NEIS API 정보가 연동되지 않았습니다.
+                    준비된 급식 정보가 없습니다.
                   </div>
                 </div>
                 <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col h-full">
@@ -278,7 +262,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-sm mb-2">{problemData.title}</h3>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap">
                       {problemData.problemText}
                     </p>
                   </div>
@@ -318,35 +302,40 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 p-5 pt-4">
-              {leaderboard.map((u, index) => {
-                const rank = index + 1;
-                const isMe = u.name === (userData?.nickname || userData?.firstName || "나");
-                
-                return (
-                  <div key={index} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${isMe ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 flex justify-center">
-                        {rank === 1 ? (
-                          <Medal className="h-4 w-4 text-yellow-500" />
-                        ) : rank === 2 ? (
-                          <Medal className="h-4 w-4 text-gray-400" />
-                        ) : rank === 3 ? (
-                          <Medal className="h-4 w-4 text-orange-400" />
-                        ) : (
-                          <span className="font-black text-xs text-muted-foreground">{rank}</span>
-                        )}
+              {isLeaderboardLoading ? (
+                <div className="flex justify-center py-10"><Loader2 className="h-4 w-4 animate-spin" /></div>
+              ) : (
+                Array.from({ length: 10 }).map((_, index) => {
+                  const rank = index + 1;
+                  const u = topUsers?.[index];
+                  const isMe = u?.id === user?.uid;
+                  
+                  return (
+                    <div key={index} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${isMe ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 flex justify-center">
+                          {rank === 1 ? (
+                            <Medal className="h-4 w-4 text-yellow-500" />
+                          ) : rank === 2 ? (
+                            <Medal className="h-4 w-4 text-gray-400" />
+                          ) : rank === 3 ? (
+                            <Medal className="h-4 w-4 text-orange-400" />
+                          ) : (
+                            <span className="font-black text-xs text-muted-foreground">{rank}</span>
+                          )}
+                        </div>
+                        <span className={`text-[11px] font-bold ${isMe ? 'text-primary' : 'text-foreground'}`}>
+                          {u ? (u.nickname || u.firstName || "-") : "-"}
+                          {isMe && <span className="ml-1 text-[9px] font-normal opacity-70">(나)</span>}
+                        </span>
                       </div>
-                      <span className={`text-[11px] font-bold ${isMe ? 'text-primary' : 'text-foreground'}`}>
-                        {u.name}
-                        {isMe && <span className="ml-1 text-[9px] font-normal opacity-70">(나)</span>}
+                      <span className={`text-[10px] font-black ${isMe ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {u ? u.points.toLocaleString() : "0"} P
                       </span>
                     </div>
-                    <span className={`text-[10px] font-black ${isMe ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {u.points.toLocaleString()} P
-                    </span>
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </CardContent>
           </Card>
         </div>

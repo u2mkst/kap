@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -25,13 +24,12 @@ import {
   RefreshCcw, 
   Key, 
   ClipboardPaste,
-  Star
+  Star,
+  Coins
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs } from "firebase/firestore"
+import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { errorEmitter } from "@/firebase/error-emitter"
-import { FirestorePermissionError } from "@/firebase/errors"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -74,7 +72,6 @@ export default function AdminPage() {
   const [noticeText, setNoticeText] = useState("")
   const [adminSecretCode, setAdminSecretCode] = useState("")
 
-  // 일괄 등록용 텍스트
   const [bulkProblemText, setBulkProblemText] = useState("")
   const [bulkFortuneText, setBulkFortuneText] = useState("")
 
@@ -148,6 +145,10 @@ export default function AdminPage() {
     }
   }
 
+  const handleUpdatePoints = (userId: string, points: number) => {
+    updateDoc(doc(db, "users", userId), { points }).then(() => toast({ title: "포인트 수정 완료" }))
+  }
+
   const handleBulkProblems = async () => {
     if (!bulkProblemText.trim()) return
     setIsSaving(true)
@@ -155,7 +156,6 @@ export default function AdminPage() {
       const batch = writeBatch(db)
       const lines = bulkProblemText.trim().split("\n")
       lines.forEach(line => {
-        // 형식: 날짜|학년|제목|토픽|난이도|문제내용|정답
         const [date, grade, title, topic, diff, text, answer] = line.split("|")
         if (date && grade && title && text && answer) {
           const docId = `${date}_${grade}`
@@ -184,7 +184,6 @@ export default function AdminPage() {
       const batch = writeBatch(db)
       const lines = bulkFortuneText.trim().split("\n")
       lines.forEach(line => {
-        // 형식: 날짜|내용
         const [date, text] = line.split("|")
         if (date && text) {
           const ref = doc(db, "daily_fortunes", date)
@@ -192,7 +191,7 @@ export default function AdminPage() {
         }
       })
       await batch.commit()
-      toast({ title: "운세 일괄 등록 완료" })
+      toast({ title: "일괄 등록 완료" })
       setBulkFortuneText("")
     } catch (e) {
       console.error(e)
@@ -235,19 +234,19 @@ export default function AdminPage() {
         <TabsContent value="users">
           <Card className="border-none shadow-sm bg-white">
             <CardHeader>
-              <CardTitle>회원 명단 및 권한 관리</CardTitle>
-              <CardDescription>학생들에게 관리자 권한을 부여하거나 해제할 수 있습니다.</CardDescription>
+              <CardTitle>회원 명단 및 포인트 관리</CardTitle>
+              <CardDescription>학생의 권한을 관리하거나 포인트를 직접 수정할 수 있습니다.</CardDescription>
             </CardHeader>
             <CardContent>
               {isUsersLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {allUsers?.map((u) => {
                     const isUserAdmin = adminIds.includes(u.id);
                     return (
-                      <div key={u.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-xl border border-transparent hover:border-muted-foreground/10 transition-colors">
-                        <div className="flex items-center gap-3">
+                      <div key={u.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-muted/20 rounded-xl border border-transparent hover:border-muted-foreground/10 transition-colors gap-4">
+                        <div className="flex items-center gap-3 min-w-[200px]">
                           <div className={isUserAdmin ? "p-2 bg-primary/10 rounded-full" : "p-2 bg-muted rounded-full"}>
                             <ShieldCheck className={isUserAdmin ? "h-5 w-5 text-primary" : "h-5 w-5 text-muted-foreground"} />
                           </div>
@@ -256,11 +255,26 @@ export default function AdminPage() {
                             <p className="text-[10px] text-muted-foreground">ID: {u.username} | {u.schoolName} {u.grade}학년</p>
                           </div>
                         </div>
-                        <Switch 
-                          checked={isUserAdmin} 
-                          onCheckedChange={() => handleToggleAdmin(u.id, isUserAdmin)}
-                          disabled={u.id === user?.uid}
-                        />
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-4 w-4 text-primary" />
+                            <Input 
+                              type="number" 
+                              className="w-24 h-8 text-xs font-bold" 
+                              defaultValue={u.points} 
+                              onBlur={(e) => handleUpdatePoints(u.id, parseInt(e.target.value))}
+                            />
+                            <span className="text-xs font-bold">P</span>
+                          </div>
+                          <div className="flex items-center gap-2 border-l pl-4">
+                            <span className="text-[10px] text-muted-foreground font-bold">Admin</span>
+                            <Switch 
+                              checked={isUserAdmin} 
+                              onCheckedChange={() => handleToggleAdmin(u.id, isUserAdmin)}
+                              disabled={u.id === user?.uid}
+                            />
+                          </div>
+                        </div>
                       </div>
                     )
                   })}
@@ -303,7 +317,7 @@ export default function AdminPage() {
                   teachers?.map((t, i) => (
                     <div key={t.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="h-6 w-6 rounded-full p-0 flex items-center justify-center">{i + 1}</Badge>
+                        <Badge variant="outline" className="h-6 w-6 rounded-full p-0 flex items-center justify-center font-black">{i + 1}</Badge>
                         <span className="font-bold">{t.name}</span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -345,13 +359,13 @@ export default function AdminPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-orange-600">
-                  <Star className="h-5 w-5" /> 오늘의 운세 일괄 등록
+                  <Star className="h-5 w-5" /> 오늘의 한마디(운세) 일괄 등록
                 </CardTitle>
                 <CardDescription>형식: <b>날짜|내용</b> (한 줄에 하나씩)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea 
-                  placeholder="2024-05-20|오늘은 행운이 가득한 날입니다!"
+                  placeholder="2024-05-20|오늘은 당신의 성장을 응원하는 특별한 날입니다!"
                   className="min-h-[120px] font-mono text-xs"
                   value={bulkFortuneText}
                   onChange={(e) => setBulkFortuneText(e.target.value)}
