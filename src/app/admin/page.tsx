@@ -29,9 +29,8 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
-  // 관리자 권한이 완전히 확인된 경우에만 게시글 쿼리 실행 (에러 방지)
+  // 관리자 권한이 완전히 확인된 경우에만 게시글 쿼리 실행
   const allPostsQuery = useMemoFirebase(() => {
-    // isAdminDoc이 존재하고 로딩이 끝난 상태에서만 쿼리 활성화
     if (isAdminLoading || !isAdminDoc) return null
     return query(collection(db, "posts"), orderBy("createdAt", "desc"))
   }, [db, isAdminLoading, isAdminDoc])
