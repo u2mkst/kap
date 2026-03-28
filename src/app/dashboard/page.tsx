@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/input"
 import { 
   Trophy, 
   Utensils, 
@@ -17,17 +16,16 @@ import {
   Sprout,
   Star,
   Sparkles,
-  Search,
   Calendar,
-  Clock,
   School,
-  Settings
+  Settings,
+  AlertCircle
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 
-// NEIS API KEY - 실제 키로 교체 필요
+// NEIS API KEY - 사용자가 직접 입력해야 함
 const NEIS_KEY = "여기에_NEIS_API_KEY";
 
 export default function DashboardPage() {
@@ -56,7 +54,10 @@ export default function DashboardPage() {
   const { data: problemData } = useDoc(problemRef)
 
   const loadSchoolInfo = useCallback(async (sName: string) => {
-    if (!sName) return
+    if (!sName || NEIS_KEY === "여기에_NEIS_API_KEY") {
+      setMealData("NEIS API 키가 설정되지 않았거나 학교명이 없습니다.");
+      return;
+    }
     setIsSearching(true)
     try {
       const schoolRes = await fetch(
@@ -187,7 +188,7 @@ export default function DashboardPage() {
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
                   <p className="text-xs text-orange-900 leading-relaxed min-h-[40px]">
-                    {mealData || (isSearching ? "로딩 중..." : "학교 정보를 설정해 주세요.")}
+                    {mealData || (isSearching ? "로딩 중..." : "정보가 없습니다.")}
                   </p>
                 </div>
                 <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">

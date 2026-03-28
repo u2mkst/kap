@@ -20,7 +20,6 @@ import {
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
 import { collection, doc, addDoc, updateDoc, increment, serverTimestamp, deleteDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { PlaceHolderImages } from "@/lib/placeholder-images"
 
 export default function PlantsPage() {
   const { user, isUserLoading } = useUser()
@@ -69,7 +68,6 @@ export default function PlantsPage() {
         plantName: "새로운 친구",
         plantType: "해바라기",
         growthStage: "Seed",
-        lastGrowthUpdateDate: new Date().toISOString().split('T')[0],
         pointsInvested: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -141,11 +139,11 @@ export default function PlantsPage() {
 
   const getStageInfo = (stage: string) => {
     switch(stage) {
-      case "Seed": return { label: "씨앗", image: "plant-seed", progress: 25 }
-      case "Sprout": return { label: "새싹", image: "plant-sprout", progress: 50 }
-      case "Sapling": return { label: "묘목", image: "plant-sprout", progress: 75 }
-      case "Mature": return { label: "성숙", image: "plant-mature", progress: 100 }
-      default: return { label: "씨앗", image: "plant-seed", progress: 0 }
+      case "Seed": return { label: "씨앗", image: "https://picsum.photos/seed/seed/400/400", progress: 25 }
+      case "Sprout": return { label: "새싹", image: "https://picsum.photos/seed/sprout/400/400", progress: 50 }
+      case "Sapling": return { label: "묘목", image: "https://picsum.photos/seed/tree/400/400", progress: 75 }
+      case "Mature": return { label: "성숙", image: "https://picsum.photos/seed/sunflower/400/400", progress: 100 }
+      default: return { label: "씨앗", image: "https://picsum.photos/seed/seed/400/400", progress: 0 }
     }
   }
 
@@ -180,7 +178,6 @@ export default function PlantsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {plants?.map((plant) => {
           const stageInfo = getStageInfo(plant.growthStage)
-          const img = PlaceHolderImages.find(p => p.id === stageInfo.image)
           
           return (
             <Card key={plant.id} className="border-none shadow-sm hover:shadow-xl transition-all group bg-white overflow-hidden relative">
@@ -194,7 +191,7 @@ export default function PlantsPage() {
               </Button>
               <div className="relative h-48 bg-muted/20 flex items-center justify-center">
                 <Image 
-                  src={img?.imageUrl || ""} 
+                  src={stageInfo.image} 
                   alt={stageInfo.label} 
                   fill 
                   className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
