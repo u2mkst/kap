@@ -13,7 +13,7 @@
         },
         "username": {
           "type": "string",
-          "description": "Academy unique ID (ufes--- format)."
+          "description": "Academy unique ID (ufes format)."
         },
         "firstName": {
           "type": "string",

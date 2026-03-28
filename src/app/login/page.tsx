@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { BookOpen } from "lucide-react"
+import { BookOpen, Loader2 } from "lucide-react"
 import { useAuth, useUser } from "@/firebase"
 import { signInWithEmailAndPassword } from "firebase/auth"
 import { toast } from "@/hooks/use-toast"
@@ -29,19 +29,26 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!username.startsWith("ufes---")) {
+    
+    // ufes 접두사 확인
+    if (!username.toLowerCase().startsWith("ufes")) {
       toast({
         variant: "destructive",
         title: "아이디 형식이 잘못되었습니다.",
-        description: "학원 아이디는 'ufes---'로 시작해야 합니다.",
+        description: "학원 아이디는 'ufes'로 시작해야 합니다.",
       })
       return
     }
 
     setIsLoading(true)
     try {
-      const fakeEmail = `${username}@classhub.edu`
+      // 가상 이메일 생성 (Firebase Auth는 이메일 형식을 요구하므로)
+      const fakeEmail = `${username.toLowerCase()}@classhub.edu`
       await signInWithEmailAndPassword(auth, fakeEmail, password)
+      toast({
+        title: "로그인 성공",
+        description: "반갑습니다!",
+      })
       router.push("/dashboard")
     } catch (error: any) {
       toast({
@@ -57,7 +64,7 @@ export default function LoginPage() {
   if (isUserLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
       </div>
     )
   }
@@ -70,7 +77,7 @@ export default function LoginPage() {
             <BookOpen className="h-8 w-8" />
           </div>
           <CardTitle className="text-2xl font-bold font-headline">학생 로그인</CardTitle>
-          <CardDescription>학원 전용 아이디(ufes---)를 사용하세요.</CardDescription>
+          <CardDescription>학원 전용 아이디(ufes)를 사용하세요.</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
@@ -78,7 +85,7 @@ export default function LoginPage() {
               <Label htmlFor="username">학원 아이디</Label>
               <Input 
                 id="username" 
-                placeholder="ufes---1234" 
+                placeholder="ufes1234" 
                 className="focus-visible:ring-primary" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -97,7 +104,7 @@ export default function LoginPage() {
               />
             </div>
             <Button className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
-              {isLoading ? "로그인 중..." : "로그인"}
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "로그인"}
             </Button>
           </CardContent>
         </form>
