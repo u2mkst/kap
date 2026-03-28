@@ -5,78 +5,51 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user profile in the Class Hub academy, including personal details, points, and school information.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier (UID) for the User."
-        },
-        "username": {
-          "type": "string",
-          "description": "Academy unique ID (ufes format)."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "First name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name."
-        },
-        "schoolName": {
-          "type": "string",
-          "description": "Name of the school the student attends."
-        },
-        "grade": {
-          "type": "string",
-          "description": "Current grade level."
-        },
-        "classNum": {
-          "type": "string",
-          "description": "Current class number."
-        },
-        "points": {
-          "type": "number",
-          "description": "Accumulated gamification points."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "username",
-        "firstName",
-        "lastName",
-        "points"
-      ]
-    },
-    "UserPlant": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UserPlant",
-      "type": "object",
+      "description": "Represents a user profile in the Class Hub academy.",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "plantName": { "type": "string" },
-        "plantType": { "type": "string" },
-        "growthStage": { "type": "string" },
-        "pointsInvested": { "type": "number" },
+        "username": { "type": "string" },
+        "nickname": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "grade": { "type": "string" },
+        "classNum": { "type": "string" },
+        "points": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "plantType", "growthStage", "pointsInvested"]
+      "required": ["id", "username", "nickname", "points"]
+    },
+    "Post": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorNickname": { "type": "string" },
+        "content": { "type": "string" },
+        "grade": { "type": "string" },
+        "likes": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorNickname", "content", "grade"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorNickname": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
-    "providers": [
-      "password"
-    ]
+    "providers": ["password"]
   },
   "firestore": {
     "structure": [
@@ -85,15 +58,23 @@
         "definition": {
           "entityName": "User",
           "schema": { "$ref": "#/backend/entities/User" },
-          "description": "Individual user profiles."
+          "description": "User profiles."
         }
       },
       {
-        "path": "/users/{userId}/plants/{userPlantId}",
+        "path": "/posts/{postId}",
         "definition": {
-          "entityName": "UserPlant",
-          "schema": { "$ref": "#/backend/entities/UserPlant" },
-          "description": "Virtual plants owned by a user."
+          "entityName": "Post",
+          "schema": { "$ref": "#/backend/entities/Post" },
+          "description": "Lounge community posts."
+        }
+      },
+      {
+        "path": "/posts/{postId}/comments/{commentId}",
+        "definition": {
+          "entityName": "Comment",
+          "schema": { "$ref": "#/backend/entities/Comment" },
+          "description": "Comments on lounge posts."
         }
       }
     ]

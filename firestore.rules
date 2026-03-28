@@ -1,152 +1,33 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)); }
 
-    /**
-     * CLASS HUB ACADEMY SECURITY RULES
-     *
-     * CORE PHILOSOPHY:
-     * This ruleset implements a strict user-ownership model for personal data and a public-read/admin-write
-     * model for academy-wide content (Courses, Instructors, Daily Features).
-     *
-     * DATA STRUCTURE:
-     * - /users/{userId}: Private user profiles, accessible only by the owner.
-     * - /users/{userId}/plants/{plantId}: Gamified plant data, nested for path-based ownership.
-     * - /courses, /instructors, /announcements, /daily_*: Global public collections for academy content.
-     *
-     * KEY SECURITY DECISIONS:
-     * 1. Path-Based Authorization: User data is secured by ensuring the {userId} in the path matches
-     *    the authenticated user's UID.
-     * 2. DBAC (Database Access Control): Administrative privileges are granted by the existence of a
-     *    document in the /roles_admin/ collection.
-     * 3. Denormalization for Performance: The 'userId' is denormalized into sub-documents (like plants)
-     *    to allow for faster, atomic security checks without requiring parent document lookups.
-     * 4. Prototyping Flexibility: Rules enforce WHO can access data and ensure relational integrity
-     *    (e.g., owner IDs), but do not restrict the specific schema or data types of content fields.
-     */
-
-    // --- GLOBAL HELPER FUNCTIONS ---
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    /**
-     * Helper for state-changing operations (Update/Delete).
-     * Combines ownership check with a mandatory check that the document exists.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    // --- COLLECTION RULES ---
-
-    /**
-     * @description Access rules for individual user profiles.
-     * @path /users/{userId}
-     * @allow (get, list, create, update) if the authenticated user matches the userId.
-     * @deny (get, list, write) if the auth UID does not match the document ID.
-     * @principle Enforces path-based ownership and ensures the internal 'id' matches the auth UID.
-     */
     match /users/{userId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isAdmin(); // Users cannot delete their own accounts in this version.
-    }
-
-    /**
-     * @description Access rules for virtual plants owned by a user.
-     * @path /users/{userId}/plants/{userPlantId}
-     * @allow (get, list, create, update, delete) if the user owns the parent path.
-     * @deny (write) if the internal userId field is modified or mismatched.
-     * @principle Uses denormalized ownership (userId) and path-based scoping.
-     */
-    match /users/{userId}/plants/{userPlantId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Publicly readable academic courses.
-     * @path /courses/{courseId}
-     * @allow (get, list) for any user. (create, update, delete) for admins only.
-     * @deny (write) for non-admin users.
-     * @principle Structural segregation of public content from private user data.
-     */
-    match /courses/{courseId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    /**
-     * @description Publicly readable instructor profiles.
-     * @path /instructors/{instructorId}
-     * @allow (get, list) for any user. (create, update, delete) for admins only.
-     * @deny (write) for non-admin users.
-     * @principle Restricted write access to maintain academy information integrity.
-     */
-    match /instructors/{instructorId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    /**
-     * @description Academy announcements and notices.
-     * @path /announcements/{announcementId}
-     * @allow (get, list) for any user. (create, update, delete) for admins only.
-     * @deny (write) for non-admin users.
-     * @principle Centralized academy communication controlled by administrators.
-     */
-    match /announcements/{announcementId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    /**
-     * @description Daily academic problems for engagement.
-     * @path /daily_problems/{problemDate}
-     * @allow (get, list) for any user. (create, update, delete) for admins only.
-     * @deny (write) for non-admin users.
-     * @principle Date-indexed public content with administrative management.
-     */
-    match /daily_problems/{problemDate} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    /**
-     * @description Daily fortune messages for engagement.
-     * @path /daily_fortunes/{fortuneDate}
-     * @allow (get, list) for any user. (create, update, delete) for admins only.
-     * @deny (write) for non-admin users.
-     * @principle Date-indexed public content with administrative management.
-     */
-    match /daily_fortunes/{fortuneDate} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    /**
-     * @description Internal administrative roles mapping.
-     * @path /roles_admin/{adminId}
-     * @allow (get) if signed in.
-     * @deny (list, write) for all users via client SDK.
-     * @principle DBAC (Database Access Control) where roles are assigned manually or via backend.
-     */
-    match /roles_admin/{adminId} {
       allow get: if isSignedIn();
-      allow list, create, update, delete: if false;
+      allow list: if isAdmin();
+      allow create, update: if isOwner(userId);
+      allow delete: if isAdmin();
     }
+
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (request.auth.uid == resource.data.authorId || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.authorId || isAdmin());
+      }
+    }
+
+    match /daily_fortunes/{fortuneDate} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /daily_problems/{problemDate} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /roles_admin/{adminId} { allow get: if isSignedIn(); allow write: if false; }
   }
 }

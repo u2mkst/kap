@@ -1,122 +1,178 @@
 
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useState, useMemo, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Gamepad2, 
   MessageSquare, 
-  Users, 
-  Sparkles, 
-  Share2, 
-  Music,
-  Heart
+  Heart, 
+  Send, 
+  Trash2,
+  Users,
+  ChevronRight,
+  Loader2
 } from "lucide-react"
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
+import { collection, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, query, where, orderBy, serverTimestamp } from "firebase/firestore"
+import { toast } from "@/hooks/use-toast"
 
 export default function LoungePage() {
-  const posts = [
-    { id: 1, author: "스터디광", content: "오늘 다들 열공중인가요? 전 졸려서 라운지 왔어요 ㅠ", likes: 12, comments: 4, tag: "자유" },
-    { id: 2, author: "초코우유", content: "이번 기말 모의고사 범위 다들 아시는 분!", likes: 5, comments: 8, tag: "질문" },
-    { id: 3, author: "매점단골", content: "오늘 오후 간식 츄러스 대박 맛있음!! 두 번 드세요", likes: 24, comments: 3, tag: "맛집" },
-  ]
+  const { user, isUserLoading } = useUser()
+  const db = useFirestore()
+  
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "users", user.uid)
+  }, [user, db])
+  const { data: userData } = useDoc(userDocRef)
+
+  const [newPost, setNewPost] = useState("")
+  const [isPosting, setIsPosting] = useState(false)
+
+  // 학년별 쿼리
+  const postsQuery = useMemoFirebase(() => {
+    if (!userData?.grade) return null
+    return query(
+      collection(db, "posts"),
+      where("grade", "==", userData.grade),
+      orderBy("createdAt", "desc")
+    )
+  }, [db, userData?.grade])
+
+  const { data: posts, isLoading: isPostsLoading } = useCollection(postsQuery)
+
+  const handleCreatePost = async () => {
+    if (!newPost.trim() || !user || !userData) return
+    setIsPosting(true)
+    try {
+      await addDoc(collection(db, "posts"), {
+        authorId: user.uid,
+        authorNickname: userData.nickname || "익명",
+        content: newPost,
+        grade: userData.grade,
+        likes: [],
+        createdAt: serverTimestamp(),
+      })
+      setNewPost("")
+      toast({ title: "게시글 등록", description: "성공적으로 게시되었습니다." })
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsPosting(false)
+    }
+  }
+
+  const handleLike = async (postId: string, currentLikes: string[]) => {
+    if (!user) return
+    const postRef = doc(db, "posts", postId)
+    const isLiked = currentLikes.includes(user.uid)
+    
+    try {
+      await updateDoc(postRef, {
+        likes: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid)
+      })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await deleteDoc(doc(db, "posts", postId))
+      toast({ title: "삭제 완료", description: "게시글이 삭제되었습니다." })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  if (isUserLoading || isPostsLoading) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="mb-10 text-center">
-        <h1 className="text-4xl font-black mb-3 font-headline text-primary">STUDENT LOUNGE</h1>
-        <p className="text-muted-foreground font-medium">학습 사이사이, 즐거움을 채우는 우리들만의 공간</p>
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black font-headline text-primary flex items-center gap-2">
+            <Users className="h-8 w-8" /> {userData?.grade}학년 전용 라운지
+          </h1>
+          <p className="text-muted-foreground mt-1">우리 학년 친구들하고만 소통하는 비밀 게시판</p>
+        </div>
+        <Badge variant="secondary" className="bg-primary/10 text-primary border-none">
+          {userData?.nickname}
+        </Badge>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-3">
-        {/* 왼쪽: 커뮤니티 */}
-        <div className="md:col-span-2 space-y-6">
-          <Card className="border-none shadow-sm bg-white">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-primary" /> 실시간 라운지 톡
-                </CardTitle>
-                <Button variant="ghost" size="sm" className="text-primary font-bold">글쓰기</Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {posts.map((post) => (
-                <div key={post.id} className="p-4 rounded-2xl bg-muted/20 border border-muted/30 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-primary">{post.author}</span>
-                      <Badge variant="outline" className="text-[10px] h-4 py-0">{post.tag}</Badge>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">방금 전</span>
-                  </div>
-                  <p className="text-sm mb-4 leading-relaxed">{post.content}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <button className="flex items-center gap-1 hover:text-red-500 transition-colors">
-                      <Heart className="h-3 w-3" /> {post.likes}
-                    </button>
-                    <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                      <MessageSquare className="h-3 w-3" /> {post.comments}
-                    </button>
-                    <button className="ml-auto hover:text-primary">
-                      <Share2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+      <Card className="mb-8 border-none shadow-md overflow-hidden bg-white">
+        <CardContent className="p-0">
+          <Textarea 
+            placeholder="친구들에게 하고 싶은 이야기를 남겨보세요..." 
+            className="border-none focus-visible:ring-0 min-h-[120px] p-6 text-lg resize-none"
+            value={newPost}
+            onChange={(e) => setNewPost(e.target.value)}
+          />
+        </CardContent>
+        <CardFooter className="bg-muted/30 px-6 py-3 flex justify-between items-center">
+          <span className="text-xs text-muted-foreground">매너 있는 대화를 나눠주세요.</span>
+          <Button onClick={handleCreatePost} disabled={isPosting || !newPost.trim()} className="bg-primary font-bold">
+            {isPosting ? "게시 중..." : <><Send className="mr-2 h-4 w-4" /> 게시하기</>}
+          </Button>
+        </CardFooter>
+      </Card>
 
-        {/* 오른쪽: 즐길거리 */}
-        <div className="space-y-6">
-          <Card className="border-none shadow-sm bg-gradient-to-br from-accent/20 to-primary/10 overflow-hidden">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Music className="h-5 w-5 text-accent-foreground" /> 학습 노동요
-              </CardTitle>
-              <CardDescription className="text-xs">집중력을 높여주는 플레이리스트</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 p-2 rounded-lg bg-white/40 hover:bg-white/60 cursor-pointer">
-                  <div className="h-8 w-8 bg-primary/20 rounded-full flex items-center justify-center">▶</div>
-                  <span className="text-xs font-bold">Lo-fi 스터디 비트 (1시간)</span>
-                </div>
-                <div className="flex items-center gap-3 p-2 rounded-lg bg-white/40 hover:bg-white/60 cursor-pointer">
-                  <div className="h-8 w-8 bg-accent/20 rounded-full flex items-center justify-center">▶</div>
-                  <span className="text-xs font-bold">빗소리 ASMR 백색소음</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" /> 스터디 매칭
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center py-6">
-              <div className="mb-4 flex justify-center">
-                <div className="p-3 rounded-full bg-primary/10 text-primary">
-                  <Sparkles className="h-8 w-8" />
-                </div>
-              </div>
-              <p className="text-xs font-medium text-muted-foreground mb-4">혼자 공부하기 지루할 땐,<br/>온라인 자습실에 입장하세요!</p>
-              <Button size="sm" className="w-full bg-primary font-bold rounded-full shadow-lg shadow-primary/20">참여하기</Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm bg-accent text-accent-foreground">
+      <div className="space-y-6">
+        {posts?.map((post) => (
+          <Card key={post.id} className="border-none shadow-sm bg-white hover:shadow-md transition-all">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">이번 주 행운의 한마디</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                    {post.authorNickname[0]}
+                  </div>
+                  <span className="font-bold text-sm">{post.authorNickname}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleString() : "방금 전"}
+                  </span>
+                </div>
+                {user?.uid === post.authorId && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeletePost(post.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-xs italic font-medium">"지금 당신이 흘리는 땀방울은 미래의 달콤한 열매가 될 거예요. 오늘 간식은 초코 츄러스니까 힘내세요!"</p>
+            <CardContent className="pb-4 pt-2">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
             </CardContent>
+            <CardFooter className="border-t pt-3 pb-3 flex gap-4">
+              <button 
+                onClick={() => handleLike(post.id, post.likes || [])}
+                className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${post.likes?.includes(user?.uid) ? 'text-red-500' : 'text-muted-foreground hover:text-red-400'}`}
+              >
+                <Heart className={`h-4 w-4 ${post.likes?.includes(user?.uid) ? 'fill-current' : ''}`} /> 
+                좋아요 {post.likes?.length || 0}
+              </button>
+              <button className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors">
+                <MessageSquare className="h-4 w-4" /> 댓글
+              </button>
+            </CardFooter>
           </Card>
-        </div>
+        ))}
+
+        {posts?.length === 0 && (
+          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
+            <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+            <p className="text-muted-foreground font-medium">아직 올라온 게시글이 없습니다.<br/>첫 번째 주인공이 되어보세요!</p>
+          </div>
+        )}
       </div>
     </div>
   )

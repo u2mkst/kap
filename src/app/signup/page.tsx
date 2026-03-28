@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { BookOpen, School, Loader2 } from "lucide-react"
+import { BookOpen, School, Loader2, UserCircle } from "lucide-react"
 import { useAuth, useFirestore } from "@/firebase"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast"
 
 export default function SignupPage() {
   const [username, setUsername] = useState("ufes")
+  const [nickname, setNickname] = useState("")
   const [password, setPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -31,7 +32,6 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // ufes 접두사 확인
     if (!username.toLowerCase().startsWith("ufes") || username.length < 5) {
       toast({
         variant: "destructive",
@@ -41,37 +41,45 @@ export default function SignupPage() {
       return
     }
 
+    if (nickname.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "닉네임 오류",
+        description: "닉네임은 최소 2자 이상이어야 합니다.",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
-      // 가상 이메일 생성
       const fakeEmail = `${username.toLowerCase()}@classhub.edu`
       const userCredential = await createUserWithEmailAndPassword(auth, fakeEmail, password)
       const user = userCredential.user
 
-      // Firestore에 학생 정보 저장
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         username: username.toLowerCase(),
+        nickname,
         firstName,
         lastName,
         schoolName,
         grade,
         classNum,
-        points: 1000, // 가입 축하 포인트
+        points: 1000,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
 
       toast({
         title: "회원가입 성공!",
-        description: "클래스 허브에 오신 것을 환영합니다. 1,000P가 지급되었습니다!",
+        description: `${nickname}님, 환영합니다! 1,000P가 지급되었습니다.`,
       })
       router.push("/dashboard")
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "회원가입 실패",
-        description: error.message || "오류가 발생했습니다. 이미 존재하는 아이디일 수 있습니다.",
+        description: error.message || "오류가 발생했습니다.",
       })
     } finally {
       setIsLoading(false)
@@ -86,7 +94,7 @@ export default function SignupPage() {
             <BookOpen className="h-8 w-8" />
           </div>
           <CardTitle className="text-2xl font-bold font-headline">학생 회원가입</CardTitle>
-          <CardDescription>학원 아이디(ufes)와 학교 정보를 입력하세요.</CardDescription>
+          <CardDescription>학원 아이디(ufes)와 닉네임을 설정하세요.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4 max-h-[65vh] overflow-y-auto px-6 py-2 custom-scrollbar">
@@ -101,6 +109,11 @@ export default function SignupPage() {
               </div>
             </div>
             
+            <div className="space-y-2">
+              <Label htmlFor="nickname">라운지 닉네임</Label>
+              <Input id="nickname" placeholder="멋진학생" value={nickname} onChange={(e) => setNickname(e.target.value)} required />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="username">학원 아이디 (ufes)</Label>
               <Input id="username" placeholder="ufes1234" value={username} onChange={(e) => setUsername(e.target.value)} required />
