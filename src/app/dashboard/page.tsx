@@ -7,27 +7,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
 import { 
   Trophy, 
   Utensils, 
   Zap, 
   ExternalLink,
-  Flame,
   Sprout,
   Star,
   Sparkles,
   Calendar,
   School,
   Settings,
-  CircleUser,
-  Medal
+  Medal,
+  CheckCircle2,
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
-
-// NEIS API KEY - 사용자가 직접 입력해야 함
-const NEIS_KEY = "여기에_NEIS_API_KEY";
+import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore"
+import { toast } from "@/hooks/use-toast"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -38,6 +37,9 @@ export default function DashboardPage() {
   const [scheduleData, setScheduleData] = useState<string>("")
   const [isSearching, setIsSearching] = useState(false)
   const [todayStr, setTodayStr] = useState<string | null>(null)
+  const [userAnswer, setUserAnswer] = useState("")
+  const [isSolving, setIsSolving] = useState(false)
+  const [isSolved, setIsSolved] = useState(false)
 
   useEffect(() => {
     setTodayStr(new Date().toISOString().split('T')[0])
@@ -57,15 +59,15 @@ export default function DashboardPage() {
     return doc(db, "daily_fortunes", todayStr)
   }, [db, todayStr])
 
+  // 학년별 문제 참조
   const problemRef = useMemoFirebase(() => {
-    if (!db || !todayStr) return null
-    return doc(db, "daily_problems", todayStr)
-  }, [db, todayStr])
+    if (!db || !todayStr || !userData?.grade) return null
+    return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
+  }, [db, todayStr, userData?.grade])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
 
-  // 포인트 TOP 10 데이터 (내림차순 정렬 및 디자인 최적화)
   const leaderboard = useMemo(() => {
     const rawData = [
       { name: "김현우", points: 15400 },
@@ -79,58 +81,30 @@ export default function DashboardPage() {
       { name: "강동원", points: 5400 },
       { name: "임윤아", points: 4200 },
     ]
-    // 포인트 기준 내림차순 정렬
     return rawData.sort((a, b) => b.points - a.points).slice(0, 10)
   }, [userData])
 
-  const loadSchoolInfo = useCallback(async (sName: string) => {
-    if (!sName || NEIS_KEY === "여기에_NEIS_API_KEY" || !todayCompact) {
-      if (NEIS_KEY === "여기에_NEIS_API_KEY") {
-        setMealData("NEIS API 키가 설정되지 않았습니다.");
+  const handleSolveProblem = async () => {
+    if (!problemData || !userAnswer.trim() || isSolved) return
+    
+    if (userAnswer.trim() === problemData.answer) {
+      setIsSolving(true)
+      try {
+        await updateDoc(userDocRef!, {
+          points: increment(problemData.rewardPoints || 100),
+          updatedAt: serverTimestamp()
+        })
+        setIsSolved(true)
+        toast({ title: "정답입니다!", description: `${problemData.rewardPoints || 100}포인트를 획득했습니다! 🎉` })
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setIsSolving(false)
       }
-      return;
+    } else {
+      toast({ variant: "destructive", title: "틀렸습니다.", description: "다시 한번 생각해보세요!" })
     }
-    setIsSearching(true)
-    try {
-      const schoolRes = await fetch(
-        `https://open.neis.go.kr/hub/schoolInfo?Type=json&KEY=${NEIS_KEY}&SCHUL_NM=${sName}`
-      );
-      const sData = await schoolRes.json();
-      if (!sData.schoolInfo) {
-        setMealData("학교를 찾을 수 없습니다.");
-        return;
-      }
-      const school = sData.schoolInfo[1].row[0];
-      const EDU = school.ATPT_OFCDC_SC_CODE;
-      const CODE = school.SD_SCHUL_CODE;
-
-      const mealRes = await fetch(
-        `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&KEY=${NEIS_KEY}&ATPT_OFCDC_SC_CODE=${EDU}&SD_SCHUL_CODE=${CODE}&MLSV_YMD=${todayCompact}`
-      );
-      const mealJson = await mealRes.json();
-      if (mealJson.mealServiceDietInfo) {
-        const mealRaw = mealJson.mealServiceDietInfo[1].row[0].DDISH_NM;
-        setMealData(mealRaw.split("<br/>").join(", "));
-      } else {
-        setMealData("오늘의 급식 정보가 없습니다.");
-      }
-
-      const scheduleRes = await fetch(
-        `https://open.neis.go.kr/hub/SchoolSchedule?Type=json&KEY=${NEIS_KEY}&ATPT_OFCDC_SC_CODE=${EDU}&SD_SCHUL_CODE=${CODE}&AA_YMD=${todayCompact}`
-      );
-      const scheduleJson = await scheduleRes.json();
-      if (scheduleJson.SchoolSchedule) {
-        setScheduleData(scheduleJson.SchoolSchedule[1].row[0].EVENT_NM);
-      } else {
-        setScheduleData("오늘 예정된 일정이 없습니다.");
-      }
-    } catch (error) {
-      console.error(error);
-      setMealData("정보를 가져오는 중 오류가 발생했습니다.");
-    } finally {
-      setIsSearching(false)
-    }
-  }, [todayCompact])
+  }
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -138,16 +112,10 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router])
 
-  useEffect(() => {
-    if (userData?.schoolName && todayCompact) {
-      loadSchoolInfo(userData.schoolName)
-    }
-  }, [userData, todayCompact, loadSchoolInfo])
-
   if (isUserLoading || isUserDataLoading || !user || !todayStr) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -198,7 +166,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-lg flex items-center gap-2 text-primary font-bold">
                   <School className="h-5 w-5" /> 우리 학교 소식
                 </CardTitle>
-                <CardDescription className="text-xs">오늘의 급식과 일정을 확인하세요.</CardDescription>
+                <CardDescription className="text-xs">오늘의 일정을 확인하세요.</CardDescription>
               </div>
               <Link href="/profile">
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary transition-colors">
@@ -220,7 +188,7 @@ export default function DashboardPage() {
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
                   <div className="text-xs text-orange-900 leading-relaxed flex-grow">
-                    {mealData || (isSearching ? "로딩 중..." : "정보가 없습니다.")}
+                    NEIS API 정보가 연동되지 않았습니다.
                   </div>
                 </div>
                 <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col h-full">
@@ -228,7 +196,7 @@ export default function DashboardPage() {
                     <Calendar className="h-4 w-4" /> 오늘 학사일정
                   </h3>
                   <div className="text-xs text-blue-900 leading-relaxed flex-grow">
-                    {scheduleData || (isSearching ? "로딩 중..." : "일정이 없습니다.")}
+                    준비된 학사 일정이 없습니다.
                   </div>
                 </div>
               </div>
@@ -294,7 +262,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="md:col-span-4 space-y-6">
-           <Card className="border-none shadow-sm bg-white overflow-hidden">
+           <Card className="border-none shadow-sm bg-white overflow-hidden h-full">
             <CardHeader className="p-5 border-b mb-4">
               <CardTitle className="text-md flex items-center gap-2 font-bold">
                 <Sparkles className="h-4 w-4 text-primary" /> 오늘의 도전 문제
@@ -302,16 +270,40 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-5 pt-0">
               {problemData ? (
-                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
-                  <div className="flex items-center gap-1.5 mb-3">
+                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 space-y-4">
+                  <div className="flex items-center gap-1.5">
                     <Badge className="bg-primary text-[9px] h-4 rounded-full">{problemData.topic}</Badge>
                     <Badge variant="outline" className="text-[9px] h-4 rounded-full bg-white">{problemData.difficulty}</Badge>
+                    <Badge variant="secondary" className="text-[9px] h-4 rounded-full bg-accent/20">{userData?.grade}학년 전용</Badge>
                   </div>
-                  <h3 className="font-bold text-sm mb-2">{problemData.title}</h3>
-                  <p className="text-[11px] text-muted-foreground mb-5 line-clamp-3 leading-relaxed">
-                    {problemData.problemText}
-                  </p>
-                  <Button size="sm" className="w-full rounded-full bg-primary text-xs font-bold hover:shadow-md transition-shadow">문제 풀러 가기</Button>
+                  <div>
+                    <h3 className="font-bold text-sm mb-2">{problemData.title}</h3>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {problemData.problemText}
+                    </p>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="text-[10px] text-muted-foreground font-bold">정답 입력</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        disabled={isSolved}
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        placeholder="정답을 입력하세요" 
+                        className="h-8 text-xs bg-white"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
+                      />
+                      <Button 
+                        disabled={isSolved || isSolving || !userAnswer.trim()}
+                        onClick={handleSolveProblem}
+                        size="sm" 
+                        className="h-8 px-4 rounded-full bg-primary text-[10px] font-bold"
+                      >
+                        {isSolving ? <Loader2 className="h-3 w-3 animate-spin" /> : isSolved ? <CheckCircle2 className="h-3 w-3" /> : "제출"}
+                      </Button>
+                    </div>
+                    {isSolved && <p className="text-[10px] text-primary font-bold">축하합니다! 포인트를 획득했습니다. ✨</p>}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-10 text-xs text-muted-foreground bg-muted/10 rounded-2xl border border-dashed">
@@ -319,15 +311,13 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
 
-          <Card className="border-none shadow-sm bg-white overflow-hidden">
-            <CardHeader className="p-5 border-b mb-4">
+            <CardHeader className="p-5 border-t border-b mt-4">
               <CardTitle className="text-md flex items-center gap-2 font-bold">
                 <Trophy className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 오늘의 포인트 TOP 10
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 p-5 pt-0">
+            <CardContent className="space-y-2 p-5 pt-4">
               {leaderboard.map((u, index) => {
                 const rank = index + 1;
                 const isMe = u.name === (userData?.nickname || userData?.firstName || "나");

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
 import { collection, doc, updateDoc, increment, query, orderBy } from "firebase/firestore"
-import { Loader2, Moon, Share2, Trophy } from "lucide-react"
+import { Loader2, Share2, Trophy, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -14,10 +14,8 @@ export default function LoungePage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
   const router = useRouter()
-  const [isDarkMode, setIsDarkMode] = useState(false)
-  const [tapCount, setTapCount] = useState(0)
 
-  // 선생님 목록 쿼리 (득표순 정렬) - 로그인 사용자 확인 후 쿼리 시작
+  // 선생님 목록 쿼리 (득표순 정렬)
   const teachersQuery = useMemoFirebase(() => {
     if (!user) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
@@ -31,14 +29,6 @@ export default function LoungePage() {
     return doc(db, "metadata", "config")
   }, [db, user])
   const { data: configData } = useDoc(configRef)
-
-  const handleTitleClick = () => {
-    const nextCount = tapCount + 1
-    setTapCount(nextCount)
-    if (nextCount >= 5) {
-      router.push("/admin")
-    }
-  }
 
   const handleVote = async (teacherId: string, teacherName: string) => {
     if (!user) return
@@ -57,7 +47,7 @@ export default function LoungePage() {
       toast({
         variant: "destructive",
         title: "투표 실패",
-        description: "투표 권한이 없거나 오류가 발생했습니다."
+        description: "오류가 발생했습니다."
       })
     }
   }
@@ -75,22 +65,22 @@ export default function LoungePage() {
 
   if (isUserLoading || (user && isTeachersLoading)) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2]">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white p-4 text-center">
-        <div className="bg-black/40 backdrop-blur-md p-8 rounded-[28px] shadow-2xl">
-          <Trophy className="h-16 w-16 mx-auto mb-4 text-yellow-400" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background text-foreground p-4 text-center">
+        <div className="bg-white p-8 rounded-[28px] shadow-xl max-w-sm w-full">
+          <Trophy className="h-16 w-16 mx-auto mb-4 text-yellow-500" />
           <h2 className="text-2xl font-black mb-4">선생님 인기 투표</h2>
-          <p className="mb-8 opacity-80">로그인한 학생만 투표에 참여할 수 있습니다.</p>
+          <p className="mb-8 opacity-70">로그인한 학생만 투표에 참여할 수 있습니다.</p>
           <Button 
             onClick={() => router.push("/login")} 
-            className="bg-white text-[#764ba2] hover:bg-white/90 font-black px-10 h-12 rounded-full text-lg"
+            className="bg-primary text-white hover:bg-primary/90 font-black px-10 h-12 rounded-full text-lg w-full"
           >
             로그인 하러가기
           </Button>
@@ -100,31 +90,26 @@ export default function LoungePage() {
   }
 
   return (
-    <div className={cn(
-      "min-h-[calc(100vh-64px)] transition-colors duration-500 flex items-center justify-center p-4",
-      isDarkMode ? "bg-[#111]" : "bg-gradient-to-br from-[#667eea] to-[#764ba2]"
-    )}>
-      <div className={cn(
-        "w-full max-w-[420px] backdrop-blur-xl rounded-[28px] p-6 shadow-2xl transition-all border border-white/10",
-        isDarkMode ? "bg-[#1e1e1e] text-white" : "bg-black/40 text-white"
-      )}>
+    <div className="min-h-[calc(100vh-64px)] bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-[420px] bg-white rounded-[28px] p-6 shadow-xl border relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary"></div>
         
-        <h1 
-          onClick={handleTitleClick}
-          className="text-3xl font-black text-center mb-6 cursor-pointer select-none active:scale-95 transition-transform"
-        >
-          🔥 선생님 인기 투표
-        </h1>
+        <div className="flex items-center justify-center gap-2 mb-6 pt-2">
+          <Flame className="h-6 w-6 text-orange-500 fill-orange-500" />
+          <h1 className="text-2xl font-black text-center select-none tracking-tight">
+            선생님 인기 투표
+          </h1>
+        </div>
 
         {configData?.notice && (
-          <div className="bg-white/15 p-3 rounded-xl mb-6 text-center text-sm font-medium animate-pulse border border-white/5">
-            {configData.notice}
+          <div className="bg-primary/5 p-4 rounded-xl mb-6 text-center text-sm font-bold text-primary animate-pulse border border-primary/10">
+            📢 {configData.notice}
           </div>
         )}
 
         <div className="space-y-3">
           {teachers?.map((teacher, index) => {
-            let medal: string = (index + 1).toString()
+            let medal: string | number = index + 1
             if (index === 0) medal = "🥇"
             else if (index === 1) medal = "🥈"
             else if (index === 2) medal = "🥉"
@@ -133,18 +118,15 @@ export default function LoungePage() {
               <div
                 key={teacher.id}
                 onClick={() => handleVote(teacher.id, teacher.name)}
-                className={cn(
-                  "flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md border-none",
-                  isDarkMode ? "bg-[#2b2b2b] text-white" : "bg-white/95 text-black"
-                )}
+                className="group flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm border bg-white hover:border-primary/30"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl font-bold w-10 text-center">{medal}</span>
-                  <span className="text-lg font-black tracking-tight">{teacher.name}</span>
+                  <span className="text-lg font-black tracking-tight group-hover:text-primary transition-colors">{teacher.name}</span>
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-[10px] font-black opacity-30 uppercase leading-none mb-1">Votes</span>
-                  <span className="text-xl font-black leading-none">{teacher.vote.toLocaleString()}</span>
+                  <span className="text-xl font-black leading-none text-primary">{teacher.vote.toLocaleString()}</span>
                 </div>
               </div>
             )
@@ -163,23 +145,10 @@ export default function LoungePage() {
       <div className="fixed bottom-8 left-8 flex flex-col gap-4">
         <Button
           onClick={shareVote}
-          className="h-14 w-14 rounded-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black shadow-xl border-none"
+          className="h-14 w-14 rounded-full bg-primary text-white hover:bg-primary/90 shadow-2xl border-none"
           size="icon"
         >
           <Share2 className="h-6 w-6" />
-        </Button>
-      </div>
-
-      <div className="fixed bottom-8 right-8 flex flex-col gap-4">
-        <Button
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className={cn(
-            "h-14 w-14 rounded-full shadow-xl border-none",
-            isDarkMode ? "bg-white text-black hover:bg-white/90" : "bg-[#222] text-white hover:bg-[#222]/90"
-          )}
-          size="icon"
-        >
-          <Moon className="h-6 w-6" />
         </Button>
       </div>
     </div>

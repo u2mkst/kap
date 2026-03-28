@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { ShieldAlert, Star, Plus, Trash2, Users, Loader2, Megaphone } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { ShieldAlert, Star, Plus, Trash2, Users, Loader2, Megaphone, BrainCircuit } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -28,7 +30,6 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
-  // 선생님 목록 쿼리
   const teachersQuery = useMemoFirebase(() => {
     if (isAdminLoading || !isAdminDoc?.id) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
@@ -42,10 +43,20 @@ export default function AdminPage() {
   const [fortuneDate, setFortuneDate] = useState("")
   const [fortuneText, setFortuneText] = useState("")
 
+  // 오늘의 문제 상태
+  const [probDate, setProbDate] = useState("")
+  const [probGrade, setProbGrade] = useState("1")
+  const [probTitle, setProbTitle] = useState("")
+  const [probTopic, setProbTopic] = useState("")
+  const [probDiff, setProbDiff] = useState("보통")
+  const [probText, setProbText] = useState("")
+  const [probAnswer, setProbAnswer] = useState("")
+
   useEffect(() => {
     setIsMounted(true)
     const today = new Date().toISOString().split('T')[0]
     setFortuneDate(today)
+    setProbDate(today)
   }, [])
 
   useEffect(() => {
@@ -110,12 +121,43 @@ export default function AdminPage() {
         fortuneText,
         createdAt: serverTimestamp(),
       })
-      toast({ title: "저장 완료" })
+      toast({ title: "운세 저장 완료" })
       setFortuneText("")
     } catch (error) { 
       console.error(error) 
     } finally { 
       setIsSaving(false) 
+    }
+  }
+
+  const handleSaveProblem = async () => {
+    if (!probDate || !probGrade || !probTitle || !probText || !probAnswer) {
+      toast({ variant: "destructive", title: "모든 항목을 입력해주세요." })
+      return
+    }
+    setIsSaving(true)
+    try {
+      const docId = `${probDate}_${probGrade}`
+      await setDoc(doc(db, "daily_problems", docId), {
+        id: docId,
+        date: probDate,
+        grade: probGrade,
+        title: probTitle,
+        topic: probTopic || "일반",
+        difficulty: probDiff,
+        problemText: probText,
+        answer: probAnswer.trim(),
+        rewardPoints: 100,
+        createdAt: serverTimestamp(),
+      })
+      toast({ title: "문제 등록 완료" })
+      setProbTitle("")
+      setProbText("")
+      setProbAnswer("")
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -137,15 +179,16 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold font-headline text-destructive">관리자 시스템</h1>
-          <p className="text-muted-foreground">인기 투표 및 콘텐츠 관리</p>
+          <p className="text-muted-foreground text-sm">인기 투표 및 콘텐츠 관리</p>
         </div>
       </div>
 
       <Tabs defaultValue="vote" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 p-1">
-          <TabsTrigger value="vote"><Users className="mr-2 h-4 w-4" /> 투표 관리</TabsTrigger>
-          <TabsTrigger value="notice"><Megaphone className="mr-2 h-4 w-4" /> 공지 관리</TabsTrigger>
-          <TabsTrigger value="fortune"><Star className="mr-2 h-4 w-4" /> 운세 관리</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-8 bg-muted/50 p-1">
+          <TabsTrigger value="vote"><Users className="mr-2 h-4 w-4" /> 투표</TabsTrigger>
+          <TabsTrigger value="problem"><BrainCircuit className="mr-2 h-4 w-4" /> 문제</TabsTrigger>
+          <TabsTrigger value="notice"><Megaphone className="mr-2 h-4 w-4" /> 공지</TabsTrigger>
+          <TabsTrigger value="fortune"><Star className="mr-2 h-4 w-4" /> 운세</TabsTrigger>
         </TabsList>
 
         <TabsContent value="vote">
@@ -173,7 +216,7 @@ export default function AdminPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
                 <CardTitle>현재 순위</CardTitle>
-                <CardDescription>투표 현황을 실시간으로 확인하고 관리합니다.</CardDescription>
+                <CardDescription>투표 현황을 실시간으로 확인합니다.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {isTeachersLoading ? (
@@ -197,6 +240,78 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="problem">
+          <Card className="border-none shadow-sm bg-white">
+            <CardHeader>
+              <CardTitle>오늘의 도전 문제 등록</CardTitle>
+              <CardDescription>학년별로 다른 문제를 제공할 수 있습니다.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>날짜</Label>
+                  <Input type="date" value={probDate} onChange={(e) => setProbDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>학년</Label>
+                  <Select value={probGrade} onValueChange={setProbGrade}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="학년 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1학년</SelectItem>
+                      <SelectItem value="2">2학년</SelectItem>
+                      <SelectItem value="3">3학년</SelectItem>
+                      <SelectItem value="4">4학년</SelectItem>
+                      <SelectItem value="5">5학년</SelectItem>
+                      <SelectItem value="6">6학년</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>제목</Label>
+                  <Input placeholder="미적분 기초 퀴즈" value={probTitle} onChange={(e) => setProbTitle(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>과목/토픽</Label>
+                  <Input placeholder="수학" value={probTopic} onChange={(e) => setProbTopic(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>난이도</Label>
+                <Select value={probDiff} onValueChange={setProbDiff}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="난이도" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="쉬움">쉬움</SelectItem>
+                    <SelectItem value="보통">보통</SelectItem>
+                    <SelectItem value="어려움">어려움</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>문제 내용</Label>
+                <Textarea 
+                  placeholder="문제 설명을 입력하세요..." 
+                  className="min-h-[120px]" 
+                  value={probText} 
+                  onChange={(e) => setProbText(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>정답 (텍스트 일치 확인)</Label>
+                <Input placeholder="정답을 입력하세요" value={probAnswer} onChange={(e) => setProbAnswer(e.target.value)} />
+              </div>
+              <Button onClick={handleSaveProblem} disabled={isSaving} className="w-full">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "문제 등록하기"}
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="notice">
