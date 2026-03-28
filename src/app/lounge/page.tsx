@@ -1,7 +1,8 @@
 
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
 import { collection, doc, updateDoc, increment, query, orderBy } from "firebase/firestore"
 import { Loader2, Moon, Share2, Trophy } from "lucide-react"
@@ -12,18 +13,32 @@ import { cn } from "@/lib/utils"
 export default function LoungePage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
+  const router = useRouter()
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [tapCount, setTapCount] = useState(0)
 
-  // 선생님 목록 쿼리 (득표순 정렬)
+  // 선생님 목록 쿼리 (득표순 정렬) - 로그인 사용자 확인 후 쿼리 시작
   const teachersQuery = useMemoFirebase(() => {
+    if (!user) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
-  }, [db])
+  }, [db, user])
 
   const { data: teachers, isLoading: isTeachersLoading } = useCollection(teachersQuery)
 
   // 공지사항 데이터
-  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
+  const configRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "metadata", "config")
+  }, [db, user])
   const { data: configData } = useDoc(configRef)
+
+  const handleTitleClick = () => {
+    const nextCount = tapCount + 1
+    setTapCount(nextCount)
+    if (nextCount >= 5) {
+      router.push("/admin")
+    }
+  }
 
   const handleVote = async (teacherId: string, teacherName: string) => {
     if (!user) return
@@ -42,7 +57,7 @@ export default function LoungePage() {
       toast({
         variant: "destructive",
         title: "투표 실패",
-        description: "권한이 없거나 오류가 발생했습니다."
+        description: "투표 권한이 없거나 오류가 발생했습니다."
       })
     }
   }
@@ -58,10 +73,28 @@ export default function LoungePage() {
     }
   }
 
-  if (isUserLoading || isTeachersLoading) {
+  if (isUserLoading || (user && isTeachersLoading)) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2]">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2] text-white p-4 text-center">
+        <div className="bg-black/40 backdrop-blur-md p-8 rounded-[28px] shadow-2xl">
+          <Trophy className="h-16 w-16 mx-auto mb-4 text-yellow-400" />
+          <h2 className="text-2xl font-black mb-4">선생님 인기 투표</h2>
+          <p className="mb-8 opacity-80">로그인한 학생만 투표에 참여할 수 있습니다.</p>
+          <Button 
+            onClick={() => router.push("/login")} 
+            className="bg-white text-[#764ba2] hover:bg-white/90 font-black px-10 h-12 rounded-full text-lg"
+          >
+            로그인 하러가기
+          </Button>
+        </div>
       </div>
     )
   }
@@ -72,23 +105,26 @@ export default function LoungePage() {
       isDarkMode ? "bg-[#111]" : "bg-gradient-to-br from-[#667eea] to-[#764ba2]"
     )}>
       <div className={cn(
-        "w-full max-w-[420px] backdrop-blur-xl rounded-[28px] p-6 shadow-2xl transition-all",
+        "w-full max-w-[420px] backdrop-blur-xl rounded-[28px] p-6 shadow-2xl transition-all border border-white/10",
         isDarkMode ? "bg-[#1e1e1e] text-white" : "bg-black/40 text-white"
       )}>
         
-        <h1 className="text-3xl font-black text-center mb-6 cursor-pointer flex items-center justify-center gap-2">
+        <h1 
+          onClick={handleTitleClick}
+          className="text-3xl font-black text-center mb-6 cursor-pointer select-none active:scale-95 transition-transform"
+        >
           🔥 선생님 인기 투표
         </h1>
 
         {configData?.notice && (
-          <div className="bg-white/15 p-3 rounded-xl mb-6 text-center text-sm font-medium animate-pulse">
+          <div className="bg-white/15 p-3 rounded-xl mb-6 text-center text-sm font-medium animate-pulse border border-white/5">
             {configData.notice}
           </div>
         )}
 
         <div className="space-y-3">
           {teachers?.map((teacher, index) => {
-            let medal = (index + 1).toString()
+            let medal: string = (index + 1).toString()
             if (index === 0) medal = "🥇"
             else if (index === 1) medal = "🥈"
             else if (index === 2) medal = "🥉"
@@ -98,26 +134,26 @@ export default function LoungePage() {
                 key={teacher.id}
                 onClick={() => handleVote(teacher.id, teacher.name)}
                 className={cn(
-                  "flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm",
+                  "flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md border-none",
                   isDarkMode ? "bg-[#2b2b2b] text-white" : "bg-white/95 text-black"
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold w-8 text-center">{medal}</span>
-                  <span className="text-lg font-bold">{teacher.name}</span>
+                  <span className="text-2xl font-bold w-10 text-center">{medal}</span>
+                  <span className="text-lg font-black tracking-tight">{teacher.name}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-sm font-black opacity-40 uppercase">Votes</span>
-                  <span className="text-xl font-black">{teacher.vote.toLocaleString()}</span>
+                  <span className="text-[10px] font-black opacity-30 uppercase leading-none mb-1">Votes</span>
+                  <span className="text-xl font-black leading-none">{teacher.vote.toLocaleString()}</span>
                 </div>
               </div>
             )
           })}
 
-          {(!teachers || teachers.length === 0) && (
-            <div className="text-center py-12 opacity-50">
-              <Trophy className="h-12 w-12 mx-auto mb-2 opacity-20" />
-              <p>아직 후보가 등록되지 않았습니다.</p>
+          {(!teachers || teachers.length === 0) && !isTeachersLoading && (
+            <div className="text-center py-16 opacity-40">
+              <Trophy className="h-16 w-16 mx-auto mb-4 opacity-20" />
+              <p className="font-bold">아직 투표 후보가 없습니다.</p>
             </div>
           )}
         </div>
@@ -127,7 +163,7 @@ export default function LoungePage() {
       <div className="fixed bottom-8 left-8 flex flex-col gap-4">
         <Button
           onClick={shareVote}
-          className="h-14 w-14 rounded-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black shadow-lg"
+          className="h-14 w-14 rounded-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black shadow-xl border-none"
           size="icon"
         >
           <Share2 className="h-6 w-6" />
@@ -138,7 +174,7 @@ export default function LoungePage() {
         <Button
           onClick={() => setIsDarkMode(!isDarkMode)}
           className={cn(
-            "h-14 w-14 rounded-full shadow-lg",
+            "h-14 w-14 rounded-full shadow-xl border-none",
             isDarkMode ? "bg-white text-black hover:bg-white/90" : "bg-[#222] text-white hover:bg-[#222]/90"
           )}
           size="icon"
