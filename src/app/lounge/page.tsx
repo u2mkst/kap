@@ -33,15 +33,15 @@ export default function LoungePage() {
   const [newPost, setNewPost] = useState("")
   const [isPosting, setIsPosting] = useState(false)
 
-  // 학년별 쿼리 (사용자 정보가 완전히 로드된 후 실행)
+  // 학년별 쿼리 (사용자 정보와 학년 정보가 확실히 로드된 후 실행)
   const postsQuery = useMemoFirebase(() => {
-    if (!userData || !userData.grade) return null
+    if (!userData?.grade) return null
     return query(
       collection(db, "posts"),
       where("grade", "==", userData.grade),
       orderBy("createdAt", "desc")
     )
-  }, [db, userData])
+  }, [db, userData?.grade])
 
   const { data: posts, isLoading: isPostsLoading } = useCollection(postsQuery)
 
