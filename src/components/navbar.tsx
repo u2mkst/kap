@@ -8,7 +8,6 @@ import {
   User, 
   Home, 
   Gamepad2, 
-  Store, 
   Menu, 
   X,
   Sprout,
@@ -18,15 +17,15 @@ import {
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useUser, useAuth } from "@/firebase"
+import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { signOut } from "firebase/auth"
+import { doc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 const navItems = [
   { name: "학생 홈", href: "/dashboard", icon: Home },
   { name: "나의 정원", href: "/plants", icon: Sprout },
   { name: "라운지", href: "/lounge", icon: Gamepad2 },
-  { name: "포인트 샵", href: "/shop", icon: Store },
 ]
 
 export function Navbar() {
@@ -35,8 +34,13 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const { user } = useUser()
   const auth = useAuth()
+  const db = useFirestore()
 
-  const isAuthPage = pathname === "/" || pathname === "/login" || pathname === "/signup"
+  const adminRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "roles_admin", user.uid)
+  }, [user, db])
+  const { data: isAdminDoc } = useDoc(adminRef)
 
   const handleLogout = async () => {
     try {
@@ -81,11 +85,13 @@ export function Navbar() {
                   )
                 })}
                 <div className="h-6 w-px bg-border mx-4" />
-                <Link href="/admin">
-                  <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10">
-                    <ShieldCheck className="h-4 w-4 text-destructive" />
-                  </Button>
-                </Link>
+                {isAdminDoc && (
+                  <Link href="/admin">
+                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10 mr-2">
+                      <ShieldCheck className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </Link>
+                )}
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -95,7 +101,7 @@ export function Navbar() {
                   <LogOut className="h-4 w-4 text-muted-foreground" />
                 </Button>
                 <Link href="/dashboard">
-                  <Button variant="outline" size="icon" className="rounded-full border-primary/20 hover:border-primary transition-colors">
+                  <Button variant="outline" size="icon" className="rounded-full border-primary/20 hover:border-primary transition-colors ml-2">
                     <User className="h-4 w-4 text-primary" />
                   </Button>
                 </Link>
@@ -140,7 +146,8 @@ export function Navbar() {
               <span>{item.name}</span>
             </Link>
           ))}
-          <Link
+          {isAdminDoc && (
+            <Link
               href="/admin"
               onClick={() => setIsOpen(false)}
               className="flex items-center space-x-3 p-4 rounded-xl text-base font-bold text-destructive hover:bg-destructive/5"
@@ -148,6 +155,7 @@ export function Navbar() {
               <ShieldCheck className="h-5 w-5" />
               <span>관리자 모드</span>
             </Link>
+          )}
           <div className="pt-4 border-t mt-4">
             <Button 
               variant="ghost" 

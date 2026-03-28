@@ -1,32 +1,47 @@
 
 "use client"
 
-import { useMemo, useEffect } from "react"
+import { useMemo, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
 import { 
   Trophy, 
   Utensils, 
-  Gift, 
   Zap, 
-  Gamepad2, 
   ExternalLink,
   Flame,
   Sprout,
   Star,
-  Sparkles
+  Sparkles,
+  Search,
+  Calendar,
+  Clock,
+  School
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 
+// NEIS API KEY - 실제 키로 교체 필요
+const NEIS_KEY = "여기에_NEIS_API_KEY";
+
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
   const router = useRouter()
+
+  // School Info State
+  const [schoolName, setSchoolName] = useState("")
+  const [grade, setGrade] = useState("")
+  const [classNum, setClassNum] = useState("")
+  const [mealData, setMealData] = useState<string>("")
+  const [weekMealData, setWeekMealData] = useState<string[]>([])
+  const [scheduleData, setScheduleData] = useState<string>("")
+  const [isSearching, setIsSearching] = useState(false)
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -42,12 +57,60 @@ export default function DashboardPage() {
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const todayCompact = useMemo(() => todayStr.replace(/-/g, ""), [todayStr])
 
   const fortuneRef = useMemoFirebase(() => doc(db, "daily_fortunes", todayStr), [db, todayStr])
   const problemRef = useMemoFirebase(() => doc(db, "daily_problems", todayStr), [db, todayStr])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
+
+  const loadSchoolInfo = async () => {
+    if (!schoolName) return
+    setIsSearching(true)
+    try {
+      // 1. 학교 정보 조회
+      const schoolRes = await fetch(
+        `https://open.neis.go.kr/hub/schoolInfo?Type=json&KEY=${NEIS_KEY}&SCHUL_NM=${schoolName}`
+      );
+      const schoolData = await schoolRes.json();
+      if (!schoolData.schoolInfo) {
+        setMealData("학교를 찾을 수 없습니다.");
+        return;
+      }
+      const school = schoolData.schoolInfo[1].row[0];
+      const EDU = school.ATPT_OFCDC_SC_CODE;
+      const CODE = school.SD_SCHUL_CODE;
+
+      // 2. 오늘 급식 조회
+      const mealRes = await fetch(
+        `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&KEY=${NEIS_KEY}&ATPT_OFCDC_SC_CODE=${EDU}&SD_SCHUL_CODE=${CODE}&MLSV_YMD=${todayCompact}`
+      );
+      const mealJson = await mealRes.json();
+      if (mealJson.mealServiceDietInfo) {
+        const mealRaw = mealJson.mealServiceDietInfo[1].row[0].DDISH_NM;
+        setMealData(mealRaw.split("<br/>").join(", "));
+      } else {
+        setMealData("오늘의 급식 정보가 없습니다.");
+      }
+
+      // 3. 학사 일정 조회
+      const scheduleRes = await fetch(
+        `https://open.neis.go.kr/hub/SchoolSchedule?Type=json&KEY=${NEIS_KEY}&ATPT_OFCDC_SC_CODE=${EDU}&SD_SCHUL_CODE=${CODE}&AA_YMD=${todayCompact}`
+      );
+      const scheduleJson = await scheduleRes.json();
+      if (scheduleJson.SchoolSchedule) {
+        setScheduleData(scheduleJson.SchoolSchedule[1].row[0].EVENT_NM);
+      } else {
+        setScheduleData("오늘 예정된 일정이 없습니다.");
+      }
+    } catch (error) {
+      console.error(error);
+      setMealData("정보를 가져오는 중 오류가 발생했습니다.");
+    } finally {
+      setIsSearching(false)
+    }
+  }
 
   if (isUserLoading || isUserDataLoading || !user) {
     return (
@@ -79,15 +142,15 @@ export default function DashboardPage() {
         </div>
         <Card className="bg-primary text-primary-foreground border-none shadow-lg px-6 py-3 flex items-center gap-4">
           <div className="p-2 bg-white/20 rounded-full">
-            <Gift className="h-5 w-5 text-white" />
+            <Sprout className="h-5 w-5 text-white" />
           </div>
           <div>
             <p className="text-xs opacity-80">보유 포인트</p>
             <p className="text-xl font-black">{userData?.points?.toLocaleString() || 0} P</p>
           </div>
-          <Link href="/shop">
+          <Link href="/plants">
             <Button size="sm" variant="secondary" className="ml-2 font-bold text-xs bg-white text-primary hover:bg-white/90">
-              상점가기
+              식물 키우기
             </Button>
           </Link>
         </Card>
@@ -95,6 +158,52 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
+          {/* 학교 정보 조회 섹션 */}
+          <Card className="border-none shadow-sm bg-white overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                <School className="h-5 w-5" /> 우리 학교 정보 조회
+              </CardTitle>
+              <CardDescription>학교 이름을 입력하여 급식과 일정을 확인하세요.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                <Input 
+                  placeholder="학교 이름 (예: 서울고등학교)" 
+                  value={schoolName}
+                  onChange={(e) => setSchoolName(e.target.value)}
+                  className="flex-grow"
+                />
+                <div className="flex gap-2">
+                  <Input placeholder="학년" className="w-16" value={grade} onChange={(e) => setGrade(e.target.value)} />
+                  <Input placeholder="반" className="w-16" value={classNum} onChange={(e) => setClassNum(e.target.value)} />
+                </div>
+                <Button onClick={loadSchoolInfo} disabled={isSearching} className="bg-primary">
+                  <Search className="h-4 w-4 mr-2" /> {isSearching ? "조회 중..." : "조회"}
+                </Button>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-orange-50 border border-orange-100">
+                  <h3 className="font-bold text-orange-700 flex items-center gap-2 mb-2">
+                    <Utensils className="h-4 w-4" /> 오늘 급식
+                  </h3>
+                  <p className="text-sm text-orange-900 leading-relaxed">
+                    {mealData || "학교를 조회해주세요."}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                  <h3 className="font-bold text-blue-700 flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4" /> 오늘 학사일정
+                  </h3>
+                  <p className="text-sm text-blue-900 leading-relaxed">
+                    {scheduleData || "학교를 조회해주세요."}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-none shadow-sm bg-white overflow-hidden">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -161,8 +270,10 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+        </div>
 
-          <Card className="border-none shadow-sm bg-white">
+        <div className="md:col-span-4 space-y-6">
+           <Card className="border-none shadow-sm bg-white">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" /> 오늘의 도전 문제
@@ -189,25 +300,16 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
-        </div>
 
-        <div className="md:col-span-4 space-y-6">
           <Card className="border-none shadow-sm bg-white">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Utensils className="h-5 w-5 text-primary" /> 오늘의 급식/간식
+              <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                <Clock className="h-5 w-5" /> 오늘의 시간표
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm space-y-3 bg-muted/20 p-4 rounded-xl">
-                <div>
-                  <p className="font-bold text-primary mb-1">🍱 점심 (12:30)</p>
-                  <p className="text-muted-foreground">불고기 덮밥, 콩나물국, 계란말이, 김치</p>
-                </div>
-                <div className="border-t border-muted pt-3">
-                  <p className="font-bold text-accent mb-1">🍰 간식 (16:00)</p>
-                  <p className="text-muted-foreground">초코 츄러스 & 유기농 우유</p>
-                </div>
+              <div className="text-sm space-y-3 bg-muted/20 p-4 rounded-xl text-center">
+                <p className="text-muted-foreground">학교를 조회하고 학년/반을 입력하면 시간표를 불러올 수 있습니다. (준비 중)</p>
               </div>
             </CardContent>
           </Card>
@@ -234,7 +336,6 @@ export default function DashboardPage() {
                   <span className="text-xs font-bold text-muted-foreground">{user.points}</span>
                 </div>
               ))}
-              <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs">전체 순위 보기</Button>
             </CardContent>
           </Card>
         </div>

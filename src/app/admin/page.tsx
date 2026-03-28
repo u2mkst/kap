@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ShieldAlert, Send, Plus, Calendar, Star } from "lucide-react"
-import { useFirestore, useUser } from "@/firebase"
+import { ShieldAlert, Send, Plus, Calendar, Star, Lock } from "lucide-react"
+import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
@@ -20,11 +20,29 @@ export default function AdminPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
+  const adminRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "roles_admin", user.uid)
+  }, [user, db])
+
+  const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login")
     }
   }, [user, isUserLoading, router])
+
+  useEffect(() => {
+    if (!isUserLoading && !isAdminLoading && user && !isAdminDoc) {
+      toast({
+        variant: "destructive",
+        title: "접근 권한 없음",
+        description: "관리자 전용 페이지입니다. 관리자 계정으로 로그인해 주세요.",
+      })
+      router.push("/dashboard")
+    }
+  }, [user, isAdminDoc, isUserLoading, isAdminLoading, router])
 
   const [fortuneDate, setFortuneDate] = useState(new Date().toISOString().split('T')[0])
   const [fortuneText, setFortuneText] = useState("")
@@ -80,10 +98,21 @@ export default function AdminPage() {
     }
   }
 
-  if (isUserLoading || !user) {
+  if (isUserLoading || isAdminLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (!isAdminDoc) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-64px)] items-center justify-center p-4">
+        <Lock className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="text-2xl font-bold mb-2">접근이 제한되었습니다.</h1>
+        <p className="text-muted-foreground">관리자 권한이 필요합니다.</p>
+        <Button onClick={() => router.push("/dashboard")} className="mt-6">대시보드로 돌아가기</Button>
       </div>
     )
   }
@@ -95,22 +124,22 @@ export default function AdminPage() {
           <ShieldAlert className="h-8 w-8" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold font-headline">관리자 대시보드</h1>
-          <p className="text-muted-foreground">학원 전용 콘텐츠를 관리합니다.</p>
+          <h1 className="text-3xl font-bold font-headline">관리자 마스터 대시보드</h1>
+          <p className="text-muted-foreground">학원 전용 시스템 및 일일 콘텐츠를 관리합니다.</p>
         </div>
       </div>
 
       <Tabs defaultValue="fortune" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="fortune"><Star className="mr-2 h-4 w-4" /> 오늘의 한마디</TabsTrigger>
-          <TabsTrigger value="problem"><Plus className="mr-2 h-4 w-4" /> 오늘의 문제</TabsTrigger>
+          <TabsTrigger value="fortune"><Star className="mr-2 h-4 w-4" /> 오늘의 한마디 관리</TabsTrigger>
+          <TabsTrigger value="problem"><Plus className="mr-2 h-4 w-4" /> 일일 도전 문제 관리</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fortune">
           <Card className="border-none shadow-sm bg-white">
             <CardHeader>
               <CardTitle>오늘의 한마디 설정</CardTitle>
-              <CardDescription>학생들에게 영감을 주는 메시지를 입력하세요.</CardDescription>
+              <CardDescription>모든 학생의 대시보드에 표시될 메시지를 입력하세요.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -130,7 +159,7 @@ export default function AdminPage() {
                 />
               </div>
               <Button onClick={handleSaveFortune} disabled={isLoading} className="w-full bg-primary">
-                {isLoading ? "저장 중..." : "저장하기"}
+                {isLoading ? "저장 중..." : "글로벌 공지 저장"}
               </Button>
             </CardContent>
           </Card>
@@ -140,7 +169,7 @@ export default function AdminPage() {
           <Card className="border-none shadow-sm bg-white">
             <CardHeader>
               <CardTitle>오늘의 도전 문제 등록</CardTitle>
-              <CardDescription>학생들이 풀 수 있는 일일 문제를 등록합니다.</CardDescription>
+              <CardDescription>학생들이 풀 수 있는 고난도 문제를 등록합니다.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -167,7 +196,7 @@ export default function AdminPage() {
                 />
               </div>
               <Button onClick={handleSaveProblem} disabled={isLoading} className="w-full bg-primary">
-                {isLoading ? "저장 중..." : "문제 등록하기"}
+                {isLoading ? "저장 중..." : "문제 챌린지 게시"}
               </Button>
             </CardContent>
           </Card>
