@@ -212,159 +212,153 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
-          <Card className="border-none shadow-sm bg-white overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2 text-primary font-bold">
-                  <School className="h-5 w-5" /> 우리 학교 소식
-                </CardTitle>
-                <CardDescription className="text-xs">오늘과 이번 주의 급식 및 시간표를 확인하세요.</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary shadow-sm">
-                      <Maximize2 className="h-3 w-3 mr-1" /> 이번 주 전체 보기
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <div className="flex items-center justify-between w-full pr-8">
-                        <DialogTitle className="flex items-center gap-2">
-                          <CalendarDays className="h-5 w-5 text-primary" /> {userData?.schoolName} 주간 정보
-                        </DialogTitle>
-                        <div className="flex items-center gap-1">
-                          <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev - 1)}>
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => setWeekOffset(0)}>오늘</Button>
-                          <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev + 1)}>
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogHeader>
-                    <Tabs defaultValue="meals" className="w-full mt-4">
-                      <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1">
-                        <TabsTrigger value="meals" className="text-xs font-bold">주간 급식</TabsTrigger>
-                        <TabsTrigger value="timetable" className="text-xs font-bold">주간 시간표</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="meals" className="space-y-4">
-                        <div className="grid gap-4">
-                          {weekDates.map((date, idx) => {
-                            const dStr = format(date, "yyyyMMdd")
-                            const meal = weeklyMeals.find(m => m.date === dStr)
-                            const isToday = isSameDay(date, new Date())
-                            return (
-                              <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
-                                <div className="flex justify-between items-center mb-3">
-                                  <span className={`text-xs font-black ${isToday ? 'text-orange-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                                  {isToday && <Badge className="bg-orange-500 text-[10px] hover:bg-orange-600 border-none">TODAY</Badge>}
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
+              <School className="h-5 w-5" /> 우리 학교 소식
+            </h2>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary shadow-sm">
+                  <Maximize2 className="h-3 w-3 mr-1" /> 이번 주 전체 보기
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <div className="flex items-center justify-between w-full pr-8">
+                    <DialogTitle className="flex items-center gap-2">
+                      <CalendarDays className="h-5 w-5 text-primary" /> {userData?.schoolName} 주간 정보
+                    </DialogTitle>
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev - 1)}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => setWeekOffset(0)}>오늘</Button>
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev + 1)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </DialogHeader>
+                <Tabs defaultValue="meals" className="w-full mt-4">
+                  <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1">
+                    <TabsTrigger value="meals" className="text-xs font-bold">주간 급식</TabsTrigger>
+                    <TabsTrigger value="timetable" className="text-xs font-bold">주간 시간표</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="meals" className="space-y-4">
+                    <div className="grid gap-4">
+                      {weekDates.map((date, idx) => {
+                        const dStr = format(date, "yyyyMMdd")
+                        const meal = weeklyMeals.find(m => m.date === dStr)
+                        const isToday = isSameDay(date, new Date())
+                        return (
+                          <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
+                            <div className="flex justify-between items-center mb-3">
+                              <span className={`text-xs font-black ${isToday ? 'text-orange-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
+                              {isToday && <Badge className="bg-orange-500 text-[10px] hover:bg-orange-600 border-none">TODAY</Badge>}
+                            </div>
+                            <div className="text-[13px] text-orange-900/80 leading-relaxed font-medium">
+                              {meal?.menu ? (
+                                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                                  {meal.menu.split(',').map((item, i) => (
+                                    <span key={i} className="bg-white/50 px-2 py-0.5 rounded-md border border-orange-100/50">{item.trim()}</span>
+                                  ))}
                                 </div>
-                                <div className="text-[13px] text-orange-900/80 leading-relaxed font-medium">
-                                  {meal?.menu ? (
-                                    <div className="flex flex-wrap gap-x-2 gap-y-1">
-                                      {meal.menu.split(',').map((item, i) => (
-                                        <span key={i} className="bg-white/50 px-2 py-0.5 rounded-md border border-orange-100/50">{item.trim()}</span>
-                                      ))}
-                                    </div>
-                                  ) : "급식 정보가 없습니다."}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="timetable" className="space-y-4">
-                         <div className="grid gap-4">
-                          {weekDates.map((date, idx) => {
-                            const dStr = format(date, "yyyyMMdd")
-                            const table = weeklyTimetable.find(t => t.date === dStr)
-                            const isToday = isSameDay(date, new Date())
-                            return (
-                              <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
-                                <div className="flex justify-between items-center mb-3">
-                                  <span className={`text-xs font-black ${isToday ? 'text-blue-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                                  {isToday && <Badge className="bg-blue-500 text-[10px] hover:bg-blue-600 border-none">TODAY</Badge>}
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                  {table ? table.timetable.split(',').map((t, i) => (
-                                    <div key={i} className="flex items-center gap-3 p-2 bg-white/60 border border-blue-100/50 rounded-xl">
-                                      <span className="w-10 text-[10px] text-blue-400 font-bold text-center">{t.split(':')[0]}</span>
-                                      <div className="h-4 w-px bg-blue-100" />
-                                      <span className="text-xs font-black text-blue-900">{t.split(':')[1]}</span>
-                                    </div>
-                                  )) : <p className="text-xs text-muted-foreground py-2 text-center">시간표 정보가 없습니다.</p>}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                  </DialogContent>
-                </Dialog>
-                <Link href="/profile">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary transition-colors h-8">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {!userData?.schoolName && (
-                <div className="text-center py-12 bg-muted/20 rounded-2xl mb-4 border-2 border-dashed">
-                  <p className="text-sm text-muted-foreground mb-4">회원 정보에 학교 정보가 설정되어 있지 않습니다.</p>
-                  <Link href="/profile"><Button size="sm" className="rounded-full px-8 shadow-sm">학교 정보 설정하기</Button></Link>
-                </div>
-              )}
-              
-              <div className="flex flex-col gap-4">
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 flex flex-col shadow-sm min-h-[160px]">
-                  <h3 className="font-black text-orange-700 flex items-center gap-2 mb-4 text-sm">
-                    <Utensils className="h-4 w-4" /> 오늘의 급식
-                  </h3>
-                  <div className="space-y-1.5">
-                    {isLoadingWeekly ? (
-                      <div className="flex items-center gap-2 text-orange-400"><Loader2 className="h-3 w-3 animate-spin" /> <span className="text-xs">불러오는 중...</span></div>
-                    ) : todayMeal ? (
-                      <div className="flex flex-col gap-2">
-                        {todayMeal.split(',').map((item, i) => (
-                          <div key={i} className="bg-white/80 p-3 rounded-xl border border-orange-200/50 flex items-center gap-3 shadow-sm">
-                            <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
-                            <span className="text-sm font-bold text-orange-800">{item.trim()}</span>
+                              ) : "급식 정보가 없습니다."}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-orange-900/50 italic">급식 정보가 없습니다.</p>
-                    )}
-                  </div>
-                </div>
+                        )
+                      })}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="timetable" className="space-y-4">
+                     <div className="grid gap-4">
+                      {weekDates.map((date, idx) => {
+                        const dStr = format(date, "yyyyMMdd")
+                        const table = weeklyTimetable.find(t => t.date === dStr)
+                        const isToday = isSameDay(date, new Date())
+                        return (
+                          <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
+                            <div className="flex justify-between items-center mb-3">
+                              <span className={`text-xs font-black ${isToday ? 'text-blue-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
+                              {isToday && <Badge className="bg-blue-500 text-[10px] hover:bg-blue-600 border-none">TODAY</Badge>}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {table ? table.timetable.split(',').map((t, i) => (
+                                <div key={i} className="flex items-center gap-3 p-2 bg-white/60 border border-blue-100/50 rounded-xl">
+                                  <span className="w-10 text-[10px] text-blue-400 font-bold text-center">{t.split(':')[0]}</span>
+                                  <div className="h-4 w-px bg-blue-100" />
+                                  <span className="text-xs font-black text-blue-900">{t.split(':')[1]}</span>
+                                </div>
+                              )) : <p className="text-xs text-muted-foreground py-2 text-center">시간표 정보가 없습니다.</p>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex flex-col shadow-sm">
-                  <h3 className="font-black text-blue-700 flex items-center gap-2 mb-4 text-sm">
-                    <Clock className="h-4 w-4" /> 오늘의 시간표
-                  </h3>
-                  <div className="flex flex-col gap-2">
-                    {isLoadingWeekly ? (
-                      <div className="flex items-center gap-2 text-blue-400"><Loader2 className="h-3 w-3 animate-spin" /> <span className="text-xs">불러오는 중...</span></div>
-                    ) : todayTable ? (
-                      todayTable.split(',').map((t, i) => (
-                        <div key={i} className="bg-white/80 p-3 rounded-xl border border-blue-200/50 flex items-center gap-4 shadow-sm">
-                          <span className="text-xs font-black text-blue-400 w-10 text-center">{t.split(':')[0]}</span>
-                          <div className="h-4 w-px bg-blue-100" />
-                          <span className="text-sm font-black text-blue-800">{t.split(':')[1]}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-blue-900/50 italic text-center py-4">시간표 정보가 없습니다.</p>
-                    )}
+          <div className="grid gap-6">
+            <Card className="border-none shadow-sm bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 overflow-hidden rounded-3xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-orange-700 font-black">
+                  <Utensils className="h-4 w-4" /> 오늘의 급식
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="min-h-[120px]">
+                {!userData?.schoolName ? (
+                   <p className="text-xs text-orange-900/40 italic py-8 text-center">학교 정보를 설정해 주세요.</p>
+                ) : isLoadingWeekly ? (
+                  <div className="flex items-center justify-center h-full py-8 gap-2 text-orange-400">
+                    <Loader2 className="h-4 w-4 animate-spin" /> <span className="text-xs">급식 정보를 불러오는 중...</span>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                ) : todayMeal ? (
+                  <div className="flex flex-col gap-2">
+                    {todayMeal.split(',').map((item, i) => (
+                      <div key={i} className="bg-white/80 p-3 rounded-xl border border-orange-200/50 flex items-center gap-3 shadow-sm">
+                        <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+                        <span className="text-sm font-bold text-orange-800">{item.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-orange-900/50 italic py-8 text-center font-medium">급식 정보가 없습니다.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 overflow-hidden rounded-3xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-blue-700 font-black">
+                  <Clock className="h-4 w-4" /> 오늘의 시간표
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="min-h-[120px]">
+                {!userData?.schoolName ? (
+                   <p className="text-xs text-blue-900/40 italic py-8 text-center">학교 정보를 설정해 주세요.</p>
+                ) : isLoadingWeekly ? (
+                  <div className="flex items-center justify-center h-full py-8 gap-2 text-blue-400">
+                    <Loader2 className="h-4 w-4 animate-spin" /> <span className="text-xs">시간표를 불러오는 중...</span>
+                  </div>
+                ) : todayTable ? (
+                  <div className="flex flex-col gap-2">
+                    {todayTable.split(',').map((t, i) => (
+                      <div key={i} className="bg-white/80 p-3 rounded-xl border border-blue-200/50 flex items-center gap-4 shadow-sm">
+                        <span className="text-xs font-black text-blue-400 w-10 text-center">{t.split(':')[0]}</span>
+                        <div className="h-4 w-px bg-blue-100" />
+                        <span className="text-sm font-black text-blue-800">{t.split(':')[1]}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-blue-900/50 italic py-8 text-center font-medium">시간표 정보가 없습니다.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
              <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-emerald-50 group hover:shadow-md transition-all rounded-3xl overflow-hidden">
