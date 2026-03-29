@@ -64,7 +64,7 @@ export function Navbar() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                 <BookOpen className="h-4 w-4" />
               </div>
-              <span className="text-lg font-black tracking-tight text-primary font-headline">STUDENT HUB</span>
+              <span className="text-lg font-black tracking-tight text-primary font-headline">KST HUB</span>
             </Link>
           </div>
 

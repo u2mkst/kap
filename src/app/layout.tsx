@@ -7,8 +7,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: '클래스 허브 | 미래를 여는 스마트 교육 플랫폼',
-  description: '최신 강좌와 AI 학습 도우미가 있는 현대적 학원 플랫폼 클래스 허브입니다.',
+  title: 'KST HUB | 미래를 여는 스마트 교육 플랫폼',
+  description: '최신 강좌와 AI 학습 도우미가 있는 현대적 KST 학생 전용 플랫폼입니다.',
 };
 
 export default function RootLayout({
