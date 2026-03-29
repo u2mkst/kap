@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,6 @@ import {
   Send, 
   Loader2, 
   History, 
-  ChevronRight, 
   AlertCircle,
   HelpCircle
 } from "lucide-react"
@@ -156,37 +155,42 @@ export default function SupportPage() {
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
             {isHistoryLoading ? (
               <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>
-            ) : myInquiries?.map((iq) => (
-              <Card key={iq.id} className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
-                <CardHeader className="p-5 pb-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant={iq.status === "open" ? "secondary" : "default"} className="text-[10px] py-0">
-                      {iq.status === "open" ? "답변 대기" : "답변 완료"}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground">{new Date(iq.createdAt?.toDate()).toLocaleDateString()}</span>
+            ) : (
+              <>
+                {myInquiries && myInquiries.length > 0 ? (
+                  myInquiries.map((iq) => (
+                    <Card key={iq.id} className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
+                      <CardHeader className="p-5 pb-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <Badge variant={iq.status === "open" ? "secondary" : "default"} className="text-[10px] py-0">
+                            {iq.status === "open" ? "답변 대기" : "답변 완료"}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground">{new Date(iq.createdAt?.toDate()).toLocaleDateString()}</span>
+                        </div>
+                        <CardTitle className="text-sm font-bold truncate">{iq.subject}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-5 pt-0 space-y-4">
+                        <p className="text-xs text-muted-foreground line-clamp-2">{iq.message}</p>
+                        
+                        {iq.reply && (
+                          <div className="mt-4 p-4 rounded-xl bg-primary/5 border border-primary/10 relative">
+                            <div className="absolute -top-2 left-4 px-2 bg-white border border-primary/20 rounded-full text-[9px] font-black text-primary uppercase">
+                              HUB Reply
+                            </div>
+                            <p className="text-xs font-medium leading-relaxed">{iq.reply}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-20 bg-muted/10 rounded-2xl border-2 border-dashed">
+                    <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground font-bold">문의 내역이 없습니다.</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">새로운 문의를 남겨보세요!</p>
                   </div>
-                  <CardTitle className="text-sm font-bold truncate">{iq.subject}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-5 pt-0 space-y-4">
-                  <p className="text-xs text-muted-foreground line-clamp-2">{iq.message}</p>
-                  
-                  {iq.reply && (
-                    <div className="mt-4 p-4 rounded-xl bg-primary/5 border border-primary/10 relative">
-                      <div className="absolute -top-2 left-4 px-2 bg-white border border-primary/20 rounded-full text-[9px] font-black text-primary uppercase">
-                        HUB Reply
-                      </div>
-                      <p className="text-xs font-medium leading-relaxed">{iq.reply}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-
-            {(!myInquiries || myInquiries.length === 0) && !isHistoryLoading && (
-              <div className="text-center py-20 bg-muted/10 rounded-2xl border-2 border-dashed">
-                <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground">문의 내역이 없습니다.</p>
-              </div>
+                )}
+              </>
             )}
           </div>
         </div>
