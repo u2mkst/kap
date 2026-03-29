@@ -3,12 +3,12 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users } from "lucide-react"
+import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users, GraduationCap } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, serverTimestamp, setDoc, collection } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -50,6 +50,7 @@ export default function ProfilePage() {
     firstName: "",
     lastName: "",
     nickname: "",
+    schoolType: "",
     schoolName: "",
     grade: "",
     classNum: "",
@@ -62,6 +63,7 @@ export default function ProfilePage() {
         firstName: userData.firstName || "",
         lastName: userData.lastName || "",
         nickname: userData.nickname || "",
+        schoolType: userData.schoolType || "",
         schoolName: userData.schoolName || "",
         grade: userData.grade || "",
         classNum: userData.classNum || "",
@@ -202,6 +204,22 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> 학교급</Label>
+              <Select 
+                value={formData.schoolType} 
+                onValueChange={(val) => setFormData({...formData, schoolType: val})}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="학교 종류 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="초등학교">초등학교</SelectItem>
+                  <SelectItem value="중학교">중학교</SelectItem>
+                  <SelectItem value="고등학교">고등학교</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>학교 이름</Label>
               <Input placeholder="예: 서울고등학교" value={formData.schoolName} onChange={(e) => setFormData({...formData, schoolName: e.target.value})} />

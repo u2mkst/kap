@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BookOpen, School, Loader2, UserCircle, Users } from "lucide-react"
+import { BookOpen, School, Loader2, UserCircle, Users, GraduationCap } from "lucide-react"
 import { useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore"
@@ -21,6 +21,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
+  const [schoolType, setSchoolType] = useState("")
   const [schoolName, setSchoolName] = useState("")
   const [grade, setGrade] = useState("")
   const [classNum, setClassNum] = useState("")
@@ -55,6 +56,15 @@ export default function SignupPage() {
       return
     }
 
+    if (!schoolType) {
+      toast({
+        variant: "destructive",
+        title: "학교급 선택 필수",
+        description: "초등, 중등, 고등 중 하나를 선택해 주세요.",
+      })
+      return
+    }
+
     if (!teacherId) {
       toast({
         variant: "destructive",
@@ -76,6 +86,7 @@ export default function SignupPage() {
         nickname,
         firstName,
         lastName,
+        schoolType,
         schoolName,
         grade,
         classNum,
@@ -163,6 +174,19 @@ export default function SignupPage() {
                 <School className="h-4 w-4" /> 학교 정보
               </h3>
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> 학교급</Label>
+                  <Select onValueChange={setSchoolType} required>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="학교 종류 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="초등학교">초등학교</SelectItem>
+                      <SelectItem value="중학교">중학교</SelectItem>
+                      <SelectItem value="고등학교">고등학교</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label>학교 이름</Label>
                   <Input placeholder="예: 서울중학교" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} required />

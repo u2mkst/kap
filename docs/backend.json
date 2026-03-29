@@ -12,6 +12,7 @@
         "nickname": { "type": "string" },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
+        "schoolType": { "type": "string", "enum": ["초등학교", "중학교", "고등학교"], "description": "Type of school for NEIS API integration." },
         "schoolName": { "type": "string" },
         "grade": { "type": "string" },
         "classNum": { "type": "string" },
@@ -20,7 +21,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "username", "nickname", "points"]
+      "required": ["id", "username", "nickname", "points", "schoolType"]
     },
     "Teacher": {
       "title": "Teacher",

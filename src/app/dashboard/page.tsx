@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -21,7 +22,8 @@ import {
   Settings,
   Medal,
   CheckCircle2,
-  Loader2
+  Loader2,
+  GraduationCap
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
@@ -62,7 +64,8 @@ export default function DashboardPage() {
         if (schoolInfo) {
           const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
           const schoolCode = schoolInfo.SD_SCHUL_CODE
-          const schoolKind = schoolInfo.SCHUL_KND_NM
+          // 사용자 프로필에 저장된 schoolType이 있으면 우선 사용, 없으면 검색 결과 사용
+          const schoolKind = userData.schoolType || schoolInfo.SCHUL_KND_NM
           
           getTodayMeals(officeCode, schoolCode, neisDate).then(menu => {
             setMeals(menu || "급식 정보가 없습니다.")
@@ -155,6 +158,11 @@ export default function DashboardPage() {
               <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px]">
                 {userData?.schoolName || "학교 미설정"} {userData?.grade}학년 {userData?.classNum}반
               </Badge>
+              {userData?.schoolType && (
+                <Badge variant="outline" className="text-[10px] h-5 px-2 bg-white flex items-center gap-1">
+                  <GraduationCap className="h-3 w-3" /> {userData.schoolType}
+                </Badge>
+              )}
               <Badge variant="secondary" className="bg-accent/10 text-accent-foreground border-none text-[10px]">
                 Lv.{(Math.floor((userData?.points || 0) / 1000)) + 1}
               </Badge>
