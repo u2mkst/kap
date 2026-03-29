@@ -172,7 +172,7 @@ export default function AdminPage() {
   }
 
   const handleDeleteInquiry = (id: string) => {
-    if (!confirm("이 문의 내역을 삭제하시겠습니까?")) return
+    if (!confirm("이 문의 내역을 영구 삭제하시겠습니까?")) return
     deleteDoc(doc(db, "inquiries", id)).then(() => toast({ title: "문의 삭제 완료" }))
   }
 
@@ -224,7 +224,7 @@ export default function AdminPage() {
   }
 
   if (isUserLoading || isAdminLoading || !isMounted) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   }
 
   if (!isAdminDoc) return null
@@ -247,7 +247,7 @@ export default function AdminPage() {
         </TabsList>
 
         <TabsContent value="users">
-          <Card className="border-none shadow-sm">
+          <Card className="border-none shadow-sm bg-white">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">학생 명단</CardTitle>
               <Select value={selectedTeacherFilter} onValueChange={setSelectedTeacherFilter}>
@@ -283,7 +283,7 @@ export default function AdminPage() {
 
         <TabsContent value="vote">
           <div className="grid md:grid-cols-2 gap-6">
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm bg-white">
               <CardHeader><CardTitle className="text-sm">후보 추가</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <Input placeholder="이름" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} />
@@ -291,7 +291,7 @@ export default function AdminPage() {
                 <Button variant="destructive" onClick={handleResetVotes} className="w-full">투표수 초기화</Button>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm bg-white">
               <CardHeader><CardTitle className="text-sm">현황</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {teachers?.map((t) => (
@@ -311,42 +311,44 @@ export default function AdminPage() {
         <TabsContent value="inquiry">
           <div className="space-y-4">
             {inquiries?.map((iq) => (
-              <Card key={iq.id} className="border-none shadow-sm">
-                <CardContent className="p-4 space-y-4">
+              <Card key={iq.id} className="border-none shadow-sm bg-white">
+                <CardContent className="p-5 space-y-4">
                   <div className="flex justify-between items-center">
-                    <Badge variant={iq.status === "open" ? "destructive" : "outline"}>{iq.status === "open" ? "미답변" : "답변완료"}</Badge>
+                    <Badge variant={iq.status === "open" ? "destructive" : "outline"} className="text-[10px]">{iq.status === "open" ? "미답변" : "답변완료"}</Badge>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] opacity-60">{iq.userNickname} | {iq.createdAt?.toDate().toLocaleString()}</span>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteInquiry(iq.id)} className="h-6 w-6 text-destructive/50 hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteInquiry(iq.id)} className="h-7 w-7 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </div>
                   <div className="text-xs">
-                    <p className="font-bold mb-1">Q: {iq.subject}</p>
-                    <p className="opacity-80 whitespace-pre-wrap">{iq.message}</p>
+                    <p className="font-bold mb-1 text-primary">Q: {iq.subject}</p>
+                    <p className="opacity-80 whitespace-pre-wrap leading-relaxed">{iq.message}</p>
                   </div>
                   <div className="flex gap-2">
-                    <Textarea className="min-h-[60px] text-xs" placeholder="답변 입력" defaultValue={iq.reply} onChange={(e) => setReplyText({ ...replyText, [iq.id]: e.target.value })} />
-                    <Button size="sm" onClick={() => handleSendReply(iq.id)}>전송</Button>
+                    <Textarea className="min-h-[60px] text-xs bg-muted/20" placeholder="답변 내용을 입력하세요..." defaultValue={iq.reply} onChange={(e) => setReplyText({ ...replyText, [iq.id]: e.target.value })} />
+                    <Button size="sm" onClick={() => handleSendReply(iq.id)} className="font-bold">전송</Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
             {(!inquiries || inquiries.length === 0) && (
-              <p className="text-center py-10 text-xs text-muted-foreground">문의 사항이 없습니다.</p>
+              <p className="text-center py-20 text-xs text-muted-foreground italic bg-muted/20 rounded-2xl border border-dashed">
+                처리할 문의 사항이 없습니다.
+              </p>
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="bulk">
           <div className="grid gap-6">
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm bg-white">
               <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BrainCircuit className="h-4 w-4" /> 문제 일괄 등록</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <Textarea placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답" className="min-h-[100px] text-xs" value={bulkProblemText} onChange={(e) => setBulkProblemText(e.target.value)} />
                 <Button onClick={handleBulkProblems} className="w-full">등록</Button>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm bg-white">
               <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Star className="h-4 w-4" /> 한마디 일괄 등록</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <Textarea placeholder="날짜|내용" className="min-h-[100px] text-xs" value={bulkFortuneText} onChange={(e) => setBulkFortuneText(e.target.value)} />
@@ -357,7 +359,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="notice">
-          <Card className="border-none shadow-sm">
+          <Card className="border-none shadow-sm bg-white">
             <CardHeader><CardTitle className="text-sm">실시간 공지</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <Input placeholder="공지 내용" value={noticeText} onChange={(e) => setNoticeText(e.target.value)} />
@@ -367,7 +369,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="config">
-          <Card className="border-none shadow-sm">
+          <Card className="border-none shadow-sm bg-white">
             <CardHeader><CardTitle className="text-sm">시스템 보안</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <Label className="text-xs">관리자 비밀 코드</Label>

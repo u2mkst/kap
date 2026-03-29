@@ -44,7 +44,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 문의 시스템: 인증된 사용자는 자신의 문의를 관리하고 목록을 볼 수 있음
+    // 문의 시스템: 인증된 사용자는 목록 조회가 가능하며, 삭제는 본인 또는 관리자만 가능
     match /inquiries/{inquiryId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();

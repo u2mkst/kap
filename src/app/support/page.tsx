@@ -69,13 +69,19 @@ export default function SupportPage() {
     }
   }
 
-  const handleDeleteInquiry = (id: string) => {
+  const handleDeleteInquiry = async (id: string) => {
     if (!confirm("이 문의 내역을 삭제하시겠습니까?")) return
-    deleteDoc(doc(db, "inquiries", id)).then(() => toast({ title: "내역 삭제 완료" }))
+    try {
+      await deleteDoc(doc(db, "inquiries", id))
+      toast({ title: "내역 삭제 완료" })
+    } catch (error) {
+      console.error(error)
+      toast({ variant: "destructive", title: "삭제 실패", description: "권한이 없거나 오류가 발생했습니다." })
+    }
   }
 
   if (isUserLoading || !user) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>
   }
 
   return (
@@ -85,7 +91,7 @@ export default function SupportPage() {
       </h1>
 
       <div className="grid gap-6">
-        <Card className="border-none shadow-sm">
+        <Card className="border-none shadow-sm bg-white">
           <CardHeader>
             <CardTitle className="text-sm">새 문의 작성</CardTitle>
           </CardHeader>
@@ -98,7 +104,7 @@ export default function SupportPage() {
               <Label className="text-xs">내용</Label>
               <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="문의 내용을 입력하세요" className="min-h-[120px]" />
             </div>
-            <Button onClick={handleSendInquiry} disabled={isSending || !subject || !message} className="w-full">
+            <Button onClick={handleSendInquiry} disabled={isSending || !subject || !message} className="w-full font-bold">
               {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="mr-2 h-4 w-4" /> 보내기</>}
             </Button>
           </CardContent>
@@ -107,21 +113,21 @@ export default function SupportPage() {
         <div className="space-y-4">
           <h2 className="font-bold text-sm">나의 문의 내역</h2>
           {isHistoryLoading ? (
-            <div className="flex justify-center"><Loader2 className="animate-spin opacity-20" /></div>
+            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary opacity-50" /></div>
           ) : myInquiries && myInquiries.length > 0 ? (
             myInquiries.map((iq) => (
-              <Card key={iq.id} className="border-none shadow-sm relative group">
+              <Card key={iq.id} className="border-none shadow-sm relative group bg-white">
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={() => handleDeleteInquiry(iq.id)} 
-                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive/50 hover:text-destructive"
+                  className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-center pr-8">
-                    <Badge variant={iq.status === "open" ? "outline" : "default"} className="text-[10px]">
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex justify-between items-center pr-10">
+                    <Badge variant={iq.status === "open" ? "destructive" : "outline"} className="text-[10px]">
                       {iq.status === "open" ? "답변대기" : "답변완료"}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground">{iq.createdAt?.toDate().toLocaleDateString()}</span>
@@ -129,16 +135,18 @@ export default function SupportPage() {
                   <p className="text-sm font-bold">{iq.subject}</p>
                   <p className="text-xs text-muted-foreground whitespace-pre-wrap">{iq.message}</p>
                   {iq.reply && (
-                    <div className="mt-2 p-3 bg-primary/5 rounded-lg border-l-2 border-primary">
-                      <p className="text-[10px] font-bold text-primary mb-1">답변</p>
-                      <p className="text-xs">{iq.reply}</p>
+                    <div className="mt-2 p-3 bg-primary/5 rounded-lg border-l-4 border-primary">
+                      <p className="text-[10px] font-bold text-primary mb-1 uppercase tracking-tight">선생님 답변</p>
+                      <p className="text-xs font-medium leading-relaxed">{iq.reply}</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
             ))
           ) : (
-            <p className="text-center py-10 text-xs text-muted-foreground">등록된 문의가 없습니다.</p>
+            <p className="text-center py-16 text-xs text-muted-foreground italic bg-muted/20 rounded-2xl border border-dashed">
+              등록된 문의가 없습니다.
+            </p>
           )}
         </div>
       </div>
