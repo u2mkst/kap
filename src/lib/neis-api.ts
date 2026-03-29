@@ -1,9 +1,10 @@
+
 /**
  * @fileOverview 나이스(NEIS) 오픈 API 연동 서비스
  */
 
 const BASE_URL = 'https://open.neis.go.kr/hub';
-const API_KEY = '19f78fd07bfb4243a6333e7bf4641bfc';
+const API_KEY = process.env.NEXT_PUBLIC_NEIS_API_KEY;
 
 async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
