@@ -56,25 +56,25 @@ export default function DashboardPage() {
   const { data: topUsers, isLoading: isLeaderboardLoading } = useCollection(leaderboardQuery)
 
   const fortuneRef = useMemoFirebase(() => {
-    if (!db || !todayStr) return null
+    if (!db || !todayStr || !user) return null
     return doc(db, "daily_fortunes", todayStr)
-  }, [db, todayStr])
+  }, [db, todayStr, user])
 
   const problemRef = useMemoFirebase(() => {
-    if (!db || !todayStr || !userData?.grade) return null
+    if (!db || !todayStr || !userData?.grade || !user) return null
     return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
-  }, [db, todayStr, userData?.grade])
+  }, [db, todayStr, userData?.grade, user])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
 
   const handleSolveProblem = async () => {
-    if (!problemData || !userAnswer.trim() || isSolved) return
+    if (!problemData || !userAnswer.trim() || isSolved || !userDocRef) return
     
     if (userAnswer.trim() === problemData.answer) {
       setIsSolving(true)
       try {
-        await updateDoc(userDocRef!, {
+        await updateDoc(userDocRef, {
           points: increment(problemData.rewardPoints || 100),
           updatedAt: serverTimestamp()
         })

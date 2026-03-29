@@ -30,7 +30,10 @@ export default function ProfilePage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
+  const configRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "metadata", "config")
+  }, [user, db])
   const { data: configData } = useDoc(configRef)
 
   const adminRef = useMemoFirebase(() => {
@@ -112,7 +115,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <div className="container mx-auto px-4 py-8 max-2xl">
       <Button variant="ghost" onClick={() => router.back()} className="mb-6">
         <ChevronLeft className="mr-2 h-4 w-4" /> 뒤로 가기
       </Button>

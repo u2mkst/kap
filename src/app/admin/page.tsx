@@ -46,7 +46,10 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
-  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
+  const configRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "metadata", "config")
+  }, [user, db])
   const { data: configData } = useDoc(configRef)
 
   const teachersQuery = useMemoFirebase(() => {
@@ -128,6 +131,7 @@ export default function AdminPage() {
   }
 
   const handleUpdateConfig = () => {
+    if (!configRef) return
     setIsSaving(true)
     const configDataUpdate = { notice: noticeText, adminSecret: adminSecretCode }
     setDoc(configRef, configDataUpdate, { merge: true })
