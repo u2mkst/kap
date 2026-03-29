@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -21,14 +20,12 @@ import {
   Megaphone, 
   BrainCircuit, 
   UserCog, 
-  ShieldCheck, 
   RefreshCcw, 
   Key, 
   ClipboardPaste,
   Star,
   Coins,
-  MessageSquare,
-  Send
+  MessageSquare
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs, updateDoc } from "firebase/firestore"
@@ -57,27 +54,27 @@ export default function AdminPage() {
   const { data: configData } = useDoc(configRef)
 
   const teachersQuery = useMemoFirebase(() => {
-    if (isAdminLoading || !isAdminDoc?.id) return null
+    if (!user) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
-  }, [db, isAdminLoading, isAdminDoc?.id])
-  const { data: teachers, isLoading: isTeachersLoading } = useCollection(teachersQuery)
+  }, [db, user])
+  const { data: teachers } = useCollection(teachersQuery)
 
   const usersQuery = useMemoFirebase(() => {
-    if (isAdminLoading || !isAdminDoc?.id) return null
+    if (!user) return null
     return query(collection(db, "users"), orderBy("username", "asc"))
-  }, [db, isAdminLoading, isAdminDoc?.id])
-  const { data: allUsers, isLoading: isUsersLoading } = useCollection(usersQuery)
+  }, [db, user])
+  const { data: allUsers } = useCollection(usersQuery)
 
   const inquiriesQuery = useMemoFirebase(() => {
-    if (isAdminLoading || !isAdminDoc?.id) return null
+    if (!user) return null
     return query(collection(db, "inquiries"), orderBy("createdAt", "desc"))
-  }, [db, isAdminLoading, isAdminDoc?.id])
-  const { data: inquiries, isLoading: isInquiriesLoading } = useCollection(inquiriesQuery)
+  }, [db, user])
+  const { data: inquiries } = useCollection(inquiriesQuery)
 
   const adminsQuery = useMemoFirebase(() => {
-    if (isAdminLoading || !isAdminDoc?.id) return null
+    if (!user) return null
     return collection(db, "roles_admin")
-  }, [db, isAdminLoading, isAdminDoc?.id])
+  }, [db, user])
   const { data: adminDocs } = useCollection(adminsQuery)
 
   const adminIds = adminDocs?.map(d => d.id) || []
@@ -108,10 +105,9 @@ export default function AdminPage() {
   const handleAddTeacher = () => {
     if (!teacherName.trim()) return
     setIsSaving(true)
-    const teacherData = { name: teacherName, vote: 0, createdAt: serverTimestamp() }
-    addDoc(collection(db, "teachers"), teacherData)
+    addDoc(collection(db, "teachers"), { name: teacherName, vote: 0, createdAt: serverTimestamp() })
       .then(() => {
-        toast({ title: "선생님 등록 완료" })
+        toast({ title: "교사 등록 완료" })
         setTeacherName("")
       })
       .finally(() => setIsSaving(false))
@@ -123,16 +119,14 @@ export default function AdminPage() {
   }
 
   const handleResetVotes = async () => {
-    if (!confirm("모든 투표수를 0으로 초기화하시겠습니까?")) return
+    if (!confirm("모든 투표수를 초기화하시겠습니까?")) return
     setIsSaving(true)
     try {
       const batch = writeBatch(db)
       const snapshot = await getDocs(collection(db, "teachers"))
-      snapshot.forEach((doc) => {
-        batch.update(doc.ref, { vote: 0 })
-      })
+      snapshot.forEach((doc) => batch.update(doc.ref, { vote: 0 }))
       await batch.commit()
-      toast({ title: "투표수 초기화 완료" })
+      toast({ title: "초기화 완료" })
     } catch (e) {
       console.error(e)
     } finally {
@@ -143,9 +137,8 @@ export default function AdminPage() {
   const handleUpdateConfig = () => {
     if (!configRef) return
     setIsSaving(true)
-    const configDataUpdate = { notice: noticeText, adminSecret: adminSecretCode }
-    setDoc(configRef, configDataUpdate, { merge: true })
-      .then(() => toast({ title: "설정 업데이트 완료" }))
+    setDoc(configRef, { notice: noticeText, adminSecret: adminSecretCode }, { merge: true })
+      .then(() => toast({ title: "저장 완료" }))
       .finally(() => setIsSaving(false))
   }
 
@@ -155,8 +148,7 @@ export default function AdminPage() {
     if (isCurrentlyAdmin) {
       deleteDoc(targetAdminRef).then(() => toast({ title: "권한 해제" }))
     } else {
-      setDoc(targetAdminRef, { addedAt: serverTimestamp(), addedBy: user?.uid })
-        .then(() => toast({ title: "권한 부여" }))
+      setDoc(targetAdminRef, { addedAt: serverTimestamp() }).then(() => toast({ title: "권한 부여" }))
     }
   }
 
@@ -183,13 +175,11 @@ export default function AdminPage() {
     setIsSaving(true)
     try {
       const batch = writeBatch(db)
-      const lines = bulkProblemText.trim().split("\n")
-      lines.forEach(line => {
+      bulkProblemText.trim().split("\n").forEach(line => {
         const [date, grade, title, topic, diff, text, answer] = line.split("|")
         if (date && grade && title && text && answer) {
           const docId = `${date}_${grade}`
-          const ref = doc(db, "daily_problems", docId)
-          batch.set(ref, {
+          batch.set(doc(db, "daily_problems", docId), {
             id: docId, date, grade, title, topic: topic || "일반",
             difficulty: diff || "보통", problemText: text, answer: answer.trim(),
             rewardPoints: 100, createdAt: serverTimestamp()
@@ -197,7 +187,7 @@ export default function AdminPage() {
         }
       })
       await batch.commit()
-      toast({ title: "문제 일괄 등록 완료" })
+      toast({ title: "문제 등록 완료" })
       setBulkProblemText("")
     } catch (e) {
       console.error(e)
@@ -211,12 +201,10 @@ export default function AdminPage() {
     setIsSaving(true)
     try {
       const batch = writeBatch(db)
-      const lines = bulkFortuneText.trim().split("\n")
-      lines.forEach(line => {
+      bulkFortuneText.trim().split("\n").forEach(line => {
         const [date, text] = line.split("|")
         if (date && text) {
-          const ref = doc(db, "daily_fortunes", date)
-          batch.set(ref, { id: date, date, fortuneText: text, createdAt: serverTimestamp() })
+          batch.set(doc(db, "daily_fortunes", date), { id: date, date, fortuneText: text, createdAt: serverTimestamp() })
         }
       })
       await batch.commit()
@@ -229,16 +217,8 @@ export default function AdminPage() {
     }
   }
 
-  const filteredUsers = allUsers?.filter(u => 
-    selectedTeacherFilter === "all" || u.teacherId === selectedTeacherFilter
-  )
-
   if (isUserLoading || isAdminLoading || !isMounted) {
-    return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 
   if (!isAdminDoc) return null
@@ -246,288 +226,141 @@ export default function AdminPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 rounded-2xl bg-destructive/10 text-destructive">
-          <ShieldAlert className="h-8 w-8" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold font-headline text-destructive">관리자 시스템</h1>
-          <p className="text-muted-foreground text-sm">학원 운영 및 콘텐츠 통합 관리</p>
-        </div>
+        <ShieldAlert className="h-8 w-8 text-destructive" />
+        <h1 className="text-2xl font-bold">학원 관리 시스템</h1>
       </div>
 
-      <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 mb-8 bg-muted/50 p-1 h-12">
-          <TabsTrigger value="users"><UserCog className="mr-2 h-4 w-4" /> 회원/보안</TabsTrigger>
-          <TabsTrigger value="vote"><Users className="mr-2 h-4 w-4" /> 투표 관리</TabsTrigger>
-          <TabsTrigger value="inquiry"><MessageSquare className="mr-2 h-4 w-4" /> 문의 내역</TabsTrigger>
-          <TabsTrigger value="bulk"><ClipboardPaste className="mr-2 h-4 w-4" /> 일괄 등록</TabsTrigger>
-          <TabsTrigger value="notice"><Megaphone className="mr-2 h-4 w-4" /> 공지 관리</TabsTrigger>
-          <TabsTrigger value="config"><Key className="mr-2 h-4 w-4" /> 시스템 설정</TabsTrigger>
+      <Tabs defaultValue="users">
+        <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsTrigger value="users">학생</TabsTrigger>
+          <TabsTrigger value="vote">투표</TabsTrigger>
+          <TabsTrigger value="inquiry">문의</TabsTrigger>
+          <TabsTrigger value="bulk">등록</TabsTrigger>
+          <TabsTrigger value="notice">공지</TabsTrigger>
+          <TabsTrigger value="config">설정</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
-          <Card className="border-none shadow-sm bg-white">
+          <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>회원 명단 및 담당 교사별 관리</CardTitle>
-                <CardDescription>선생님별로 학생들을 필터링하여 관리할 수 있습니다.</CardDescription>
-              </div>
+              <CardTitle className="text-sm">학생 명단</CardTitle>
               <Select value={selectedTeacherFilter} onValueChange={setSelectedTeacherFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="담당 교사 필터" />
-                </SelectTrigger>
+                <SelectTrigger className="w-40 h-8 text-xs"><SelectValue placeholder="교사 필터" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">전체 학생</SelectItem>
-                  {teachers?.map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.name} 선생님 반</SelectItem>
-                  ))}
+                  <SelectItem value="all">전체</SelectItem>
+                  {teachers?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </CardHeader>
-            <CardContent>
-              {isUsersLoading ? (
-                <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredUsers?.map((u) => {
-                    const isUserAdmin = adminIds.includes(u.id);
-                    const teacher = teachers?.find(t => t.id === u.teacherId);
-                    return (
-                      <div key={u.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-muted/20 rounded-xl border border-transparent hover:border-muted-foreground/10 transition-colors gap-4">
-                        <div className="flex items-center gap-3 min-w-[200px]">
-                          <div className={isUserAdmin ? "p-2 bg-primary/10 rounded-full" : "p-2 bg-muted rounded-full"}>
-                            <ShieldCheck className={isUserAdmin ? "h-5 w-5 text-primary" : "h-5 w-5 text-muted-foreground"} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-sm">{u.nickname} ({u.lastName}{u.firstName})</p>
-                            <div className="flex gap-2 items-center">
-                              <Badge variant="outline" className="text-[9px] py-0">{teacher?.name || "선생님 미지정"}</Badge>
-                              <p className="text-[10px] text-muted-foreground">ID: {u.username} | {u.schoolName} {u.grade}학년</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <Coins className="h-4 w-4 text-primary" />
-                            <Input 
-                              type="number" 
-                              className="w-24 h-8 text-xs font-bold" 
-                              defaultValue={u.points} 
-                              onBlur={(e) => handleUpdatePoints(u.id, parseInt(e.target.value))}
-                            />
-                            <span className="text-xs font-bold">P</span>
-                          </div>
-                          <div className="flex items-center gap-2 border-l pl-4">
-                            <span className="text-[10px] text-muted-foreground font-bold">Admin</span>
-                            <Switch 
-                              checked={isUserAdmin} 
-                              onCheckedChange={() => handleToggleAdmin(u.id, isUserAdmin)}
-                              disabled={u.id === user?.uid}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {filteredUsers?.length === 0 && (
-                    <div className="text-center py-10 text-muted-foreground text-sm">해당 조건의 학생이 없습니다.</div>
-                  )}
+            <CardContent className="space-y-2">
+              {allUsers?.filter(u => selectedTeacherFilter === "all" || u.teacherId === selectedTeacherFilter).map((u) => (
+                <div key={u.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg text-xs">
+                  <div>
+                    <span className="font-bold">{u.nickname}</span>
+                    <span className="ml-2 opacity-60">{u.schoolName} {u.grade}학년</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Coins className="h-3 w-3" />
+                      <Input type="number" className="w-20 h-7 text-[10px]" defaultValue={u.points} onBlur={(e) => handleUpdatePoints(u.id, parseInt(e.target.value))} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-60">관리자</span>
+                      <Switch checked={adminIds.includes(u.id)} onCheckedChange={() => handleToggleAdmin(u.id, adminIds.includes(u.id))} disabled={u.id === user?.uid} />
+                    </div>
+                  </div>
                 </div>
-              )}
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="vote">
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="border-none shadow-sm bg-white">
-              <CardHeader>
-                <CardTitle>후보 추가</CardTitle>
-              </CardHeader>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-none shadow-sm">
+              <CardHeader><CardTitle className="text-sm">후보 추가</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>선생님 성함</Label>
-                  <Input placeholder="홍길동" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} />
-                </div>
-                <Button onClick={handleAddTeacher} disabled={isSaving} className="w-full">
-                  <Plus className="mr-2 h-4 w-4" /> 후보 추가
-                </Button>
-                <div className="pt-4 border-t mt-4">
-                  <Button variant="destructive" onClick={handleResetVotes} disabled={isSaving} className="w-full">
-                    <RefreshCcw className="mr-2 h-4 w-4" /> 모든 투표수 초기화 (0P)
-                  </Button>
-                </div>
+                <Input placeholder="이름" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} />
+                <Button onClick={handleAddTeacher} className="w-full">추가</Button>
+                <Button variant="destructive" onClick={handleResetVotes} className="w-full">투표수 초기화</Button>
               </CardContent>
             </Card>
-
-            <Card className="border-none shadow-sm bg-white">
-              <CardHeader>
-                <CardTitle>투표 현황</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {isTeachersLoading ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
-                ) : (
-                  teachers?.map((t, i) => (
-                    <div key={t.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="h-6 w-6 rounded-full p-0 flex items-center justify-center font-black">{i + 1}</Badge>
-                        <span className="font-bold">{t.name}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-black text-primary">{t.vote} P</span>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTeacher(t.id)} className="text-destructive h-8 w-8">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+            <Card className="border-none shadow-sm">
+              <CardHeader><CardTitle className="text-sm">현황</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {teachers?.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg text-xs">
+                    <span className="font-bold">{t.name}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-primary font-bold">{t.vote}P</span>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTeacher(t.id)} className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button>
                     </div>
-                  ))
-                )}
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="inquiry">
-          <Card className="border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle>학생 1:1 문의 확인 및 답변</CardTitle>
-              <CardDescription>학생들이 남긴 문의에 실시간으로 답변할 수 있습니다.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isInquiriesLoading ? (
-                <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
-              ) : (
-                <div className="space-y-6">
-                  {inquiries?.map((iq) => (
-                    <div key={iq.id} className="p-5 border rounded-2xl bg-muted/5 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge className={iq.status === "open" ? "bg-orange-500" : "bg-green-600"}>
-                            {iq.status === "open" ? "답변 대기" : "답변 완료"}
-                          </Badge>
-                          <span className="font-bold">{iq.userNickname} 학생의 문의</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{new Date(iq.createdAt?.toDate()).toLocaleString()}</span>
-                      </div>
-                      <div className="bg-white p-4 rounded-xl border border-dashed">
-                        <h4 className="font-bold text-sm mb-2 text-primary">Q: {iq.subject}</h4>
-                        <p className="text-xs leading-relaxed whitespace-pre-wrap">{iq.message}</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold flex items-center gap-2">
-                          <Send className="h-3 w-3" /> 답변 남기기
-                        </Label>
-                        <div className="flex gap-2">
-                          <Textarea 
-                            className="min-h-[60px] text-xs" 
-                            placeholder="학생에게 전달할 답변을 입력하세요..." 
-                            defaultValue={iq.reply}
-                            onChange={(e) => setReplyText({ ...replyText, [iq.id]: e.target.value })}
-                          />
-                          <Button 
-                            className="h-auto px-4" 
-                            disabled={isSaving}
-                            onClick={() => handleSendReply(iq.id)}
-                          >
-                            전송
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {(!inquiries || inquiries.length === 0) && (
-                    <div className="text-center py-10 text-muted-foreground text-sm">등록된 문의가 없습니다.</div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            {inquiries?.map((iq) => (
+              <Card key={iq.id} className="border-none shadow-sm">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Badge variant={iq.status === "open" ? "destructive" : "outline"}>{iq.status === "open" ? "미답변" : "답변완료"}</Badge>
+                    <span className="text-[10px] opacity-60">{iq.userNickname} | {iq.createdAt?.toDate().toLocaleString()}</span>
+                  </div>
+                  <div className="text-xs">
+                    <p className="font-bold mb-1">Q: {iq.subject}</p>
+                    <p className="opacity-80 whitespace-pre-wrap">{iq.message}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Textarea className="min-h-[60px] text-xs" placeholder="답변 입력" defaultValue={iq.reply} onChange={(e) => setReplyText({ ...replyText, [iq.id]: e.target.value })} />
+                    <Button size="sm" onClick={() => handleSendReply(iq.id)}>전송</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
 
         <TabsContent value="bulk">
-          <div className="grid gap-8">
-            <Card className="border-none shadow-sm bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-primary">
-                  <BrainCircuit className="h-5 w-5" /> 오늘의 문제 일괄 등록
-                </CardTitle>
-                <CardDescription>형식: <b>날짜|학년|제목|토픽|난이도|문제내용|정답</b> (한 줄에 하나씩)</CardDescription>
-              </CardHeader>
+          <div className="grid gap-6">
+            <Card className="border-none shadow-sm">
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BrainCircuit className="h-4 w-4" /> 문제 일괄 등록</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <Textarea 
-                  placeholder="2024-05-20|1|수학 퀴즈|연산|쉬움|1+1은?|2"
-                  className="min-h-[150px] font-mono text-xs"
-                  value={bulkProblemText}
-                  onChange={(e) => setBulkProblemText(e.target.value)}
-                />
-                <Button onClick={handleBulkProblems} disabled={isSaving} className="w-full">
-                  등록하기
-                </Button>
+                <Textarea placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답" className="min-h-[100px] text-xs" value={bulkProblemText} onChange={(e) => setBulkProblemText(e.target.value)} />
+                <Button onClick={handleBulkProblems} className="w-full">등록</Button>
               </CardContent>
             </Card>
-
-            <Card className="border-none shadow-sm bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-orange-600">
-                  <Star className="h-5 w-5" /> 오늘의 한마디(운세) 일괄 등록
-                </CardTitle>
-                <CardDescription>형식: <b>날짜|내용</b> (한 줄에 하나씩)</CardDescription>
-              </CardHeader>
+            <Card className="border-none shadow-sm">
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Star className="h-4 w-4" /> 한마디 일괄 등록</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <Textarea 
-                  placeholder="2024-05-20|오늘은 당신의 성장을 응원하는 특별한 날입니다!"
-                  className="min-h-[120px] font-mono text-xs"
-                  value={bulkFortuneText}
-                  onChange={(e) => setBulkFortuneText(e.target.value)}
-                />
-                <Button onClick={handleBulkFortunes} disabled={isSaving} className="w-full bg-orange-600 hover:bg-orange-700">
-                  등록하기
-                </Button>
+                <Textarea placeholder="날짜|내용" className="min-h-[100px] text-xs" value={bulkFortuneText} onChange={(e) => setBulkFortuneText(e.target.value)} />
+                <Button onClick={handleBulkFortunes} className="w-full">등록</Button>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="notice">
-          <Card className="border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle>라운지 실시간 공지</CardTitle>
-              <CardDescription>투표 화면 상단에 노출됩니다.</CardDescription>
-            </CardHeader>
+          <Card className="border-none shadow-sm">
+            <CardHeader><CardTitle className="text-sm">실시간 공지</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <Input 
-                placeholder="예: 이번 주 금요일 투표 마감!" 
-                value={noticeText} 
-                onChange={(e) => setNoticeText(e.target.value)}
-              />
-              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full">업데이트</Button>
+              <Input placeholder="공지 내용" value={noticeText} onChange={(e) => setNoticeText(e.target.value)} />
+              <Button onClick={handleUpdateConfig} className="w-full">저장</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="config">
-          <Card className="border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle>시스템 보안 설정</CardTitle>
-              <CardDescription>관리자 권한 획득을 위한 코드를 설정합니다.</CardDescription>
-            </CardHeader>
+          <Card className="border-none shadow-sm">
+            <CardHeader><CardTitle className="text-sm">시스템 보안</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>관리자 비밀 코드 (Admin Secret)</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    type="password"
-                    placeholder="비밀 코드를 입력하세요" 
-                    value={adminSecretCode} 
-                    onChange={(e) => setAdminSecretCode(e.target.value)}
-                  />
-                </div>
-                <p className="text-[10px] text-muted-foreground">이 코드를 마이페이지에서 입력하면 관리자 권한을 즉시 획득할 수 있습니다.</p>
-              </div>
-              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full bg-primary h-12">
-                설정 저장
-              </Button>
+              <Label className="text-xs">관리자 비밀 코드</Label>
+              <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} />
+              <Button onClick={handleUpdateConfig} className="w-full">저장</Button>
             </CardContent>
           </Card>
         </TabsContent>
