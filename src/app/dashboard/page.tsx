@@ -50,7 +50,6 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // 사용자가 인증된 후에만 랭킹 쿼리를 생성하여 auth: null 에러 방지
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
     return query(collection(db, "users"), orderBy("points", "desc"), limit(10))
