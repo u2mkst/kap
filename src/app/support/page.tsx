@@ -18,8 +18,8 @@ import {
   AlertCircle,
   HelpCircle
 } from "lucide-react"
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, addDoc, serverTimestamp, query, where, orderBy } from "firebase/firestore"
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
+import { collection, addDoc, serverTimestamp, query, where, orderBy, doc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function SupportPage() {
