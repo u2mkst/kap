@@ -6,9 +6,16 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { 
   Trophy, 
   Utensils, 
@@ -23,7 +30,8 @@ import {
   Medal,
   CheckCircle2,
   Loader2,
-  GraduationCap
+  GraduationCap,
+  Maximize2
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
@@ -64,7 +72,6 @@ export default function DashboardPage() {
         if (schoolInfo) {
           const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
           const schoolCode = schoolInfo.SD_SCHUL_CODE
-          // 사용자 프로필에 저장된 schoolType이 있으면 우선 사용, 없으면 검색 결과 사용
           const schoolKind = userData.schoolType || schoolInfo.SCHUL_KND_NM
           
           getTodayMeals(officeCode, schoolCode, neisDate).then(menu => {
@@ -197,11 +204,52 @@ export default function DashboardPage() {
                 </CardTitle>
                 <CardDescription className="text-xs">오늘의 일정을 실시간으로 확인하세요.</CardDescription>
               </div>
-              <Link href="/profile">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary transition-colors">
-                  <Settings className="h-4 w-4 mr-1" /> 정보 수정
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary">
+                      <Maximize2 className="h-3 w-3 mr-1" /> 자세히 보기
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2"><School className="h-5 w-5 text-primary" /> {userData?.schoolName} 소식 상세</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                      <div className="space-y-3">
+                        <h3 className="font-bold text-sm flex items-center gap-2 text-orange-600"><Utensils className="h-4 w-4" /> 오늘 급식 메뉴</h3>
+                        <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                          <ul className="grid grid-cols-2 gap-2">
+                            {meals.split(',').map((item, idx) => (
+                              <li key={idx} className="text-xs text-orange-900 flex items-center gap-1.5">
+                                <span className="h-1 w-1 rounded-full bg-orange-400" /> {item.trim()}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="font-bold text-sm flex items-center gap-2 text-blue-600"><Clock className="h-4 w-4" /> 오늘의 시간표</h3>
+                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                          <div className="space-y-2">
+                            {timetable.split(',').map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-blue-100/50 last:border-0">
+                                <span className="font-bold text-blue-800">{item.split(':')[0]}</span>
+                                <span className="text-blue-900">{item.split(':')[1]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Link href="/profile">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary transition-colors h-8">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
               {!userData?.schoolName && (
@@ -216,7 +264,7 @@ export default function DashboardPage() {
                   <h3 className="font-bold text-orange-700 flex items-center gap-2 mb-3 text-sm">
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
-                  <div className="text-xs text-orange-900 leading-relaxed flex-grow">
+                  <div className="text-xs text-orange-900 leading-relaxed flex-grow line-clamp-3">
                     {meals || "급식 정보를 불러올 수 없습니다."}
                   </div>
                 </div>
@@ -224,7 +272,7 @@ export default function DashboardPage() {
                   <h3 className="font-bold text-blue-700 flex items-center gap-2 mb-3 text-sm">
                     <Clock className="h-4 w-4" /> 오늘의 시간표
                   </h3>
-                  <div className="text-xs text-blue-900 leading-relaxed flex-grow">
+                  <div className="text-xs text-blue-900 leading-relaxed flex-grow line-clamp-3">
                     {timetable || "시간표 정보를 불러올 수 없습니다."}
                   </div>
                 </div>
