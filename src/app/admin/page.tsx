@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -48,33 +49,33 @@ export default function AdminPage() {
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
 
   const configRef = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || !isAdminDoc) return null
     return doc(db, "metadata", "config")
-  }, [user, db])
+  }, [user, db, isAdminDoc])
   const { data: configData } = useDoc(configRef)
 
   const teachersQuery = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || !isAdminDoc) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
-  }, [db, user])
+  }, [db, user, isAdminDoc])
   const { data: teachers } = useCollection(teachersQuery)
 
   const usersQuery = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || !isAdminDoc) return null
     return query(collection(db, "users"), orderBy("username", "asc"))
-  }, [db, user])
+  }, [db, user, isAdminDoc])
   const { data: allUsers } = useCollection(usersQuery)
 
   const inquiriesQuery = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || !isAdminDoc) return null
     return query(collection(db, "inquiries"), orderBy("createdAt", "desc"))
-  }, [db, user])
+  }, [db, user, isAdminDoc])
   const { data: inquiries } = useCollection(inquiriesQuery)
 
   const adminsQuery = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || !isAdminDoc) return null
     return collection(db, "roles_admin")
-  }, [db, user])
+  }, [db, user, isAdminDoc])
   const { data: adminDocs } = useCollection(adminsQuery)
 
   const adminIds = adminDocs?.map(d => d.id) || []
