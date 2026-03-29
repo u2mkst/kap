@@ -35,6 +35,22 @@
       },
       "required": ["score", "date"]
     },
+    "Plant": {
+      "title": "Plant",
+      "type": "object",
+      "description": "Virtual plant grown by a student using points.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "plantName": { "type": "string" },
+        "plantType": { "type": "string" },
+        "growthStage": { "type": "string", "enum": ["Seed", "Sprout", "Sapling", "Mature"] },
+        "pointsInvested": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "plantName", "growthStage", "pointsInvested"]
+    },
     "Teacher": {
       "title": "Teacher",
       "type": "object",
@@ -98,6 +114,10 @@
     "/users/{userId}/personal_fortunes/{date}": {
       "schema": { "$ref": "#/backend/entities/UserFortune" },
       "description": "User's individual daily luck records."
+    },
+    "/users/{userId}/plants/{plantId}": {
+      "schema": { "$ref": "#/backend/entities/Plant" },
+      "description": "User's virtual plants."
     },
     "/teachers/{teacherId}": {
       "schema": { "$ref": "#/backend/entities/Teacher" },

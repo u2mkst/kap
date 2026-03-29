@@ -15,11 +15,14 @@ import {
   Plus, 
   Trash2,
   TrendingUp,
-  Leaf
+  Leaf,
+  Loader2
 } from "lucide-react"
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
 import { collection, doc, addDoc, updateDoc, increment, serverTimestamp, deleteDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 export default function PlantsPage() {
   const { user, isUserLoading } = useUser()
@@ -45,8 +48,8 @@ export default function PlantsPage() {
   }, [user, db])
   const { data: userData } = useDoc(userDocRef)
 
-  const handleAddPlant = async () => {
-    if (!user || !plantsRef || !userData) return
+  const handleAddPlant = () => {
+    if (!user || !plantsRef || !userData || !userDocRef) return
     
     const cost = 500
     if (userData.points < cost) {
@@ -58,32 +61,46 @@ export default function PlantsPage() {
       return
     }
 
-    try {
-      await updateDoc(userDocRef!, {
-        points: increment(-cost)
-      })
+    // 1. 포인트 차감 (비동기)
+    updateDoc(userDocRef, {
+      points: increment(-cost)
+    }).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { points: userData.points - cost }
+      }))
+    })
 
-      await addDoc(plantsRef, {
-        userId: user.uid,
-        plantName: "새로운 친구",
-        plantType: "해바라기",
-        growthStage: "Seed",
-        pointsInvested: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-
-      toast({
-        title: "식물 심기 성공!",
-        description: "새로운 식물이 정원에 추가되었습니다.",
-      })
-    } catch (error) {
-      console.error(error)
+    // 2. 식물 추가 (비동기)
+    const newPlant = {
+      userId: user.uid,
+      plantName: "새로운 친구",
+      plantType: "해바라기",
+      growthStage: "Seed",
+      pointsInvested: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     }
+
+    addDoc(plantsRef, newPlant)
+      .then(() => {
+        toast({
+          title: "식물 심기 성공!",
+          description: "새로운 식물이 정원에 추가되었습니다.",
+        })
+      })
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: plantsRef.path,
+          operation: 'create',
+          requestResourceData: newPlant
+        }))
+      })
   }
 
-  const handleGrow = async (plantId: string, currentPoints: number) => {
-    if (!user || !userData) return
+  const handleGrow = (plantId: string, currentPoints: number) => {
+    if (!user || !userData || !userDocRef) return
     
     const growCost = 100
     if (userData.points < growCost) {
@@ -95,46 +112,55 @@ export default function PlantsPage() {
       return
     }
 
-    try {
-      await updateDoc(userDocRef!, {
-        points: increment(-growCost)
-      })
+    // 1. 포인트 차감
+    updateDoc(userDocRef, {
+      points: increment(-growCost)
+    }).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update'
+      }))
+    })
 
-      const plantRef = doc(db, "users", user.uid, "plants", plantId)
-      const newPointsInvested = currentPoints + growCost
-      
-      let nextStage = "Seed"
-      if (newPointsInvested >= 1000) nextStage = "Mature"
-      else if (newPointsInvested >= 500) nextStage = "Sapling"
-      else if (newPointsInvested >= 200) nextStage = "Sprout"
+    // 2. 식물 성장
+    const plantRef = doc(db, "users", user.uid, "plants", plantId)
+    const newPointsInvested = currentPoints + growCost
+    
+    let nextStage = "Seed"
+    if (newPointsInvested >= 1000) nextStage = "Mature"
+    else if (newPointsInvested >= 500) nextStage = "Sapling"
+    else if (newPointsInvested >= 200) nextStage = "Sprout"
 
-      await updateDoc(plantRef, {
-        pointsInvested: increment(growCost),
-        growthStage: nextStage,
-        updatedAt: serverTimestamp(),
-      })
-
-      toast({
-        title: "성장!",
-        description: "식물에게 포인트를 주어 성장시켰습니다.",
-      })
-    } catch (error) {
-      console.error(error)
-    }
+    updateDoc(plantRef, {
+      pointsInvested: increment(growCost),
+      growthStage: nextStage,
+      updatedAt: serverTimestamp(),
+    }).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: plantRef.path,
+        operation: 'update'
+      }))
+    })
   }
 
-  const handleDeletePlant = async (plantId: string) => {
+  const handleDeletePlant = (plantId: string) => {
     if (!user) return
-    try {
-      const plantRef = doc(db, "users", user.uid, "plants", plantId)
-      await deleteDoc(plantRef)
-      toast({
-        title: "삭제 완료",
-        description: "식물을 정원에서 제거했습니다.",
+    if (!confirm("정말 이 식물을 제거하시겠습니까?")) return
+
+    const plantRef = doc(db, "users", user.uid, "plants", plantId)
+    deleteDoc(plantRef)
+      .then(() => {
+        toast({
+          title: "삭제 완료",
+          description: "식물을 정원에서 제거했습니다.",
+        })
       })
-    } catch (error) {
-      console.error(error)
-    }
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: plantRef.path,
+          operation: 'delete'
+        }))
+      })
   }
 
   const getStageInfo = (stage: string) => {
@@ -150,7 +176,7 @@ export default function PlantsPage() {
   if (isUserLoading || !user) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
       </div>
     )
   }
@@ -176,71 +202,79 @@ export default function PlantsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {plants?.map((plant) => {
-          const stageInfo = getStageInfo(plant.growthStage)
-          
-          return (
-            <Card key={plant.id} className="border-none shadow-sm hover:shadow-xl transition-all group bg-white overflow-hidden relative">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
-                onClick={() => handleDeletePlant(plant.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-              <div className="relative h-48 bg-muted/20 flex items-center justify-center">
-                <Image 
-                  src={stageInfo.image} 
-                  alt={stageInfo.label} 
-                  fill 
-                  className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
-                />
-                <Badge className="absolute bottom-4 left-4 bg-primary/80 backdrop-blur-sm border-none">
-                  {stageInfo.label}
-                </Badge>
-              </div>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-lg flex items-center gap-2">
-                    <Leaf className="h-4 w-4 text-green-600" /> {plant.plantName}
-                  </h3>
-                  <span className="text-xs font-bold text-muted-foreground">누적 {plant.pointsInvested}P</span>
-                </div>
-                <div className="space-y-2 mb-6">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-bold">성장도</span>
-                    <span className="font-bold text-primary">{stageInfo.progress}%</span>
-                  </div>
-                  <Progress value={stageInfo.progress} className="h-2" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    className="bg-primary hover:bg-primary/90 font-bold rounded-xl"
-                    onClick={() => handleGrow(plant.id, plant.pointsInvested)}
-                  >
-                    <Droplets className="mr-2 h-4 w-4" /> 물 주기 (100P)
-                  </Button>
-                  <Button variant="outline" className="border-primary/20 hover:bg-primary/5 font-bold rounded-xl">
-                    <Sun className="mr-2 h-4 w-4 text-yellow-500" /> 햇빛 쬐기
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-
-        <Card 
-          className="border-2 border-dashed border-muted hover:border-primary hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-12 h-full min-h-[400px]"
-          onClick={handleAddPlant}
-        >
-          <div className="p-4 rounded-full bg-primary/10 text-primary mb-4">
-            <Plus className="h-10 w-10" />
+        {isPlantsLoading ? (
+          <div className="col-span-full flex justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
           </div>
-          <h3 className="font-bold text-lg mb-1">새 식물 심기</h3>
-          <p className="text-sm text-muted-foreground">500 포인트를 사용하여</p>
-          <p className="text-sm text-muted-foreground">새로운 친구를 데려오세요.</p>
-        </Card>
+        ) : (
+          <>
+            {plants?.map((plant) => {
+              const stageInfo = getStageInfo(plant.growthStage)
+              
+              return (
+                <Card key={plant.id} className="border-none shadow-sm hover:shadow-xl transition-all group bg-white overflow-hidden relative">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                    onClick={() => handleDeletePlant(plant.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <div className="relative h-48 bg-muted/20 flex items-center justify-center">
+                    <Image 
+                      src={stageInfo.image} 
+                      alt={stageInfo.label} 
+                      fill 
+                      className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <Badge className="absolute bottom-4 left-4 bg-primary/80 backdrop-blur-sm border-none">
+                      {stageInfo.label}
+                    </Badge>
+                  </div>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-lg flex items-center gap-2">
+                        <Leaf className="h-4 w-4 text-green-600" /> {plant.plantName}
+                      </h3>
+                      <span className="text-xs font-bold text-muted-foreground">누적 {plant.pointsInvested}P</span>
+                    </div>
+                    <div className="space-y-2 mb-6">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-bold">성장도</span>
+                        <span className="font-bold text-primary">{stageInfo.progress}%</span>
+                      </div>
+                      <Progress value={stageInfo.progress} className="h-2" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        className="bg-primary hover:bg-primary/90 font-bold rounded-xl"
+                        onClick={() => handleGrow(plant.id, plant.pointsInvested)}
+                      >
+                        <Droplets className="mr-2 h-4 w-4" /> 물 주기 (100P)
+                      </Button>
+                      <Button variant="outline" className="border-primary/20 hover:bg-primary/5 font-bold rounded-xl">
+                        <Sun className="mr-2 h-4 w-4 text-yellow-500" /> 햇빛 쬐기
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            <Card 
+              className="border-2 border-dashed border-muted hover:border-primary hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-12 h-full min-h-[400px]"
+              onClick={handleAddPlant}
+            >
+              <div className="p-4 rounded-full bg-primary/10 text-primary mb-4">
+                <Plus className="h-10 w-10" />
+              </div>
+              <h3 className="font-bold text-lg mb-1">새 식물 심기</h3>
+              <p className="text-sm text-muted-foreground">500 포인트를 사용하여</p>
+              <p className="text-sm text-muted-foreground">새로운 친구를 데려오세요.</p>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   )

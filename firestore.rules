@@ -19,6 +19,11 @@ service cloud.firestore {
       match /personal_fortunes/{date} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
+
+      // 식물 키우기
+      match /plants/{plantId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
 
     // 선생님/메타데이터: 누구나 읽을 수 있게 하여 초기 로딩 에러 방지
