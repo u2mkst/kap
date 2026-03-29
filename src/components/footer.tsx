@@ -29,8 +29,11 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">고객지원</h3>
             <ul className="mt-4 space-y-2">
-              <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">이용안내</Link></li>
-              <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">학습문의</Link></li>
+              <li>
+                <Link href="/support" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  1:1 고객센터 (문의하기)
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
