@@ -10,26 +10,50 @@
     {
       "id": "plant-seed",
       "description": "A small seed in a pot",
-      "imageUrl": "https://picsum.photos/seed/seed/400/400",
+      "imageUrl": "https://picsum.photos/seed/seed-pot/400/400",
       "imageHint": "plant seed"
     },
     {
       "id": "plant-sprout",
-      "description": "A fresh green sprout",
-      "imageUrl": "https://picsum.photos/seed/sprout/400/400",
+      "description": "A fresh green sprout coming out of soil",
+      "imageUrl": "https://picsum.photos/seed/sprout-soil/400/400",
       "imageHint": "green sprout"
     },
     {
+      "id": "plant-sapling",
+      "description": "A young small tree with few leaves",
+      "imageUrl": "https://picsum.photos/seed/young-tree/400/400",
+      "imageHint": "young tree"
+    },
+    {
       "id": "plant-mature",
-      "description": "A beautiful blooming sunflower",
-      "imageUrl": "https://picsum.photos/seed/sunflower/400/400",
-      "imageHint": "blooming sunflower"
+      "description": "A beautiful blooming sunflower or a big tree",
+      "imageUrl": "https://picsum.photos/seed/mature-plant/400/400",
+      "imageHint": "blooming flower"
     },
     {
       "id": "course-math",
       "description": "Mathematics formulas on a chalkboard",
       "imageUrl": "https://picsum.photos/seed/math/600/400",
       "imageHint": "mathematics blackboard"
+    },
+    {
+      "id": "course-coding",
+      "description": "Computer screen with code",
+      "imageUrl": "https://picsum.photos/seed/coding/600/400",
+      "imageHint": "coding programming"
+    },
+    {
+      "id": "course-english",
+      "description": "English books and study materials",
+      "imageUrl": "https://picsum.photos/seed/english/600/400",
+      "imageHint": "english study"
+    },
+    {
+      "id": "course-science",
+      "description": "Science laboratory equipment",
+      "imageUrl": "https://picsum.photos/seed/science/600/400",
+      "imageHint": "science lab"
     }
   ]
 }

@@ -23,6 +23,7 @@ import { collection, doc, addDoc, updateDoc, increment, serverTimestamp, deleteD
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
+import { PlaceHolderImages } from "@/lib/placeholder-images"
 
 export default function PlantsPage() {
   const { user, isUserLoading } = useUser()
@@ -61,7 +62,6 @@ export default function PlantsPage() {
       return
     }
 
-    // 1. 포인트 차감 (비동기)
     updateDoc(userDocRef, {
       points: increment(-cost)
     }).catch(async (err) => {
@@ -72,7 +72,6 @@ export default function PlantsPage() {
       }))
     })
 
-    // 2. 식물 추가 (비동기)
     const newPlant = {
       userId: user.uid,
       plantName: "새로운 친구",
@@ -112,7 +111,6 @@ export default function PlantsPage() {
       return
     }
 
-    // 1. 포인트 차감
     updateDoc(userDocRef, {
       points: increment(-growCost)
     }).catch(async (err) => {
@@ -122,7 +120,6 @@ export default function PlantsPage() {
       }))
     })
 
-    // 2. 식물 성장
     const plantRef = doc(db, "users", user.uid, "plants", plantId)
     const newPointsInvested = currentPoints + growCost
     
@@ -164,12 +161,43 @@ export default function PlantsPage() {
   }
 
   const getStageInfo = (stage: string) => {
+    let imageId = "plant-seed"
+    let label = "씨앗"
+    let progress = 25
+
     switch(stage) {
-      case "Seed": return { label: "씨앗", image: "https://picsum.photos/seed/seed/400/400", progress: 25 }
-      case "Sprout": return { label: "새싹", image: "https://picsum.photos/seed/sprout/400/400", progress: 50 }
-      case "Sapling": return { label: "묘목", image: "https://picsum.photos/seed/tree/400/400", progress: 75 }
-      case "Mature": return { label: "성숙", image: "https://picsum.photos/seed/sunflower/400/400", progress: 100 }
-      default: return { label: "씨앗", image: "https://picsum.photos/seed/seed/400/400", progress: 0 }
+      case "Seed":
+        imageId = "plant-seed"
+        label = "씨앗"
+        progress = 25
+        break
+      case "Sprout":
+        imageId = "plant-sprout"
+        label = "새싹"
+        progress = 50
+        break
+      case "Sapling":
+        imageId = "plant-sapling"
+        label = "묘목"
+        progress = 75
+        break
+      case "Mature":
+        imageId = "plant-mature"
+        label = "성숙"
+        progress = 100
+        break
+      default:
+        imageId = "plant-seed"
+        label = "씨앗"
+        progress = 0
+    }
+
+    const img = PlaceHolderImages.find(p => p.id === imageId)
+    return {
+      label,
+      progress,
+      imageUrl: img?.imageUrl || "https://picsum.photos/seed/plant/400/400",
+      imageHint: img?.imageHint || "plant"
     }
   }
 
@@ -223,10 +251,11 @@ export default function PlantsPage() {
                   </Button>
                   <div className="relative h-48 bg-muted/20 flex items-center justify-center">
                     <Image 
-                      src={stageInfo.image} 
+                      src={stageInfo.imageUrl} 
                       alt={stageInfo.label} 
                       fill 
                       className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+                      data-ai-hint={stageInfo.imageHint}
                     />
                     <Badge className="absolute bottom-4 left-4 bg-primary/80 backdrop-blur-sm border-none">
                       {stageInfo.label}
