@@ -34,8 +34,8 @@ export default function Home() {
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg transform -rotate-6">
             <BookOpen className="h-10 w-10" />
           </div>
-          <CardTitle className="text-3xl font-bold font-headline">학생 포털 접속</CardTitle>
-          <CardDescription className="text-base mt-2">클래스 허브 학생 전용 공간입니다.<br/>학습과 즐거움이 가득한 곳으로 들어오세요!</CardDescription>
+          <CardTitle className="text-3xl font-bold font-headline">KST HUB 접속</CardTitle>
+          <CardDescription className="text-base mt-2">KST HUB 학생 전용 공간입니다.<br/>학습과 즐거움이 가득한 곳으로 들어오세요!</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-4 rounded-xl bg-accent/10 border border-accent/20 text-accent-foreground text-sm flex items-center gap-3">
