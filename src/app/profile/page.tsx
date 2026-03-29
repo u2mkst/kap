@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff } from "lucide-react"
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, serverTimestamp, setDoc } from "firebase/firestore"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users } from "lucide-react"
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
+import { doc, updateDoc, serverTimestamp, setDoc, collection } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -30,6 +31,9 @@ export default function ProfilePage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
+  const teachersRef = useMemoFirebase(() => collection(db, "teachers"), [db])
+  const { data: teachers } = useCollection(teachersRef)
+
   const configRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "metadata", "config")
@@ -48,7 +52,8 @@ export default function ProfilePage() {
     nickname: "",
     schoolName: "",
     grade: "",
-    classNum: ""
+    classNum: "",
+    teacherId: ""
   })
 
   useEffect(() => {
@@ -59,7 +64,8 @@ export default function ProfilePage() {
         nickname: userData.nickname || "",
         schoolName: userData.schoolName || "",
         grade: userData.grade || "",
-        classNum: userData.classNum || ""
+        classNum: userData.classNum || "",
+        teacherId: userData.teacherId || ""
       })
     }
   }, [userData])
@@ -115,7 +121,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-2xl">
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
       <Button variant="ghost" onClick={() => router.back()} className="mb-6">
         <ChevronLeft className="mr-2 h-4 w-4" /> 뒤로 가기
       </Button>
@@ -126,7 +132,7 @@ export default function ProfilePage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold font-headline">마이페이지</h1>
-          <p className="text-muted-foreground text-sm">개인 정보 및 학교 설정을 관리합니다.</p>
+          <p className="text-muted-foreground text-sm">개인 정보 및 담당 선생님을 관리합니다.</p>
         </div>
       </div>
 
@@ -163,6 +169,29 @@ export default function ProfilePage() {
                 <Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" /> 담당 선생님 관리
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select 
+              value={formData.teacherId} 
+              onValueChange={(val) => setFormData({...formData, teacherId: val})}
+            >
+              <SelectTrigger className="w-full h-11">
+                <SelectValue placeholder="담당 선생님을 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {teachers?.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name} 선생님</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 

@@ -1,17 +1,18 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { BookOpen, School, Loader2, UserCircle } from "lucide-react"
-import { useAuth, useFirestore } from "@/firebase"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { BookOpen, School, Loader2, UserCircle, Users } from "lucide-react"
+import { useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { createUserWithEmailAndPassword } from "firebase/auth"
-import { doc, setDoc, serverTimestamp } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function SignupPage() {
@@ -23,11 +24,15 @@ export default function SignupPage() {
   const [schoolName, setSchoolName] = useState("")
   const [grade, setGrade] = useState("")
   const [classNum, setClassNum] = useState("")
+  const [teacherId, setTeacherId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   
   const auth = useAuth()
   const db = useFirestore()
   const router = useRouter()
+
+  const teachersRef = useMemoFirebase(() => collection(db, "teachers"), [db])
+  const { data: teachers } = useCollection(teachersRef)
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,6 +55,15 @@ export default function SignupPage() {
       return
     }
 
+    if (!teacherId) {
+      toast({
+        variant: "destructive",
+        title: "선생님 선택 필수",
+        description: "담당 선생님을 선택해 주세요.",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
       const fakeEmail = `${username.toLowerCase()}@classhub.edu`
@@ -65,6 +79,7 @@ export default function SignupPage() {
         schoolName,
         grade,
         classNum,
+        teacherId,
         points: 1000,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -122,6 +137,25 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="password">비밀번호</Label>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" /> 담당 선생님 선택
+              </h3>
+              <Select onValueChange={setTeacherId} required>
+                <SelectTrigger className="w-full h-10">
+                  <SelectValue placeholder="담당 선생님을 선택하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teachers?.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name} 선생님</SelectItem>
+                  ))}
+                  {(!teachers || teachers.length === 0) && (
+                    <SelectItem value="none" disabled>등록된 선생님이 없습니다.</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="pt-4 border-t">

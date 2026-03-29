@@ -15,7 +15,6 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // 학생들은 자신의 정보를 수정할 수 있고, 다른 학생의 랭킹(포인트)을 볼 수 있어야 함
       allow get: if isAuthenticated();
       allow list: if isAuthenticated(); 
       allow create, update: if isOwner(userId);
@@ -28,11 +27,7 @@ service cloud.firestore {
 
     match /teachers/{teacherId} {
       allow read: if isAuthenticated();
-      allow update: if isAuthenticated() 
-        && (
-          isAdmin() || 
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vote']) && request.resource.data.vote == resource.data.vote + 1)
-        );
+      allow update: if isAuthenticated();
       allow create, delete: if isAdmin();
     }
 
@@ -55,6 +50,12 @@ service cloud.firestore {
     match /daily_fortunes/{date} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+    }
+
+    match /inquiries/{inquiryId} {
+      allow read: if isAuthenticated() && (request.resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
   }
 }

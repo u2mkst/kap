@@ -15,6 +15,7 @@
         "schoolName": { "type": "string" },
         "grade": { "type": "string" },
         "classNum": { "type": "string" },
+        "teacherId": { "type": "string", "description": "The ID of the assigned teacher." },
         "points": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
@@ -31,6 +32,22 @@
         "imageUrl": { "type": "string" }
       },
       "required": ["name", "vote"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userNickname": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "reply": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "replied"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subject", "message", "status"]
     },
     "DailyProblem": {
       "title": "DailyProblem",
@@ -67,7 +84,7 @@
     },
     "/teachers/{teacherId}": {
       "schema": { "$ref": "#/backend/entities/Teacher" },
-      "description": "Teachers for popularity vote."
+      "description": "Teachers for popularity vote and assignment."
     },
     "/metadata/config": {
       "schema": { "$ref": "#/backend/entities/AppMetadata" },
@@ -76,6 +93,10 @@
     "/daily_problems/{problemId}": {
       "schema": { "$ref": "#/backend/entities/DailyProblem" },
       "description": "Daily academic problems categorized by grade."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/backend/entities/Inquiry" },
+      "description": "Student inquiries and admin replies."
     }
   }
 }

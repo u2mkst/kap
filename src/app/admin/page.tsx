@@ -26,7 +26,9 @@ import {
   Key, 
   ClipboardPaste,
   Star,
-  Coins
+  Coins,
+  MessageSquare,
+  Send
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs, updateDoc } from "firebase/firestore"
@@ -38,6 +40,8 @@ export default function AdminPage() {
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [selectedTeacherFilter, setSelectedTeacherFilter] = useState("all")
+  const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
 
   const adminRef = useMemoFirebase(() => {
     if (!user) return null
@@ -63,6 +67,12 @@ export default function AdminPage() {
     return query(collection(db, "users"), orderBy("username", "asc"))
   }, [db, isAdminLoading, isAdminDoc?.id])
   const { data: allUsers, isLoading: isUsersLoading } = useCollection(usersQuery)
+
+  const inquiriesQuery = useMemoFirebase(() => {
+    if (isAdminLoading || !isAdminDoc?.id) return null
+    return query(collection(db, "inquiries"), orderBy("createdAt", "desc"))
+  }, [db, isAdminLoading, isAdminDoc?.id])
+  const { data: inquiries, isLoading: isInquiriesLoading } = useCollection(inquiriesQuery)
 
   const adminsQuery = useMemoFirebase(() => {
     if (isAdminLoading || !isAdminDoc?.id) return null
@@ -154,6 +164,20 @@ export default function AdminPage() {
     updateDoc(doc(db, "users", userId), { points }).then(() => toast({ title: "포인트 수정 완료" }))
   }
 
+  const handleSendReply = (inquiryId: string) => {
+    const text = replyText[inquiryId]
+    if (!text?.trim()) return
+    setIsSaving(true)
+    updateDoc(doc(db, "inquiries", inquiryId), {
+      reply: text,
+      status: "replied",
+      updatedAt: serverTimestamp()
+    }).then(() => {
+      toast({ title: "답변 전송 완료" })
+      setReplyText({ ...replyText, [inquiryId]: "" })
+    }).finally(() => setIsSaving(false))
+  }
+
   const handleBulkProblems = async () => {
     if (!bulkProblemText.trim()) return
     setIsSaving(true)
@@ -205,6 +229,10 @@ export default function AdminPage() {
     }
   }
 
+  const filteredUsers = allUsers?.filter(u => 
+    selectedTeacherFilter === "all" || u.teacherId === selectedTeacherFilter
+  )
+
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
@@ -228,9 +256,10 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-6 mb-8 bg-muted/50 p-1 h-12">
           <TabsTrigger value="users"><UserCog className="mr-2 h-4 w-4" /> 회원/보안</TabsTrigger>
           <TabsTrigger value="vote"><Users className="mr-2 h-4 w-4" /> 투표 관리</TabsTrigger>
+          <TabsTrigger value="inquiry"><MessageSquare className="mr-2 h-4 w-4" /> 문의 내역</TabsTrigger>
           <TabsTrigger value="bulk"><ClipboardPaste className="mr-2 h-4 w-4" /> 일괄 등록</TabsTrigger>
           <TabsTrigger value="notice"><Megaphone className="mr-2 h-4 w-4" /> 공지 관리</TabsTrigger>
           <TabsTrigger value="config"><Key className="mr-2 h-4 w-4" /> 시스템 설정</TabsTrigger>
@@ -238,17 +267,31 @@ export default function AdminPage() {
 
         <TabsContent value="users">
           <Card className="border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle>회원 명단 및 포인트 관리</CardTitle>
-              <CardDescription>학생의 권한을 관리하거나 포인트를 직접 수정할 수 있습니다.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>회원 명단 및 담당 교사별 관리</CardTitle>
+                <CardDescription>선생님별로 학생들을 필터링하여 관리할 수 있습니다.</CardDescription>
+              </div>
+              <Select value={selectedTeacherFilter} onValueChange={setSelectedTeacherFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="담당 교사 필터" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 학생</SelectItem>
+                  {teachers?.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name} 선생님 반</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent>
               {isUsersLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
               ) : (
                 <div className="space-y-4">
-                  {allUsers?.map((u) => {
+                  {filteredUsers?.map((u) => {
                     const isUserAdmin = adminIds.includes(u.id);
+                    const teacher = teachers?.find(t => t.id === u.teacherId);
                     return (
                       <div key={u.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-muted/20 rounded-xl border border-transparent hover:border-muted-foreground/10 transition-colors gap-4">
                         <div className="flex items-center gap-3 min-w-[200px]">
@@ -257,7 +300,10 @@ export default function AdminPage() {
                           </div>
                           <div>
                             <p className="font-bold text-sm">{u.nickname} ({u.lastName}{u.firstName})</p>
-                            <p className="text-[10px] text-muted-foreground">ID: {u.username} | {u.schoolName} {u.grade}학년</p>
+                            <div className="flex gap-2 items-center">
+                              <Badge variant="outline" className="text-[9px] py-0">{teacher?.name || "선생님 미지정"}</Badge>
+                              <p className="text-[10px] text-muted-foreground">ID: {u.username} | {u.schoolName} {u.grade}학년</p>
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -283,6 +329,9 @@ export default function AdminPage() {
                       </div>
                     )
                   })}
+                  {filteredUsers?.length === 0 && (
+                    <div className="text-center py-10 text-muted-foreground text-sm">해당 조건의 학생이 없습니다.</div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -337,6 +386,63 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="inquiry">
+          <Card className="border-none shadow-sm bg-white">
+            <CardHeader>
+              <CardTitle>학생 1:1 문의 확인 및 답변</CardTitle>
+              <CardDescription>학생들이 남긴 문의에 실시간으로 답변할 수 있습니다.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isInquiriesLoading ? (
+                <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
+              ) : (
+                <div className="space-y-6">
+                  {inquiries?.map((iq) => (
+                    <div key={iq.id} className="p-5 border rounded-2xl bg-muted/5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge className={iq.status === "open" ? "bg-orange-500" : "bg-green-600"}>
+                            {iq.status === "open" ? "답변 대기" : "답변 완료"}
+                          </Badge>
+                          <span className="font-bold">{iq.userNickname} 학생의 문의</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{new Date(iq.createdAt?.toDate()).toLocaleString()}</span>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-dashed">
+                        <h4 className="font-bold text-sm mb-2 text-primary">Q: {iq.subject}</h4>
+                        <p className="text-xs leading-relaxed whitespace-pre-wrap">{iq.message}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold flex items-center gap-2">
+                          <Send className="h-3 w-3" /> 답변 남기기
+                        </Label>
+                        <div className="flex gap-2">
+                          <Textarea 
+                            className="min-h-[60px] text-xs" 
+                            placeholder="학생에게 전달할 답변을 입력하세요..." 
+                            defaultValue={iq.reply}
+                            onChange={(e) => setReplyText({ ...replyText, [iq.id]: e.target.value })}
+                          />
+                          <Button 
+                            className="h-auto px-4" 
+                            disabled={isSaving}
+                            onClick={() => handleSendReply(iq.id)}
+                          >
+                            전송
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {(!inquiries || inquiries.length === 0) && (
+                    <div className="text-center py-10 text-muted-foreground text-sm">등록된 문의가 없습니다.</div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="bulk">
