@@ -171,6 +171,11 @@ export default function AdminPage() {
     }).finally(() => setIsSaving(false))
   }
 
+  const handleDeleteInquiry = (id: string) => {
+    if (!confirm("이 문의 내역을 삭제하시겠습니까?")) return
+    deleteDoc(doc(db, "inquiries", id)).then(() => toast({ title: "문의 삭제 완료" }))
+  }
+
   const handleBulkProblems = async () => {
     if (!bulkProblemText.trim()) return
     setIsSaving(true)
@@ -310,7 +315,10 @@ export default function AdminPage() {
                 <CardContent className="p-4 space-y-4">
                   <div className="flex justify-between items-center">
                     <Badge variant={iq.status === "open" ? "destructive" : "outline"}>{iq.status === "open" ? "미답변" : "답변완료"}</Badge>
-                    <span className="text-[10px] opacity-60">{iq.userNickname} | {iq.createdAt?.toDate().toLocaleString()}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] opacity-60">{iq.userNickname} | {iq.createdAt?.toDate().toLocaleString()}</span>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteInquiry(iq.id)} className="h-6 w-6 text-destructive/50 hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                    </div>
                   </div>
                   <div className="text-xs">
                     <p className="font-bold mb-1">Q: {iq.subject}</p>
@@ -323,6 +331,9 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             ))}
+            {(!inquiries || inquiries.length === 0) && (
+              <p className="text-center py-10 text-xs text-muted-foreground">문의 사항이 없습니다.</p>
+            )}
           </div>
         </TabsContent>
 

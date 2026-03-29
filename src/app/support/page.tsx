@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,9 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { MessageSquare, Send, Loader2 } from "lucide-react"
+import { MessageSquare, Send, Loader2, Trash2 } from "lucide-react"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
-import { collection, addDoc, serverTimestamp, query, where, orderBy, doc } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, deleteDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function SupportPage() {
@@ -68,6 +69,11 @@ export default function SupportPage() {
     }
   }
 
+  const handleDeleteInquiry = (id: string) => {
+    if (!confirm("이 문의 내역을 삭제하시겠습니까?")) return
+    deleteDoc(doc(db, "inquiries", id)).then(() => toast({ title: "내역 삭제 완료" }))
+  }
+
   if (isUserLoading || !user) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>
   }
@@ -104,9 +110,17 @@ export default function SupportPage() {
             <div className="flex justify-center"><Loader2 className="animate-spin opacity-20" /></div>
           ) : myInquiries && myInquiries.length > 0 ? (
             myInquiries.map((iq) => (
-              <Card key={iq.id} className="border-none shadow-sm">
+              <Card key={iq.id} className="border-none shadow-sm relative group">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => handleDeleteInquiry(iq.id)} 
+                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive/50 hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center pr-8">
                     <Badge variant={iq.status === "open" ? "outline" : "default"} className="text-[10px]">
                       {iq.status === "open" ? "답변대기" : "답변완료"}
                     </Badge>
