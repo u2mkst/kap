@@ -14,6 +14,11 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      
+      // 개인별 행운 점수
+      match /personal_fortunes/{date} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
 
     // 선생님/메타데이터: 누구나 읽을 수 있게 하여 초기 로딩 에러 방지
@@ -44,7 +49,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 문의 시스템: 인증된 사용자는 목록 조회가 가능하며, 삭제는 본인 또는 관리자만 가능
+    // 문의 시스템
     match /inquiries/{inquiryId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();

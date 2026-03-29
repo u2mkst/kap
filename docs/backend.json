@@ -23,6 +23,18 @@
       },
       "required": ["id", "username", "nickname", "points", "schoolType"]
     },
+    "UserFortune": {
+      "title": "UserFortune",
+      "type": "object",
+      "description": "Daily lucky score for a specific user.",
+      "properties": {
+        "id": { "type": "string" },
+        "score": { "type": "number" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["score", "date"]
+    },
     "Teacher": {
       "title": "Teacher",
       "type": "object",
@@ -82,6 +94,10 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/User" },
       "description": "User profiles."
+    },
+    "/users/{userId}/personal_fortunes/{date}": {
+      "schema": { "$ref": "#/backend/entities/UserFortune" },
+      "description": "User's individual daily luck records."
     },
     "/teachers/{teacherId}": {
       "schema": { "$ref": "#/backend/entities/Teacher" },

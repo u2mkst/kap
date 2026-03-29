@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
 import {
   Dialog,
   DialogContent,
@@ -33,11 +34,12 @@ import {
   Maximize2,
   CalendarDays,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Clover
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
-import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit } from "firebase/firestore"
+import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from "date-fns"
@@ -52,6 +54,7 @@ export default function DashboardPage() {
   const [userAnswer, setUserAnswer] = useState("")
   const [isSolving, setIsSolving] = useState(false)
   const [isSolved, setIsSolved] = useState(false)
+  const [isGeneratingLuck, setIsGeneratingLuck] = useState(false)
 
   const [weeklyMeals, setWeeklyMeals] = useState<{date: string, menu: string}[]>([])
   const [weeklyTimetable, setWeeklyTimetable] = useState<{date: string, timetable: string}[]>([])
@@ -73,7 +76,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const now = new Date()
-    setTodayStr(format(now, "yyyyMMdd"))
+    setTodayStr(format(now, "yyyy-MM-dd"))
 
     if (userData?.schoolName && userData?.grade && userData?.classNum) {
       setIsLoadingWeekly(true)
@@ -122,6 +125,12 @@ export default function DashboardPage() {
     return doc(db, "daily_fortunes", dateStr)
   }, [db, user])
 
+  const personalFortuneRef = useMemoFirebase(() => {
+    if (!db || !user) return null
+    const dateStr = format(new Date(), "yyyy-MM-dd")
+    return doc(db, "users", user.uid, "personal_fortunes", dateStr)
+  }, [db, user])
+
   const problemRef = useMemoFirebase(() => {
     if (!db || !userData?.grade || !user) return null
     const dateStr = format(new Date(), "yyyy-MM-dd")
@@ -129,6 +138,7 @@ export default function DashboardPage() {
   }, [db, userData?.grade, user])
 
   const { data: fortuneData } = useDoc(fortuneRef)
+  const { data: personalFortuneData } = useDoc(personalFortuneRef)
   const { data: problemData } = useDoc(problemRef)
 
   const handleSolveProblem = async () => {
@@ -150,6 +160,27 @@ export default function DashboardPage() {
       }
     } else {
       toast({ variant: "destructive", title: "틀렸습니다.", description: "다시 한번 생각해보세요!" })
+    }
+  }
+
+  const handleGenerateLuckyScore = async () => {
+    if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck) return
+    
+    setIsGeneratingLuck(true)
+    const randomScore = Math.floor(Math.random() * 41) + 60; // 60~100 사이의 행운 점수
+    const dateStr = format(new Date(), "yyyy-MM-dd")
+
+    try {
+      await setDoc(personalFortuneRef, {
+        score: randomScore,
+        date: dateStr,
+        createdAt: serverTimestamp()
+      })
+      toast({ title: "행운 점수 확인 완료!", description: `오늘 당신의 행운은 ${randomScore}점입니다! 🍀` })
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsGeneratingLuck(false)
     }
   }
 
@@ -392,6 +423,42 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border-none shadow-sm bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200 overflow-hidden rounded-3xl">
+            <CardHeader className="p-5">
+              <CardTitle className="text-sm flex items-center gap-2 font-black text-orange-800">
+                <Clover className="h-4 w-4 text-green-600" /> 오늘의 나의 행운점수🍀
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 pt-0">
+              {personalFortuneData ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-black text-orange-600">{personalFortuneData.score} <span className="text-sm font-bold text-orange-400">/ 100</span></span>
+                    <Badge className="bg-orange-500 border-none font-bold">
+                      {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : personalFortuneData.score >= 80 ? "운이 좋네요! 😊" : "무난한 하루! 👍"}
+                    </Badge>
+                  </div>
+                  <Progress value={personalFortuneData.score} className="h-3 bg-orange-200/50" />
+                  <p className="text-[11px] text-orange-800/60 font-medium text-center italic">
+                    행운은 기록되었습니다. 오늘 하루 동안 당신과 함께할 거예요!
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-xs text-orange-800/50 mb-4 font-medium">오늘 나의 행운은 몇 점일까요? 지금 확인해 보세요!</p>
+                  <Button 
+                    onClick={handleGenerateLuckyScore} 
+                    disabled={isGeneratingLuck}
+                    className="rounded-full bg-orange-500 hover:bg-orange-600 text-white font-black text-xs px-8 shadow-sm"
+                  >
+                    {isGeneratingLuck ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
+                    행운 점수 확인하기
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="border-none shadow-sm bg-white overflow-hidden rounded-3xl">
             <CardHeader className="p-5">
