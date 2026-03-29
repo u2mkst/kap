@@ -3,13 +3,13 @@
  */
 
 const BASE_URL = 'https://open.neis.go.kr/hub';
-const API_KEY = process.env.NEXT_PUBLIC_NEIS_API_KEY; // .env 파일에 추가 필요
+const API_KEY = process.env.NEXT_PUBLIC_NEIS_API_KEY;
 
 async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
-    pSize: '10',
+    pSize: '20',
     ...(API_KEY ? { KEY: API_KEY } : {}),
     ...params,
   });
@@ -28,7 +28,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
 export async function searchSchool(schoolName: string) {
   const data = await fetchNeis('schoolInfo', { SCHUL_NM: schoolName });
   if (!data?.schoolInfo) return null;
-  return data.schoolInfo[1].row[0]; // 첫 번째 검색 결과 반환
+  return data.schoolInfo[1].row[0];
 }
 
 /** 오늘의 급식 정보 가져오기 */
@@ -40,18 +40,38 @@ export async function getTodayMeals(officeCode: string, schoolCode: string, date
   });
   if (!data?.mealServiceDietInfo) return null;
   
-  // 급식 메뉴 텍스트 정제 (특수문자 및 알레르기 번호 제거)
   const rawMenu = data.mealServiceDietInfo[1].row[0].DDISH_NM;
   return rawMenu.replace(/\([^)]*\)/g, '').replace(/[0-9.]/g, '').split('<br/>').join(', ');
 }
 
-/** 오늘의 학사 일정 가져오기 */
-export async function getTodaySchedule(officeCode: string, schoolCode: string, date: string) {
-  const data = await fetchNeis('SchoolSchedule', {
+/** 오늘의 시간표 가져오기 */
+export async function getTodayTimetable(
+  officeCode: string, 
+  schoolCode: string, 
+  date: string, 
+  grade: string, 
+  classNum: string, 
+  schoolKind: string
+) {
+  // 학교 종류에 따른 엔드포인트 결정
+  let endpoint = 'misTimetable'; // 기본 중학교
+  if (schoolKind.includes('초등')) endpoint = 'elsTimetable';
+  else if (schoolKind.includes('고등')) endpoint = 'hisTimetable';
+  
+  const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,
     SD_SCHUL_CODE: schoolCode,
-    AA_YMD: date,
+    ALL_TI_YMD: date,
+    GRADE: grade,
+    CLASS_NM: classNum
   });
-  if (!data?.SchoolSchedule) return "특별한 일정이 없습니다.";
-  return data.SchoolSchedule[1].row[0].EVENT_NM;
+
+  if (!data || !data[endpoint]) return "오늘의 시간표 정보가 없습니다.";
+  
+  const rows = data[endpoint][1].row;
+  // 교시순으로 정렬하여 과목명 나열
+  return rows
+    .sort((a: any, b: any) => parseInt(a.PERIO) - parseInt(b.PERIO))
+    .map((r: any) => `${r.PERIO}교시:${r.ITRT_CNTNT}`)
+    .join(', ');
 }

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -17,7 +16,7 @@ import {
   Sprout,
   Star,
   Sparkles,
-  Calendar,
+  Clock,
   School,
   Settings,
   Medal,
@@ -28,7 +27,7 @@ import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { searchSchool, getTodayMeals, getTodaySchedule } from "@/lib/neis-api"
+import { searchSchool, getTodayMeals, getTodayTimetable } from "@/lib/neis-api"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -40,9 +39,15 @@ export default function DashboardPage() {
   const [isSolving, setIsSolving] = useState(false)
   const [isSolved, setIsSolved] = useState(false)
 
-  // 나이스 데이터 상태
   const [meals, setMeals] = useState<string>("불러오는 중...")
-  const [schedule, setSchedule] = useState<string>("불러오는 중...")
+  const [timetable, setTimetable] = useState<string>("불러오는 중...")
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "users", user.uid)
+  }, [user, db])
+
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
   useEffect(() => {
     const now = new Date()
@@ -52,49 +57,34 @@ export default function DashboardPage() {
     setTodayStr(`${yyyy}-${mm}-${dd}`)
     const neisDate = `${yyyy}${mm}${dd}`
 
-    // 학교 정보가 있으면 나이스 데이터 로드
-    if (userData?.schoolName) {
+    if (userData?.schoolName && userData?.grade && userData?.classNum) {
       searchSchool(userData.schoolName).then(schoolInfo => {
         if (schoolInfo) {
           const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
           const schoolCode = schoolInfo.SD_SCHUL_CODE
+          const schoolKind = schoolInfo.SCHUL_KND_NM
           
           getTodayMeals(officeCode, schoolCode, neisDate).then(menu => {
             setMeals(menu || "급식 정보가 없습니다.")
           })
           
-          getTodaySchedule(officeCode, schoolCode, neisDate).then(event => {
-            setSchedule(event || "특별한 일정이 없습니다.")
+          getTodayTimetable(
+            officeCode, 
+            schoolCode, 
+            neisDate, 
+            userData.grade, 
+            userData.classNum, 
+            schoolKind
+          ).then(table => {
+            setTimetable(table || "오늘의 시간표 정보가 없습니다.")
           })
         } else {
           setMeals("학교 정보를 찾을 수 없습니다.")
-          setSchedule("학교 정보를 찾을 수 없습니다.")
+          setTimetable("학교 정보를 찾을 수 없습니다.")
         }
       })
     }
-  }, [user, todayStr]) // userData가 로드된 후 재실행되도록 의존성 관리 필요
-
-  const userDocRef = useMemoFirebase(() => {
-    if (!user) return null
-    return doc(db, "users", user.uid)
-  }, [user, db])
-
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
-
-  // userData 로드 후 나이스 데이터 재요청을 위한 효과
-  useEffect(() => {
-    if (userData?.schoolName && todayStr) {
-      const neisDate = todayStr.replace(/-/g, '')
-      searchSchool(userData.schoolName).then(schoolInfo => {
-        if (schoolInfo) {
-          const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
-          const schoolCode = schoolInfo.SD_SCHUL_CODE
-          getTodayMeals(officeCode, schoolCode, neisDate).then(setMeals)
-          getTodaySchedule(officeCode, schoolCode, neisDate).then(setSchedule)
-        }
-      })
-    }
-  }, [userData?.schoolName, todayStr])
+  }, [userData, todayStr])
 
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
@@ -197,7 +187,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-lg flex items-center gap-2 text-primary font-bold">
                   <School className="h-5 w-5" /> 우리 학교 소식
                 </CardTitle>
-                <CardDescription className="text-xs">오늘의 일정을 확인하세요.</CardDescription>
+                <CardDescription className="text-xs">오늘의 일정을 실시간으로 확인하세요.</CardDescription>
               </div>
               <Link href="/profile">
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary transition-colors">
@@ -208,7 +198,7 @@ export default function DashboardPage() {
             <CardContent className="pt-6">
               {!userData?.schoolName && (
                 <div className="text-center py-10 bg-muted/20 rounded-2xl mb-4 border-2 border-dashed">
-                  <p className="text-sm text-muted-foreground mb-4">회원 정보에 학교명이 설정되어 있지 않습니다.</p>
+                  <p className="text-sm text-muted-foreground mb-4">회원 정보에 학교 정보가 설정되어 있지 않습니다.</p>
                   <Link href="/profile"><Button size="sm" className="rounded-full px-6">학교 정보 설정하기</Button></Link>
                 </div>
               )}
@@ -224,10 +214,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col h-full">
                   <h3 className="font-bold text-blue-700 flex items-center gap-2 mb-3 text-sm">
-                    <Calendar className="h-4 w-4" /> 오늘 학사일정
+                    <Clock className="h-4 w-4" /> 오늘의 시간표
                   </h3>
                   <div className="text-xs text-blue-900 leading-relaxed flex-grow">
-                    {schedule || "일정 정보를 불러올 수 없습니다."}
+                    {timetable || "시간표 정보를 불러올 수 없습니다."}
                   </div>
                 </div>
               </div>
