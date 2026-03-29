@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/navbar';
@@ -8,7 +7,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'KST HUB | 미래를 여는 스마트 교육 플랫폼',
-  description: '최신 강좌와 AI 학습 도우미가 있는 현대적 KST 학생 전용 플랫폼입니다.',
+  description: '최신 정보와 즐거운 활동이 있는 현대적 KST 학생 전용 플랫폼입니다.',
 };
 
 export default function RootLayout({
