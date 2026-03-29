@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview 나이스(NEIS) 오픈 API 연동 서비스
  */
@@ -16,6 +17,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
 
   try {
     const response = await fetch(`${BASE_URL}/${endpoint}?${urlParams.toString()}`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return data;
   } catch (error) {
@@ -41,6 +43,7 @@ export async function getTodayMeals(officeCode: string, schoolCode: string, date
   if (!data?.mealServiceDietInfo) return null;
   
   const rawMenu = data.mealServiceDietInfo[1].row[0].DDISH_NM;
+  // 알레르기 정보 숫자 제거 및 가독성 개선
   return rawMenu.replace(/\([^)]*\)/g, '').replace(/[0-9.]/g, '').split('<br/>').join(', ');
 }
 
@@ -51,12 +54,12 @@ export async function getTodayTimetable(
   date: string, 
   grade: string, 
   classNum: string, 
-  schoolKind: string
+  schoolType: string
 ) {
   // 학교 종류에 따른 엔드포인트 결정
   let endpoint = 'misTimetable'; // 기본 중학교
-  if (schoolKind.includes('초등')) endpoint = 'elsTimetable';
-  else if (schoolKind.includes('고등')) endpoint = 'hisTimetable';
+  if (schoolType.includes('초등')) endpoint = 'elsTimetable';
+  else if (schoolType.includes('고등')) endpoint = 'hisTimetable';
   
   const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,
@@ -72,6 +75,6 @@ export async function getTodayTimetable(
   // 교시순으로 정렬하여 과목명 나열
   return rows
     .sort((a: any, b: any) => parseInt(a.PERIO) - parseInt(b.PERIO))
-    .map((r: any) => `${r.PERIO}교시:${r.ITRT_CNTNT}`)
+    .map((r: any) => `${r.PERIO}교시: ${r.ITRT_CNTNT}`)
     .join(', ');
 }
