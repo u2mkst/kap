@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -6,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -26,7 +24,6 @@ import {
   Sparkles,
   Clock,
   School,
-  Settings,
   Medal,
   CheckCircle2,
   Loader2,
@@ -42,8 +39,9 @@ import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
-import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from "date-fns"
+import { format, startOfWeek, addDays, isSameDay, addWeeks } from "date-fns"
 import { ko } from "date-fns/locale"
+import { Label } from "@/components/ui/label"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -69,7 +67,6 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // Hydration 안전을 위해 weekDates를 useEffect에서 관리
   useEffect(() => {
     const targetDate = addWeeks(new Date(), weekOffset)
     const start = startOfWeek(targetDate, { weekStartsOn: 1 })
@@ -203,10 +200,6 @@ export default function DashboardPage() {
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <Avatar className="h-14 w-14 border-4 border-white shadow-md">
-            <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/100/100`} />
-            <AvatarFallback>{userData?.firstName?.charAt(0) || "H"}</AvatarFallback>
-          </Avatar>
           <div>
             <h1 className="text-xl md:text-2xl font-bold font-headline">반가워요, {userData?.firstName}님!</h1>
             <div className="flex flex-wrap gap-1.5 mt-1">
