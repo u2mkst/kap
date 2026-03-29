@@ -50,7 +50,7 @@ service cloud.firestore {
     }
 
     match /daily_fortunes/{date} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAdmin();
     }
 

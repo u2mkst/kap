@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -122,9 +123,9 @@ export default function DashboardPage() {
   const { data: topUsers, isLoading: isLeaderboardLoading } = useCollection(leaderboardQuery)
 
   const fortuneRef = useMemoFirebase(() => {
-    if (!db || !todayStr) return null
+    if (!db || !todayStr || !user) return null
     return doc(db, "daily_fortunes", todayStr)
-  }, [db, todayStr])
+  }, [db, todayStr, user])
 
   const personalFortuneRef = useMemoFirebase(() => {
     if (!db || !user || !todayStr) return null
