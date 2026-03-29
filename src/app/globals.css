@@ -62,3 +62,12 @@
     @apply bg-background text-foreground font-body antialiased;
   }
 }
+
+@layer utilities {
+  .animate-bounce-slow {
+    animation: bounce 3s infinite;
+  }
+  .animate-spin-slow {
+    animation: spin 6s linear infinite;
+  }
+}

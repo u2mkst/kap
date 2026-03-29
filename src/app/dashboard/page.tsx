@@ -43,6 +43,7 @@ import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api
 import { format, startOfWeek, addDays, isSameDay, addWeeks } from "date-fns"
 import { ko } from "date-fns/locale"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -123,9 +124,9 @@ export default function DashboardPage() {
   const { data: topUsers, isLoading: isLeaderboardLoading } = useCollection(leaderboardQuery)
 
   const fortuneRef = useMemoFirebase(() => {
-    if (!db || !todayStr || !user) return null
+    if (!db || !todayStr) return null
     return doc(db, "daily_fortunes", todayStr)
-  }, [db, todayStr, user])
+  }, [db, todayStr])
 
   const personalFortuneRef = useMemoFirebase(() => {
     if (!db || !user || !todayStr) return null
@@ -133,9 +134,9 @@ export default function DashboardPage() {
   }, [db, user, todayStr])
 
   const problemRef = useMemoFirebase(() => {
-    if (!db || !userData?.grade || !user || !todayStr) return null
+    if (!db || !userData?.grade || !todayStr) return null
     return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
-  }, [db, userData?.grade, user, todayStr])
+  }, [db, userData?.grade, todayStr])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: personalFortuneData } = useDoc(personalFortuneRef)
@@ -198,11 +199,11 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-in slide-in-from-top-4 duration-500">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold font-headline">반가워요, {userData?.firstName}님!</h1>
+            <h1 className="text-xl md:text-2xl font-bold font-headline tracking-tight">반가워요, {userData?.firstName}님!</h1>
             <div className="flex flex-wrap gap-1.5 mt-1">
               <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px]">
                 {userData?.schoolName || "학교 미설정"} {userData?.grade}학년 {userData?.classNum}반
@@ -218,7 +219,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        <Card className="w-full md:w-auto bg-primary text-primary-foreground border-none shadow-md px-6 py-3 flex items-center justify-between md:justify-start gap-6">
+        <Card className="w-full md:w-auto bg-primary text-primary-foreground border-none shadow-md px-6 py-3 flex items-center justify-between md:justify-start gap-6 hover:scale-[1.02] transition-transform">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-full">
               <Sprout className="h-5 w-5 text-white" />
@@ -238,7 +239,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center animate-in slide-in-from-left-4 duration-500">
             <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
               <School className="h-5 w-5" /> 우리 학교 소식
             </h2>
@@ -277,10 +278,13 @@ export default function DashboardPage() {
                         const meal = weeklyMeals.find(m => m.date === dStr)
                         const isToday = todayStr && isSameDay(date, new Date(todayStr))
                         return (
-                          <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
+                          <div key={idx} className={cn(
+                            "p-4 rounded-2xl border transition-all animate-in slide-in-from-bottom-2",
+                            isToday ? 'bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-100' : 'bg-muted/30 border-muted hover:bg-muted/50'
+                          )}>
                             <div className="flex justify-between items-center mb-3">
                               <span className={`text-xs font-black ${isToday ? 'text-orange-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                              {isToday && <Badge className="bg-orange-500 text-[10px] hover:bg-orange-600 border-none">TODAY</Badge>}
+                              {isToday && <Badge className="bg-orange-500 text-[10px] hover:bg-orange-600 border-none animate-pulse">TODAY</Badge>}
                             </div>
                             <div className="text-[13px] text-orange-900/80 leading-relaxed font-medium">
                               {meal?.menu ? (
@@ -303,10 +307,13 @@ export default function DashboardPage() {
                         const table = weeklyTimetable.find(t => t.date === dStr)
                         const isToday = todayStr && isSameDay(date, new Date(todayStr))
                         return (
-                          <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
+                          <div key={idx} className={cn(
+                            "p-4 rounded-2xl border transition-all animate-in slide-in-from-bottom-2",
+                            isToday ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-100' : 'bg-muted/30 border-muted hover:bg-muted/50'
+                          )}>
                             <div className="flex justify-between items-center mb-3">
                               <span className={`text-xs font-black ${isToday ? 'text-blue-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                              {isToday && <Badge className="bg-blue-500 text-[10px] hover:bg-blue-600 border-none">TODAY</Badge>}
+                              {isToday && <Badge className="bg-blue-500 text-[10px] hover:bg-blue-600 border-none animate-pulse">TODAY</Badge>}
                             </div>
                             <div className="flex flex-col gap-2">
                               {table ? table.timetable.split(',').map((t, i) => (
@@ -327,8 +334,8 @@ export default function DashboardPage() {
             </Dialog>
           </div>
 
-          <div className="grid gap-6">
-            <Card className="border-none shadow-sm bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 overflow-hidden rounded-3xl">
+          <div className="grid gap-6 animate-in slide-in-from-bottom-4 duration-500">
+            <Card className="border-none shadow-sm bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2 text-orange-700 font-black">
                   <Utensils className="h-4 w-4" /> 오늘의 급식
@@ -344,7 +351,7 @@ export default function DashboardPage() {
                 ) : todayMeal ? (
                   <div className="flex flex-col gap-2">
                     {todayMeal.split(',').map((item, i) => (
-                      <div key={i} className="bg-white/80 p-3 rounded-xl border border-orange-200/50 flex items-center gap-3 shadow-sm">
+                      <div key={i} className="bg-white/80 p-3 rounded-xl border border-orange-200/50 flex items-center gap-3 shadow-sm hover:translate-x-1 transition-transform">
                         <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
                         <span className="text-sm font-bold text-orange-800">{item.trim()}</span>
                       </div>
@@ -356,7 +363,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 overflow-hidden rounded-3xl">
+            <Card className="border-none shadow-sm bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2 text-blue-700 font-black">
                   <Clock className="h-4 w-4" /> 오늘의 시간표
@@ -372,7 +379,7 @@ export default function DashboardPage() {
                 ) : todayTable ? (
                   <div className="flex flex-col gap-2">
                     {todayTable.split(',').map((t, i) => (
-                      <div key={i} className="bg-white/80 p-3 rounded-xl border border-blue-200/50 flex items-center gap-4 shadow-sm">
+                      <div key={i} className="bg-white/80 p-3 rounded-xl border border-blue-200/50 flex items-center gap-4 shadow-sm hover:translate-x-1 transition-transform">
                         <span className="text-xs font-black text-blue-400 w-10 text-center">{t.split(':')[0]}</span>
                         <div className="h-4 w-px bg-blue-100" />
                         <span className="text-sm font-black text-blue-800">{t.split(':')[1]}</span>
@@ -387,10 +394,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-emerald-50 group hover:shadow-md transition-all rounded-3xl overflow-hidden">
+             <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-emerald-50 group hover:shadow-md transition-all rounded-3xl overflow-hidden animate-in zoom-in-95 duration-500">
               <CardHeader className="p-5">
                 <CardTitle className="text-sm flex items-center gap-2 font-black text-green-800">
-                  <Sprout className="h-4 w-4 text-green-600" /> 나의 식물 키우기
+                  <Sprout className="h-4 w-4 text-green-600 group-hover:animate-bounce" /> 나의 식물 키우기
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 pt-0">
@@ -405,10 +412,10 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-white hover:bg-accent/5 transition-colors rounded-3xl overflow-hidden">
+            <Card className="border-none shadow-sm bg-white hover:bg-accent/5 transition-colors rounded-3xl overflow-hidden animate-in zoom-in-95 duration-500 delay-100">
               <CardHeader className="p-5">
                 <CardTitle className="text-sm flex items-center gap-2 font-black">
-                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 오늘의 한마디
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 animate-spin-slow" /> 오늘의 한마디
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 pt-0">
@@ -419,7 +426,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <Card className="border-none shadow-sm bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200 overflow-hidden rounded-3xl">
+          <Card className="border-none shadow-sm bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200 overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-200">
             <CardHeader className="p-5">
               <CardTitle className="text-sm flex items-center gap-2 font-black text-orange-800">
                 <Clover className="h-4 w-4 text-green-600" /> 오늘의 나의 행운점수🍀
@@ -427,10 +434,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-5 pt-0">
               {personalFortuneData ? (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-in fade-in duration-700">
                   <div className="flex items-center justify-between">
                     <span className="text-2xl font-black text-orange-600">{personalFortuneData.score} <span className="text-sm font-bold text-orange-400">/ 100</span></span>
-                    <Badge className="bg-orange-500 border-none font-bold">
+                    <Badge className="bg-orange-500 border-none font-bold animate-bounce">
                       {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : personalFortuneData.score >= 80 ? "운이 좋네요! 😊" : "무난한 하루! 👍"}
                     </Badge>
                   </div>
@@ -445,7 +452,7 @@ export default function DashboardPage() {
                   <Button 
                     onClick={handleGenerateLuckyScore} 
                     disabled={isGeneratingLuck}
-                    className="rounded-full bg-orange-500 hover:bg-orange-600 text-white font-black text-xs px-8 shadow-sm"
+                    className="rounded-full bg-orange-500 hover:bg-orange-600 text-white font-black text-xs px-8 shadow-sm active:scale-95 transition-transform"
                   >
                     {isGeneratingLuck ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
                     행운 점수 확인하기
@@ -455,7 +462,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm bg-white overflow-hidden rounded-3xl">
+          <Card className="border-none shadow-sm bg-white overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-300">
             <CardHeader className="p-5">
               <CardTitle className="text-sm flex items-center gap-2 font-black">
                 <Zap className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 외부 학습 사이트
@@ -481,15 +488,15 @@ export default function DashboardPage() {
         </div>
 
         <div className="md:col-span-4 space-y-6">
-           <Card className="border-none shadow-sm bg-white overflow-hidden h-full rounded-3xl">
+           <Card className="border-none shadow-sm bg-white overflow-hidden h-full rounded-3xl animate-in slide-in-from-right-4 duration-700">
             <CardHeader className="p-5 border-b mb-4 bg-muted/5">
               <CardTitle className="text-md flex items-center gap-2 font-black">
-                <Sparkles className="h-4 w-4 text-primary" /> 오늘의 도전 문제
+                <Sparkles className="h-4 w-4 text-primary animate-pulse" /> 오늘의 도전 문제
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 pt-0">
               {problemData ? (
-                <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10 space-y-4 shadow-sm">
+                <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10 space-y-4 shadow-sm hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-1.5">
                     <Badge className="bg-primary text-[9px] h-4 rounded-full border-none px-2">{problemData.topic}</Badge>
                     <Badge variant="outline" className="text-[9px] h-4 rounded-full bg-white border-primary/20">{problemData.difficulty}</Badge>
@@ -516,7 +523,7 @@ export default function DashboardPage() {
                         disabled={isSolved || isSolving || !userAnswer.trim()}
                         onClick={handleSolveProblem}
                         size="sm" 
-                        className="h-9 px-5 rounded-xl bg-primary text-[10px] font-black shadow-sm"
+                        className="h-9 px-5 rounded-xl bg-primary text-[10px] font-black shadow-sm active:scale-95"
                       >
                         {isSolving ? <Loader2 className="h-3 w-3 animate-spin" /> : isSolved ? <CheckCircle2 className="h-3 w-3" /> : "제출"}
                       </Button>
@@ -546,11 +553,15 @@ export default function DashboardPage() {
                   const isMe = u?.id === user?.uid;
                   
                   return (
-                    <div key={index} className={`flex items-center justify-between p-3 rounded-2xl transition-all ${isMe ? 'bg-primary/10 border border-primary/20 scale-[1.02] shadow-sm' : 'hover:bg-muted/30 border border-transparent'}`}>
+                    <div key={index} className={cn(
+                      "flex items-center justify-between p-3 rounded-2xl transition-all animate-in slide-in-from-right-4",
+                      `duration-${300 + (index * 100)}`,
+                      isMe ? 'bg-primary/10 border border-primary/20 scale-[1.02] shadow-sm' : 'hover:bg-muted/30 border border-transparent'
+                    )}>
                       <div className="flex items-center gap-3">
                         <div className="w-6 flex justify-center">
                           {rank === 1 ? (
-                            <Medal className="h-5 w-5 text-yellow-500" />
+                            <Medal className="h-5 w-5 text-yellow-500 animate-bounce-slow" />
                           ) : rank === 2 ? (
                             <Medal className="h-5 w-5 text-gray-400" />
                           ) : rank === 3 ? (

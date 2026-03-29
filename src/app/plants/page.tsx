@@ -24,6 +24,7 @@ import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
+import { cn } from "@/lib/utils"
 
 export default function PlantsPage() {
   const { user, isUserLoading } = useUser()
@@ -210,15 +211,15 @@ export default function PlantsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+    <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4 animate-in slide-in-from-top-4 duration-500">
         <div>
           <h1 className="text-4xl font-black mb-3 font-headline text-primary flex items-center gap-3">
-            <Sprout className="h-10 w-10" /> 나의 정원
+            <Sprout className="h-10 w-10 animate-bounce-slow" /> 나의 정원
           </h1>
           <p className="text-muted-foreground font-medium">열심히 공부해서 얻은 포인트로 식물을 키워보세요!</p>
         </div>
-        <Card className="bg-primary/5 border-primary/10 px-6 py-4 flex items-center gap-4">
+        <Card className="bg-primary/5 border-primary/10 px-6 py-4 flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="p-2 bg-primary/20 rounded-full">
             <TrendingUp className="h-6 w-6 text-primary" />
           </div>
@@ -236,11 +237,14 @@ export default function PlantsPage() {
           </div>
         ) : (
           <>
-            {plants?.map((plant) => {
+            {plants?.map((plant, index) => {
               const stageInfo = getStageInfo(plant.growthStage)
               
               return (
-                <Card key={plant.id} className="border-none shadow-sm hover:shadow-xl transition-all group bg-white overflow-hidden relative">
+                <Card key={plant.id} className={cn(
+                  "border-none shadow-sm hover:shadow-xl transition-all group bg-white overflow-hidden relative animate-in zoom-in-95",
+                  `duration-${300 + (index * 100)}`
+                )}>
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -249,14 +253,16 @@ export default function PlantsPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  <div className="relative h-48 bg-muted/20 flex items-center justify-center">
-                    <Image 
-                      src={stageInfo.imageUrl} 
-                      alt={stageInfo.label} 
-                      fill 
-                      className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
-                      data-ai-hint={stageInfo.imageHint}
-                    />
+                  <div className="relative h-48 bg-muted/20 flex items-center justify-center overflow-hidden">
+                    <div className="relative h-32 w-32 animate-float">
+                      <Image 
+                        src={stageInfo.imageUrl} 
+                        alt={stageInfo.label} 
+                        fill 
+                        className="object-contain p-2 group-hover:scale-110 transition-transform duration-500"
+                        data-ai-hint={stageInfo.imageHint}
+                      />
+                    </div>
                     <Badge className="absolute bottom-4 left-4 bg-primary/80 backdrop-blur-sm border-none">
                       {stageInfo.label}
                     </Badge>
@@ -264,7 +270,7 @@ export default function PlantsPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-bold text-lg flex items-center gap-2">
-                        <Leaf className="h-4 w-4 text-green-600" /> {plant.plantName}
+                        <Leaf className="h-4 w-4 text-green-600 group-hover:animate-pulse" /> {plant.plantName}
                       </h3>
                       <span className="text-xs font-bold text-muted-foreground">누적 {plant.pointsInvested}P</span>
                     </div>
@@ -277,12 +283,12 @@ export default function PlantsPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <Button 
-                        className="bg-primary hover:bg-primary/90 font-bold rounded-xl"
+                        className="bg-primary hover:bg-primary/90 font-bold rounded-xl active:scale-95 transition-transform"
                         onClick={() => handleGrow(plant.id, plant.pointsInvested)}
                       >
-                        <Droplets className="mr-2 h-4 w-4" /> 물 주기 (100P)
+                        <Droplets className="mr-2 h-4 w-4" /> 물 주기
                       </Button>
-                      <Button variant="outline" className="border-primary/20 hover:bg-primary/5 font-bold rounded-xl">
+                      <Button variant="outline" className="border-primary/20 hover:bg-primary/5 font-bold rounded-xl active:scale-95 transition-transform">
                         <Sun className="mr-2 h-4 w-4 text-yellow-500" /> 햇빛 쬐기
                       </Button>
                     </div>
@@ -292,10 +298,10 @@ export default function PlantsPage() {
             })}
 
             <Card 
-              className="border-2 border-dashed border-muted hover:border-primary hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-12 h-full min-h-[400px]"
+              className="border-2 border-dashed border-muted hover:border-primary hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-12 h-full min-h-[400px] animate-in zoom-in-95 duration-500 delay-200"
               onClick={handleAddPlant}
             >
-              <div className="p-4 rounded-full bg-primary/10 text-primary mb-4">
+              <div className="p-4 rounded-full bg-primary/10 text-primary mb-4 animate-pulse">
                 <Plus className="h-10 w-10" />
               </div>
               <h3 className="font-bold text-lg mb-1">새 식물 심기</h3>
