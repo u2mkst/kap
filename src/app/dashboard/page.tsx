@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -49,7 +50,6 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // 실시간 랭킹 데이터 가져오기 (포인트 높은 순 상위 10명)
   const leaderboardQuery = useMemoFirebase(() => {
     return query(collection(db, "users"), orderBy("points", "desc"), limit(10))
   }, [db])

@@ -1,21 +1,19 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
 import { collection, doc, updateDoc, increment, query, orderBy } from "firebase/firestore"
 import { Loader2, Share2, Trophy, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/hooks/use-toast"
-import { cn } from "@/lib/utils"
 
 export default function LoungePage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
   const router = useRouter()
 
-  // 선생님 목록 쿼리 (득표순 정렬)
   const teachersQuery = useMemoFirebase(() => {
     if (!user) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
@@ -23,7 +21,6 @@ export default function LoungePage() {
 
   const { data: teachers, isLoading: isTeachersLoading } = useCollection(teachersQuery)
 
-  // 공지사항 데이터
   const configRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "metadata", "config")
@@ -141,8 +138,7 @@ export default function LoungePage() {
         </div>
       </div>
 
-      {/* Floating Buttons */}
-      <div className="fixed bottom-8 left-8 flex flex-col gap-4">
+      <div className="fixed bottom-8 left-8">
         <Button
           onClick={shareVote}
           className="h-14 w-14 rounded-full bg-primary text-white hover:bg-primary/90 shadow-2xl border-none"
