@@ -9,3 +9,9 @@ KST 학생들을 위한 스마트 교육 플랫폼입니다.
 - **나의 정원**: 학습 포인트로 가꾸는 가상 식물 정원
 - **학생 라운지**: 인기 교사 투표 시스템
 - **포인트 샵**: 학습 리워드 교환소
+
+## 기술 스택
+- Next.js 15 (App Router)
+- Firebase (Auth, Firestore)
+- Tailwind CSS & ShadCN UI
+- Genkit (AI Integration)
