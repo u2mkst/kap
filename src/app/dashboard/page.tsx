@@ -28,6 +28,7 @@ import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { searchSchool, getTodayMeals, getTodaySchedule } from "@/lib/neis-api"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -39,9 +40,39 @@ export default function DashboardPage() {
   const [isSolving, setIsSolving] = useState(false)
   const [isSolved, setIsSolved] = useState(false)
 
+  // 나이스 데이터 상태
+  const [meals, setMeals] = useState<string>("불러오는 중...")
+  const [schedule, setSchedule] = useState<string>("불러오는 중...")
+
   useEffect(() => {
-    setTodayStr(new Date().toISOString().split('T')[0])
-  }, [])
+    const now = new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const dd = String(now.getDate()).padStart(2, '0')
+    setTodayStr(`${yyyy}-${mm}-${dd}`)
+    const neisDate = `${yyyy}${mm}${dd}`
+
+    // 학교 정보가 있으면 나이스 데이터 로드
+    if (userData?.schoolName) {
+      searchSchool(userData.schoolName).then(schoolInfo => {
+        if (schoolInfo) {
+          const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
+          const schoolCode = schoolInfo.SD_SCHUL_CODE
+          
+          getTodayMeals(officeCode, schoolCode, neisDate).then(menu => {
+            setMeals(menu || "급식 정보가 없습니다.")
+          })
+          
+          getTodaySchedule(officeCode, schoolCode, neisDate).then(event => {
+            setSchedule(event || "특별한 일정이 없습니다.")
+          })
+        } else {
+          setMeals("학교 정보를 찾을 수 없습니다.")
+          setSchedule("학교 정보를 찾을 수 없습니다.")
+        }
+      })
+    }
+  }, [user, todayStr]) // userData가 로드된 후 재실행되도록 의존성 관리 필요
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -49,6 +80,21 @@ export default function DashboardPage() {
   }, [user, db])
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
+
+  // userData 로드 후 나이스 데이터 재요청을 위한 효과
+  useEffect(() => {
+    if (userData?.schoolName && todayStr) {
+      const neisDate = todayStr.replace(/-/g, '')
+      searchSchool(userData.schoolName).then(schoolInfo => {
+        if (schoolInfo) {
+          const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
+          const schoolCode = schoolInfo.SD_SCHUL_CODE
+          getTodayMeals(officeCode, schoolCode, neisDate).then(setMeals)
+          getTodaySchedule(officeCode, schoolCode, neisDate).then(setSchedule)
+        }
+      })
+    }
+  }, [userData?.schoolName, todayStr])
 
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
@@ -173,7 +219,7 @@ export default function DashboardPage() {
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
                   <div className="text-xs text-orange-900 leading-relaxed flex-grow">
-                    준비된 급식 정보가 없습니다.
+                    {meals || "급식 정보를 불러올 수 없습니다."}
                   </div>
                 </div>
                 <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col h-full">
@@ -181,7 +227,7 @@ export default function DashboardPage() {
                     <Calendar className="h-4 w-4" /> 오늘 학사일정
                   </h3>
                   <div className="text-xs text-blue-900 leading-relaxed flex-grow">
-                    준비된 학사 일정이 없습니다.
+                    {schedule || "일정 정보를 불러올 수 없습니다."}
                   </div>
                 </div>
               </div>
@@ -270,12 +316,12 @@ export default function DashboardPage() {
                   <div className="space-y-2 pt-2 border-t">
                     <Label className="text-[10px] text-muted-foreground font-bold">정답 입력</Label>
                     <div className="flex gap-2">
-                      <Input 
+                      <input 
                         disabled={isSolved}
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
-                        placeholder="정답을 입력하세요" 
-                        className="h-8 text-xs bg-white"
+                        placeholder="정답" 
+                        className="h-8 w-full px-3 text-xs bg-white border rounded-md"
                         onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
                       />
                       <Button 
@@ -287,7 +333,7 @@ export default function DashboardPage() {
                         {isSolving ? <Loader2 className="h-3 w-3 animate-spin" /> : isSolved ? <CheckCircle2 className="h-3 w-3" /> : "제출"}
                       </Button>
                     </div>
-                    {isSolved && <p className="text-[10px] text-primary font-bold">축하합니다! 포인트를 획득했습니다. ✨</p>}
+                    {isSolved && <p className="text-[10px] text-primary font-bold">정답입니다! ✨</p>}
                   </div>
                 </div>
               ) : (
