@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -30,14 +31,16 @@ import {
   Loader2,
   GraduationCap,
   Maximize2,
-  CalendarDays
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
-import { format, startOfWeek, addDays, isSameDay } from "date-fns"
+import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from "date-fns"
 import { ko } from "date-fns/locale"
 
 export default function DashboardPage() {
@@ -53,6 +56,7 @@ export default function DashboardPage() {
   const [weeklyMeals, setWeeklyMeals] = useState<{date: string, menu: string}[]>([])
   const [weeklyTimetable, setWeeklyTimetable] = useState<{date: string, timetable: string}[]>([])
   const [isLoadingWeekly, setIsLoadingWeekly] = useState(false)
+  const [weekOffset, setWeekOffset] = useState(0)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -62,15 +66,14 @@ export default function DashboardPage() {
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
   const weekDates = useMemo(() => {
-    const now = new Date()
-    const start = startOfWeek(now, { weekStartsOn: 1 })
+    const targetDate = addWeeks(new Date(), weekOffset)
+    const start = startOfWeek(targetDate, { weekStartsOn: 1 })
     return Array.from({ length: 5 }).map((_, i) => addDays(start, i))
-  }, [])
+  }, [weekOffset])
 
   useEffect(() => {
     const now = new Date()
-    const today = format(now, "yyyyMMdd")
-    setTodayStr(today)
+    setTodayStr(format(now, "yyyyMMdd"))
 
     if (userData?.schoolName && userData?.grade && userData?.classNum) {
       setIsLoadingWeekly(true)
@@ -98,12 +101,14 @@ export default function DashboardPage() {
   }, [userData, weekDates])
 
   const todayMeal = useMemo(() => {
-    return weeklyMeals.find(m => m.date === todayStr)?.menu || ""
-  }, [weeklyMeals, todayStr])
+    const today = format(new Date(), "yyyyMMdd")
+    return weeklyMeals.find(m => m.date === today)?.menu || ""
+  }, [weeklyMeals])
 
   const todayTable = useMemo(() => {
-    return weeklyTimetable.find(t => t.date === todayStr)?.timetable || ""
-  }, [weeklyTimetable, todayStr])
+    const today = format(new Date(), "yyyyMMdd")
+    return weeklyTimetable.find(t => t.date === today)?.timetable || ""
+  }, [weeklyTimetable])
 
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
@@ -224,7 +229,20 @@ export default function DashboardPage() {
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" /> {userData?.schoolName} 주간 정보</DialogTitle>
+                      <div className="flex items-center justify-between w-full pr-8">
+                        <DialogTitle className="flex items-center gap-2">
+                          <CalendarDays className="h-5 w-5 text-primary" /> {userData?.schoolName} 주간 정보
+                        </DialogTitle>
+                        <div className="flex items-center gap-1">
+                          <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev - 1)}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => setWeekOffset(0)}>오늘</Button>
+                          <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev + 1)}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </DialogHeader>
                     <Tabs defaultValue="meals" className="w-full mt-4">
                       <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1">
@@ -269,13 +287,14 @@ export default function DashboardPage() {
                                   <span className={`text-xs font-black ${isToday ? 'text-blue-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
                                   {isToday && <Badge className="bg-blue-500 text-[10px] hover:bg-blue-600 border-none">TODAY</Badge>}
                                 </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <div className="flex flex-col gap-2">
                                   {table ? table.timetable.split(',').map((t, i) => (
-                                    <div key={i} className="flex flex-col p-2 bg-white/60 border border-blue-100/50 rounded-xl text-center">
-                                      <span className="text-[10px] text-blue-400 font-bold mb-0.5">{t.split(':')[0]}</span>
+                                    <div key={i} className="flex items-center gap-3 p-2 bg-white/60 border border-blue-100/50 rounded-xl">
+                                      <span className="w-10 text-[10px] text-blue-400 font-bold text-center">{t.split(':')[0]}</span>
+                                      <div className="h-4 w-px bg-blue-100" />
                                       <span className="text-xs font-black text-blue-900">{t.split(':')[1]}</span>
                                     </div>
-                                  )) : <p className="col-span-full text-xs text-muted-foreground py-2 text-center">시간표 정보가 없습니다.</p>}
+                                  )) : <p className="text-xs text-muted-foreground py-2 text-center">시간표 정보가 없습니다.</p>}
                                 </div>
                               </div>
                             )
@@ -300,20 +319,21 @@ export default function DashboardPage() {
                 </div>
               )}
               
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 flex flex-col h-full shadow-sm">
+              <div className="flex flex-col gap-4">
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 flex flex-col shadow-sm min-h-[160px]">
                   <h3 className="font-black text-orange-700 flex items-center gap-2 mb-4 text-sm">
-                    <Utensils className="h-4 w-4" /> 오늘 급식
+                    <Utensils className="h-4 w-4" /> 오늘의 급식
                   </h3>
-                  <div className="flex-grow space-y-1.5">
+                  <div className="space-y-1.5">
                     {isLoadingWeekly ? (
                       <div className="flex items-center gap-2 text-orange-400"><Loader2 className="h-3 w-3 animate-spin" /> <span className="text-xs">불러오는 중...</span></div>
                     ) : todayMeal ? (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col gap-2">
                         {todayMeal.split(',').map((item, i) => (
-                          <Badge key={i} variant="outline" className="bg-white/80 text-orange-800 border-orange-200 text-[11px] py-0.5 px-2.5 rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                            {item.trim()}
-                          </Badge>
+                          <div key={i} className="bg-white/80 p-3 rounded-xl border border-orange-200/50 flex items-center gap-3 shadow-sm">
+                            <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+                            <span className="text-sm font-bold text-orange-800">{item.trim()}</span>
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -321,22 +341,24 @@ export default function DashboardPage() {
                     )}
                   </div>
                 </div>
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex flex-col h-full shadow-sm">
+
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex flex-col shadow-sm">
                   <h3 className="font-black text-blue-700 flex items-center gap-2 mb-4 text-sm">
                     <Clock className="h-4 w-4" /> 오늘의 시간표
                   </h3>
-                  <div className="flex-grow grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-2">
                     {isLoadingWeekly ? (
-                      <div className="flex items-center gap-2 text-blue-400 col-span-2"><Loader2 className="h-3 w-3 animate-spin" /> <span className="text-xs">불러오는 중...</span></div>
+                      <div className="flex items-center gap-2 text-blue-400"><Loader2 className="h-3 w-3 animate-spin" /> <span className="text-xs">불러오는 중...</span></div>
                     ) : todayTable ? (
                       todayTable.split(',').map((t, i) => (
-                        <div key={i} className="bg-white/80 p-2 rounded-xl border border-blue-200/50 flex flex-col items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                          <span className="text-[9px] font-bold text-blue-400 leading-none mb-0.5">{t.split(':')[0]}</span>
-                          <span className="text-[11px] font-black text-blue-800 leading-none">{t.split(':')[1]}</span>
+                        <div key={i} className="bg-white/80 p-3 rounded-xl border border-blue-200/50 flex items-center gap-4 shadow-sm">
+                          <span className="text-xs font-black text-blue-400 w-10 text-center">{t.split(':')[0]}</span>
+                          <div className="h-4 w-px bg-blue-100" />
+                          <span className="text-sm font-black text-blue-800">{t.split(':')[1]}</span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-blue-900/50 italic col-span-2 text-center py-2">시간표 정보가 없습니다.</p>
+                      <p className="text-xs text-blue-900/50 italic text-center py-4">시간표 정보가 없습니다.</p>
                     )}
                   </div>
                 </div>
