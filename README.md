@@ -1,5 +1,11 @@
-# Firebase Studio
 
-This is a NextJS starter in Firebase Studio.
+# KST HUB
 
-To get started, take a look at src/app/page.tsx.
+KST 학생들을 위한 스마트 교육 플랫폼입니다.
+
+## 주요 기능
+- **AI 학습 도우미**: 학습 내용 요약 및 복습 프롬프트 생성
+- **학교 정보 연동**: 실시간 급식 및 시간표 조회 (NEIS API)
+- **나의 정원**: 학습 포인트로 가꾸는 가상 식물 정원
+- **학생 라운지**: 인기 교사 투표 시스템
+- **포인트 샵**: 학습 리워드 교환소
