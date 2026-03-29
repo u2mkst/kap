@@ -1,7 +1,8 @@
 {
-  "name": "nextn",
+  "name": "kst-hub",
   "version": "0.1.0",
   "private": true,
+  "description": "KST 학생들을 위한 스마트 교육 플랫폼",
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
