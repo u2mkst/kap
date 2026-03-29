@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -39,7 +37,7 @@ import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
-import { format, startOfWeek, endOfWeek, addDays, isSameDay } from "date-fns"
+import { format, startOfWeek, addDays, isSameDay } from "date-fns"
 import { ko } from "date-fns/locale"
 
 export default function DashboardPage() {
@@ -63,10 +61,9 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // 이번 주 날짜 범위 계산 (월~금)
   const weekDates = useMemo(() => {
     const now = new Date()
-    const start = startOfWeek(now, { weekStartsOn: 1 }) // 월요일 시작
+    const start = startOfWeek(now, { weekStartsOn: 1 })
     return Array.from({ length: 5 }).map((_, i) => addDays(start, i))
   }, [])
 
@@ -101,11 +98,11 @@ export default function DashboardPage() {
   }, [userData, weekDates])
 
   const todayMeal = useMemo(() => {
-    return weeklyMeals.find(m => m.date === todayStr)?.menu || "정보 없음"
+    return weeklyMeals.find(m => m.date === todayStr)?.menu || ""
   }, [weeklyMeals, todayStr])
 
   const todayTable = useMemo(() => {
-    return weeklyTimetable.find(t => t.date === todayStr)?.timetable || "정보 없음"
+    return weeklyTimetable.find(t => t.date === todayStr)?.timetable || ""
   }, [weeklyTimetable, todayStr])
 
   const leaderboardQuery = useMemoFirebase(() => {
@@ -216,59 +213,69 @@ export default function DashboardPage() {
                 <CardTitle className="text-lg flex items-center gap-2 text-primary font-bold">
                   <School className="h-5 w-5" /> 우리 학교 소식
                 </CardTitle>
-                <CardDescription className="text-xs">오늘과 이번 주의 학급 소식을 확인하세요.</CardDescription>
+                <CardDescription className="text-xs">오늘과 이번 주의 급식 및 시간표를 확인하세요.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary">
+                    <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary shadow-sm">
                       <Maximize2 className="h-3 w-3 mr-1" /> 이번 주 전체 보기
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" /> {userData?.schoolName} 주간 정보</DialogTitle>
                     </DialogHeader>
                     <Tabs defaultValue="meals" className="w-full mt-4">
-                      <TabsList className="grid w-full grid-cols-2 mb-4">
-                        <TabsTrigger value="meals">주간 급식</TabsTrigger>
-                        <TabsTrigger value="timetable">주간 시간표</TabsTrigger>
+                      <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1">
+                        <TabsTrigger value="meals" className="text-xs font-bold">주간 급식</TabsTrigger>
+                        <TabsTrigger value="timetable" className="text-xs font-bold">주간 시간표</TabsTrigger>
                       </TabsList>
                       <TabsContent value="meals" className="space-y-4">
-                        <div className="grid gap-3">
+                        <div className="grid gap-4">
                           {weekDates.map((date, idx) => {
                             const dStr = format(date, "yyyyMMdd")
                             const meal = weeklyMeals.find(m => m.date === dStr)
+                            const isToday = isSameDay(date, new Date())
                             return (
-                              <div key={idx} className={`p-4 rounded-xl border ${isSameDay(date, new Date()) ? 'bg-orange-50 border-orange-200' : 'bg-muted/30 border-muted'}`}>
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-xs font-bold text-muted-foreground">{format(date, "MM월 dd일 (EEEE)", { locale: ko })}</span>
-                                  {isSameDay(date, new Date()) && <Badge className="bg-orange-500 text-[10px]">오늘</Badge>}
+                              <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
+                                <div className="flex justify-between items-center mb-3">
+                                  <span className={`text-xs font-black ${isToday ? 'text-orange-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
+                                  {isToday && <Badge className="bg-orange-500 text-[10px] hover:bg-orange-600 border-none">TODAY</Badge>}
                                 </div>
-                                <p className="text-xs text-orange-900 leading-relaxed">{meal?.menu || "급식 정보가 없습니다."}</p>
+                                <div className="text-[13px] text-orange-900/80 leading-relaxed font-medium">
+                                  {meal?.menu ? (
+                                    <div className="flex flex-wrap gap-x-2 gap-y-1">
+                                      {meal.menu.split(',').map((item, i) => (
+                                        <span key={i} className="bg-white/50 px-2 py-0.5 rounded-md border border-orange-100/50">{item.trim()}</span>
+                                      ))}
+                                    </div>
+                                  ) : "급식 정보가 없습니다."}
+                                </div>
                               </div>
                             )
                           })}
                         </div>
                       </TabsContent>
                       <TabsContent value="timetable" className="space-y-4">
-                         <div className="grid gap-3">
+                         <div className="grid gap-4">
                           {weekDates.map((date, idx) => {
                             const dStr = format(date, "yyyyMMdd")
                             const table = weeklyTimetable.find(t => t.date === dStr)
+                            const isToday = isSameDay(date, new Date())
                             return (
-                              <div key={idx} className={`p-4 rounded-xl border ${isSameDay(date, new Date()) ? 'bg-blue-50 border-blue-200' : 'bg-muted/30 border-muted'}`}>
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-xs font-bold text-muted-foreground">{format(date, "MM월 dd일 (EEEE)", { locale: ko })}</span>
-                                  {isSameDay(date, new Date()) && <Badge className="bg-blue-500 text-[10px]">오늘</Badge>}
+                              <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
+                                <div className="flex justify-between items-center mb-3">
+                                  <span className={`text-xs font-black ${isToday ? 'text-blue-700' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
+                                  {isToday && <Badge className="bg-blue-500 text-[10px] hover:bg-blue-600 border-none">TODAY</Badge>}
                                 </div>
-                                <div className="text-xs text-blue-900 leading-relaxed grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                   {table ? table.timetable.split(',').map((t, i) => (
-                                    <div key={i} className="flex justify-between border-b border-blue-100 last:border-0 pb-1">
-                                      <span className="font-bold">{t.split(':')[0]}</span>
-                                      <span>{t.split(':')[1]}</span>
+                                    <div key={i} className="flex flex-col p-2 bg-white/60 border border-blue-100/50 rounded-xl text-center">
+                                      <span className="text-[10px] text-blue-400 font-bold mb-0.5">{t.split(':')[0]}</span>
+                                      <span className="text-xs font-black text-blue-900">{t.split(':')[1]}</span>
                                     </div>
-                                  )) : "시간표 정보가 없습니다."}
+                                  )) : <p className="col-span-full text-xs text-muted-foreground py-2 text-center">시간표 정보가 없습니다.</p>}
                                 </div>
                               </div>
                             )
@@ -287,27 +294,50 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="pt-6">
               {!userData?.schoolName && (
-                <div className="text-center py-10 bg-muted/20 rounded-2xl mb-4 border-2 border-dashed">
+                <div className="text-center py-12 bg-muted/20 rounded-2xl mb-4 border-2 border-dashed">
                   <p className="text-sm text-muted-foreground mb-4">회원 정보에 학교 정보가 설정되어 있지 않습니다.</p>
-                  <Link href="/profile"><Button size="sm" className="rounded-full px-6">학교 정보 설정하기</Button></Link>
+                  <Link href="/profile"><Button size="sm" className="rounded-full px-8 shadow-sm">학교 정보 설정하기</Button></Link>
                 </div>
               )}
               
               <div className="grid sm:grid-cols-2 gap-4">
-                <div className="p-5 rounded-2xl bg-orange-50 border border-orange-100 flex flex-col h-full">
-                  <h3 className="font-bold text-orange-700 flex items-center gap-2 mb-3 text-sm">
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 flex flex-col h-full shadow-sm">
+                  <h3 className="font-black text-orange-700 flex items-center gap-2 mb-4 text-sm">
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
-                  <div className="text-xs text-orange-900 leading-relaxed flex-grow line-clamp-3">
-                    {isLoadingWeekly ? "불러오는 중..." : todayMeal}
+                  <div className="flex-grow space-y-1.5">
+                    {isLoadingWeekly ? (
+                      <div className="flex items-center gap-2 text-orange-400"><Loader2 className="h-3 w-3 animate-spin" /> <span className="text-xs">불러오는 중...</span></div>
+                    ) : todayMeal ? (
+                      <div className="flex flex-wrap gap-2">
+                        {todayMeal.split(',').map((item, i) => (
+                          <Badge key={i} variant="outline" className="bg-white/80 text-orange-800 border-orange-200 text-[11px] py-0.5 px-2.5 rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                            {item.trim()}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-orange-900/50 italic">급식 정보가 없습니다.</p>
+                    )}
                   </div>
                 </div>
-                <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col h-full">
-                  <h3 className="font-bold text-blue-700 flex items-center gap-2 mb-3 text-sm">
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex flex-col h-full shadow-sm">
+                  <h3 className="font-black text-blue-700 flex items-center gap-2 mb-4 text-sm">
                     <Clock className="h-4 w-4" /> 오늘의 시간표
                   </h3>
-                  <div className="text-xs text-blue-900 leading-relaxed flex-grow line-clamp-3">
-                    {isLoadingWeekly ? "불러오는 중..." : todayTable}
+                  <div className="flex-grow grid grid-cols-2 gap-2">
+                    {isLoadingWeekly ? (
+                      <div className="flex items-center gap-2 text-blue-400 col-span-2"><Loader2 className="h-3 w-3 animate-spin" /> <span className="text-xs">불러오는 중...</span></div>
+                    ) : todayTable ? (
+                      todayTable.split(',').map((t, i) => (
+                        <div key={i} className="bg-white/80 p-2 rounded-xl border border-blue-200/50 flex flex-col items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                          <span className="text-[9px] font-bold text-blue-400 leading-none mb-0.5">{t.split(':')[0]}</span>
+                          <span className="text-[11px] font-black text-blue-800 leading-none">{t.split(':')[1]}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-blue-900/50 italic col-span-2 text-center py-2">시간표 정보가 없습니다.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -315,122 +345,122 @@ export default function DashboardPage() {
           </Card>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-emerald-50 group hover:shadow-md transition-all">
+             <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-emerald-50 group hover:shadow-md transition-all rounded-3xl overflow-hidden">
               <CardHeader className="p-5">
-                <CardTitle className="text-sm flex items-center gap-2 font-bold text-green-800">
+                <CardTitle className="text-sm flex items-center gap-2 font-black text-green-800">
                   <Sprout className="h-4 w-4 text-green-600" /> 나의 식물 키우기
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 pt-0">
                 <div className="text-center">
-                  <p className="text-xs mb-4 text-green-700">포인트를 투자해 식물을 성장시키세요!</p>
+                  <p className="text-xs mb-4 text-green-700/70 font-medium">학습 포인트로 식물을 무럭무럭 성장시키세요!</p>
                   <Link href="/plants">
-                    <Button variant="outline" size="sm" className="rounded-full w-full border-green-200 bg-white text-green-700 hover:bg-green-100 text-xs font-bold">
-                      식물 정원 가기
+                    <Button variant="outline" size="sm" className="rounded-full w-full border-green-200 bg-white text-green-700 hover:bg-green-100 text-xs font-black shadow-sm">
+                      내 식물 정원 가기
                     </Button>
                   </Link>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-white hover:bg-accent/5 transition-colors">
+            <Card className="border-none shadow-sm bg-white hover:bg-accent/5 transition-colors rounded-3xl overflow-hidden">
               <CardHeader className="p-5">
-                <CardTitle className="text-sm flex items-center gap-2 font-bold">
+                <CardTitle className="text-sm flex items-center gap-2 font-black">
                   <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 오늘의 한마디
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 pt-0">
-                <div className="bg-muted/30 p-4 rounded-2xl italic text-[11px] text-center text-muted-foreground border border-muted">
-                  "{fortuneData?.fortuneText || "오늘도 당신의 성장을 응원합니다!"}"
+                <div className="bg-muted/30 p-5 rounded-2xl italic text-[11px] text-center text-muted-foreground border border-muted/50 leading-relaxed font-medium">
+                  "{fortuneData?.fortuneText || "오늘도 당신의 멋진 성장을 응원합니다!"}"
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card className="border-none shadow-sm bg-white overflow-hidden">
+          <Card className="border-none shadow-sm bg-white overflow-hidden rounded-3xl">
             <CardHeader className="p-5">
-              <CardTitle className="text-sm flex items-center gap-2 font-bold">
+              <CardTitle className="text-sm flex items-center gap-2 font-black">
                 <Zap className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 외부 학습 사이트
               </CardTitle>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-3 p-5 pt-0">
-              <a href="https://www.u2math.co.kr/Login/Index" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-white hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-between">
+              <a href="https://www.u2math.co.kr/Login/Index" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-white hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-between shadow-sm">
                 <div>
-                  <p className="font-bold text-xs group-hover:text-primary">유투엠 (U2M)</p>
-                  <p className="text-[10px] text-muted-foreground">말하는 수학</p>
+                  <p className="font-black text-xs group-hover:text-primary transition-colors">유투엠 (U2M)</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">말하는 수학</p>
                 </div>
-                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary" />
+                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
               </a>
-              <a href="https://student.mathflat.com/#/history?_si=2" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-white hover:border-accent hover:bg-accent/5 transition-all flex items-center justify-between">
+              <a href="https://student.mathflat.com/#/history?_si=2" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-white hover:border-accent hover:bg-accent/5 transition-all flex items-center justify-between shadow-sm">
                 <div>
-                  <p className="font-bold text-xs group-hover:text-accent">매쓰플랫</p>
-                  <p className="text-[10px] text-muted-foreground">맞춤형 수학 학습</p>
+                  <p className="font-black text-xs group-hover:text-accent transition-colors">매쓰플랫</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">맞춤형 수학 학습</p>
                 </div>
-                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-accent" />
+                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-accent transition-colors" />
               </a>
             </CardContent>
           </Card>
         </div>
 
         <div className="md:col-span-4 space-y-6">
-           <Card className="border-none shadow-sm bg-white overflow-hidden h-full">
-            <CardHeader className="p-5 border-b mb-4">
-              <CardTitle className="text-md flex items-center gap-2 font-bold">
+           <Card className="border-none shadow-sm bg-white overflow-hidden h-full rounded-3xl">
+            <CardHeader className="p-5 border-b mb-4 bg-muted/5">
+              <CardTitle className="text-md flex items-center gap-2 font-black">
                 <Sparkles className="h-4 w-4 text-primary" /> 오늘의 도전 문제
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 pt-0">
               {problemData ? (
-                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 space-y-4">
+                <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10 space-y-4 shadow-sm">
                   <div className="flex items-center gap-1.5">
-                    <Badge className="bg-primary text-[9px] h-4 rounded-full">{problemData.topic}</Badge>
-                    <Badge variant="outline" className="text-[9px] h-4 rounded-full bg-white">{problemData.difficulty}</Badge>
-                    <Badge variant="secondary" className="text-[9px] h-4 rounded-full bg-accent/20">{userData?.grade}학년 전용</Badge>
+                    <Badge className="bg-primary text-[9px] h-4 rounded-full border-none px-2">{problemData.topic}</Badge>
+                    <Badge variant="outline" className="text-[9px] h-4 rounded-full bg-white border-primary/20">{problemData.difficulty}</Badge>
+                    <Badge variant="secondary" className="text-[9px] h-4 rounded-full bg-accent/20 border-none font-bold">{userData?.grade}학년</Badge>
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm mb-2">{problemData.title}</h3>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    <h3 className="font-black text-sm mb-2 text-primary">{problemData.title}</h3>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-medium">
                       {problemData.problemText}
                     </p>
                   </div>
-                  <div className="space-y-2 pt-2 border-t">
-                    <Label className="text-[10px] text-muted-foreground font-bold">정답 입력</Label>
+                  <div className="space-y-2 pt-4 border-t border-primary/10">
+                    <Label className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">정답 입력</Label>
                     <div className="flex gap-2">
                       <input 
                         disabled={isSolved}
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
                         placeholder="정답" 
-                        className="h-8 w-full px-3 text-xs bg-white border rounded-md"
+                        className="h-9 w-full px-3 text-xs bg-white border rounded-xl focus:ring-1 focus:ring-primary outline-none transition-all"
                         onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
                       />
                       <Button 
                         disabled={isSolved || isSolving || !userAnswer.trim()}
                         onClick={handleSolveProblem}
                         size="sm" 
-                        className="h-8 px-4 rounded-full bg-primary text-[10px] font-bold"
+                        className="h-9 px-5 rounded-xl bg-primary text-[10px] font-black shadow-sm"
                       >
                         {isSolving ? <Loader2 className="h-3 w-3 animate-spin" /> : isSolved ? <CheckCircle2 className="h-3 w-3" /> : "제출"}
                       </Button>
                     </div>
-                    {isSolved && <p className="text-[10px] text-primary font-bold">정답입니다! ✨</p>}
+                    {isSolved && <p className="text-[10px] text-primary font-black animate-bounce mt-2 text-center">정답입니다! +{problemData.rewardPoints}P ✨</p>}
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-10 text-xs text-muted-foreground bg-muted/10 rounded-2xl border border-dashed">
+                <div className="text-center py-12 text-xs text-muted-foreground bg-muted/10 rounded-2xl border border-dashed font-medium italic">
                   오늘의 문제가 준비 중입니다.
                 </div>
               )}
             </CardContent>
 
-            <CardHeader className="p-5 border-t border-b mt-4">
-              <CardTitle className="text-md flex items-center gap-2 font-bold">
+            <CardHeader className="p-5 border-t border-b mt-4 bg-muted/5">
+              <CardTitle className="text-md flex items-center gap-2 font-black">
                 <Trophy className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 오늘의 포인트 TOP 10
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 p-5 pt-4">
+            <CardContent className="space-y-1.5 p-5 pt-4">
               {isLeaderboardLoading ? (
-                <div className="flex justify-center py-10"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : (
                 Array.from({ length: 10 }).map((_, index) => {
                   const rank = index + 1;
@@ -438,26 +468,26 @@ export default function DashboardPage() {
                   const isMe = u?.id === user?.uid;
                   
                   return (
-                    <div key={index} className={`flex items-center justify-between p-3 rounded-xl transition-colors ${isMe ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'}`}>
+                    <div key={index} className={`flex items-center justify-between p-3 rounded-2xl transition-all ${isMe ? 'bg-primary/10 border border-primary/20 scale-[1.02] shadow-sm' : 'hover:bg-muted/30 border border-transparent'}`}>
                       <div className="flex items-center gap-3">
                         <div className="w-6 flex justify-center">
                           {rank === 1 ? (
-                            <Medal className="h-4 w-4 text-yellow-500" />
+                            <Medal className="h-5 w-5 text-yellow-500" />
                           ) : rank === 2 ? (
-                            <Medal className="h-4 w-4 text-gray-400" />
+                            <Medal className="h-5 w-5 text-gray-400" />
                           ) : rank === 3 ? (
-                            <Medal className="h-4 w-4 text-orange-400" />
+                            <Medal className="h-5 w-5 text-orange-400" />
                           ) : (
-                            <span className="font-black text-xs text-muted-foreground">{rank}</span>
+                            <span className="font-black text-xs text-muted-foreground/50">{rank}</span>
                           )}
                         </div>
-                        <span className={`text-[11px] font-bold ${isMe ? 'text-primary' : 'text-foreground'}`}>
+                        <span className={`text-[11px] font-black tracking-tight ${isMe ? 'text-primary' : 'text-foreground'}`}>
                           {u ? (u.nickname || u.firstName || "-") : "-"}
-                          {isMe && <span className="ml-1 text-[9px] font-normal opacity-70">(나)</span>}
+                          {isMe && <span className="ml-1.5 text-[9px] font-bold opacity-60">(나)</span>}
                         </span>
                       </div>
-                      <span className={`text-[10px] font-black ${isMe ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {u ? u.points.toLocaleString() : "0"} P
+                      <span className={`text-[11px] font-black ${isMe ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {u ? u.points.toLocaleString() : "0"} <span className="text-[9px] font-bold opacity-50">P</span>
                       </span>
                     </div>
                   )
