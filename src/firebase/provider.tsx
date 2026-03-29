@@ -5,6 +5,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -105,10 +106,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   return (
     <FirebaseContext.Provider value={contextValue}>
-      {/* 
-        반복적인 런타임 에러 화면 노출을 방지하기 위해 FirebaseErrorListener를 제거했습니다.
-        에러는 이제 콘솔에서만 확인할 수 있습니다.
-      */}
+      <FirebaseErrorListener />
       {children}
     </FirebaseContext.Provider>
   );

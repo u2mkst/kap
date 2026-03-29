@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [weeklyTimetable, setWeeklyTimetable] = useState<{date: string, timetable: string}[]>([])
   const [isLoadingWeekly, setIsLoadingWeekly] = useState(false)
   const [weekOffset, setWeekOffset] = useState(0)
+  const [weekDates, setWeekDates] = useState<Date[]>([])
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -68,17 +69,19 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  const weekDates = useMemo(() => {
+  // Hydration 안전을 위해 weekDates를 useEffect에서 관리
+  useEffect(() => {
     const targetDate = addWeeks(new Date(), weekOffset)
     const start = startOfWeek(targetDate, { weekStartsOn: 1 })
-    return Array.from({ length: 5 }).map((_, i) => addDays(start, i))
+    const dates = Array.from({ length: 5 }).map((_, i) => addDays(start, i))
+    setWeekDates(dates)
   }, [weekOffset])
 
   useEffect(() => {
     const now = new Date()
     setTodayStr(format(now, "yyyy-MM-dd"))
 
-    if (userData?.schoolName && userData?.grade && userData?.classNum) {
+    if (userData?.schoolName && userData?.grade && userData?.classNum && weekDates.length > 0) {
       setIsLoadingWeekly(true)
       searchSchool(userData.schoolName).then(schoolInfo => {
         if (schoolInfo) {
@@ -104,14 +107,16 @@ export default function DashboardPage() {
   }, [userData, weekDates])
 
   const todayMeal = useMemo(() => {
-    const today = format(new Date(), "yyyyMMdd")
+    if (!todayStr) return ""
+    const today = todayStr.replace(/-/g, "")
     return weeklyMeals.find(m => m.date === today)?.menu || ""
-  }, [weeklyMeals])
+  }, [weeklyMeals, todayStr])
 
   const todayTable = useMemo(() => {
-    const today = format(new Date(), "yyyyMMdd")
+    if (!todayStr) return ""
+    const today = todayStr.replace(/-/g, "")
     return weeklyTimetable.find(t => t.date === today)?.timetable || ""
-  }, [weeklyTimetable])
+  }, [weeklyTimetable, todayStr])
 
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
@@ -120,22 +125,19 @@ export default function DashboardPage() {
   const { data: topUsers, isLoading: isLeaderboardLoading } = useCollection(leaderboardQuery)
 
   const fortuneRef = useMemoFirebase(() => {
-    if (!db || !user) return null
-    const dateStr = format(new Date(), "yyyy-MM-dd")
-    return doc(db, "daily_fortunes", dateStr)
-  }, [db, user])
+    if (!db || !todayStr) return null
+    return doc(db, "daily_fortunes", todayStr)
+  }, [db, todayStr])
 
   const personalFortuneRef = useMemoFirebase(() => {
-    if (!db || !user) return null
-    const dateStr = format(new Date(), "yyyy-MM-dd")
-    return doc(db, "users", user.uid, "personal_fortunes", dateStr)
-  }, [db, user])
+    if (!db || !user || !todayStr) return null
+    return doc(db, "users", user.uid, "personal_fortunes", todayStr)
+  }, [db, user, todayStr])
 
   const problemRef = useMemoFirebase(() => {
-    if (!db || !userData?.grade || !user) return null
-    const dateStr = format(new Date(), "yyyy-MM-dd")
-    return doc(db, "daily_problems", `${dateStr}_${userData.grade}`)
-  }, [db, userData?.grade, user])
+    if (!db || !userData?.grade || !user || !todayStr) return null
+    return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
+  }, [db, userData?.grade, user, todayStr])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: personalFortuneData } = useDoc(personalFortuneRef)
@@ -164,16 +166,15 @@ export default function DashboardPage() {
   }
 
   const handleGenerateLuckyScore = async () => {
-    if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck) return
+    if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck || !todayStr) return
     
     setIsGeneratingLuck(true)
-    const randomScore = Math.floor(Math.random() * 41) + 60; // 60~100 사이의 행운 점수
-    const dateStr = format(new Date(), "yyyy-MM-dd")
-
+    const randomScore = Math.floor(Math.random() * 41) + 60; 
+    
     try {
       await setDoc(personalFortuneRef, {
         score: randomScore,
-        date: dateStr,
+        date: todayStr,
         createdAt: serverTimestamp()
       })
       toast({ title: "행운 점수 확인 완료!", description: `오늘 당신의 행운은 ${randomScore}점입니다! 🍀` })
@@ -280,7 +281,7 @@ export default function DashboardPage() {
                       {weekDates.map((date, idx) => {
                         const dStr = format(date, "yyyyMMdd")
                         const meal = weeklyMeals.find(m => m.date === dStr)
-                        const isToday = isSameDay(date, new Date())
+                        const isToday = todayStr && isSameDay(date, new Date(todayStr))
                         return (
                           <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
                             <div className="flex justify-between items-center mb-3">
@@ -306,7 +307,7 @@ export default function DashboardPage() {
                       {weekDates.map((date, idx) => {
                         const dStr = format(date, "yyyyMMdd")
                         const table = weeklyTimetable.find(t => t.date === dStr)
-                        const isToday = isSameDay(date, new Date())
+                        const isToday = todayStr && isSameDay(date, new Date(todayStr))
                         return (
                           <div key={idx} className={`p-4 rounded-2xl border transition-all ${isToday ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-100' : 'bg-muted/30 border-muted hover:bg-muted/50'}`}>
                             <div className="flex justify-between items-center mb-3">
