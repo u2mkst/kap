@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -9,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -31,26 +31,30 @@ import {
   CheckCircle2,
   Loader2,
   GraduationCap,
-  Maximize2
+  Maximize2,
+  CalendarDays
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { searchSchool, getTodayMeals, getTodayTimetable } from "@/lib/neis-api"
+import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
+import { format, startOfWeek, endOfWeek, addDays, isSameDay } from "date-fns"
+import { ko } from "date-fns/locale"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
   const router = useRouter()
 
-  const [todayStr, setTodayStr] = useState<string | null>(null)
+  const [todayStr, setTodayStr] = useState<string>("")
   const [userAnswer, setUserAnswer] = useState("")
   const [isSolving, setIsSolving] = useState(false)
   const [isSolved, setIsSolved] = useState(false)
 
-  const [meals, setMeals] = useState<string>("불러오는 중...")
-  const [timetable, setTimetable] = useState<string>("불러오는 중...")
+  const [weeklyMeals, setWeeklyMeals] = useState<{date: string, menu: string}[]>([])
+  const [weeklyTimetable, setWeeklyTimetable] = useState<{date: string, timetable: string}[]>([])
+  const [isLoadingWeekly, setIsLoadingWeekly] = useState(false)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -59,42 +63,50 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
+  // 이번 주 날짜 범위 계산 (월~금)
+  const weekDates = useMemo(() => {
+    const now = new Date()
+    const start = startOfWeek(now, { weekStartsOn: 1 }) // 월요일 시작
+    return Array.from({ length: 5 }).map((_, i) => addDays(start, i))
+  }, [])
+
   useEffect(() => {
     const now = new Date()
-    const yyyy = now.getFullYear()
-    const mm = String(now.getMonth() + 1).padStart(2, '0')
-    const dd = String(now.getDate()).padStart(2, '0')
-    setTodayStr(`${yyyy}-${mm}-${dd}`)
-    const neisDate = `${yyyy}${mm}${dd}`
+    const today = format(now, "yyyyMMdd")
+    setTodayStr(today)
 
     if (userData?.schoolName && userData?.grade && userData?.classNum) {
+      setIsLoadingWeekly(true)
       searchSchool(userData.schoolName).then(schoolInfo => {
         if (schoolInfo) {
           const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
           const schoolCode = schoolInfo.SD_SCHUL_CODE
           const schoolKind = userData.schoolType || schoolInfo.SCHUL_KND_NM
           
-          getTodayMeals(officeCode, schoolCode, neisDate).then(menu => {
-            setMeals(menu || "급식 정보가 없습니다.")
+          const fromDate = format(weekDates[0], "yyyyMMdd")
+          const toDate = format(weekDates[4], "yyyyMMdd")
+
+          Promise.all([
+            getWeeklyMeals(officeCode, schoolCode, fromDate, toDate),
+            getWeeklyTimetable(officeCode, schoolCode, fromDate, toDate, userData.grade, userData.classNum, schoolKind)
+          ]).then(([meals, table]) => {
+            setWeeklyMeals(meals)
+            setWeeklyTimetable(table)
+          }).finally(() => {
+            setIsLoadingWeekly(false)
           })
-          
-          getTodayTimetable(
-            officeCode, 
-            schoolCode, 
-            neisDate, 
-            userData.grade, 
-            userData.classNum, 
-            schoolKind
-          ).then(table => {
-            setTimetable(table || "오늘의 시간표 정보가 없습니다.")
-          })
-        } else {
-          setMeals("학교 정보를 찾을 수 없습니다.")
-          setTimetable("학교 정보를 찾을 수 없습니다.")
         }
       })
     }
-  }, [userData, todayStr])
+  }, [userData, weekDates])
+
+  const todayMeal = useMemo(() => {
+    return weeklyMeals.find(m => m.date === todayStr)?.menu || "정보 없음"
+  }, [weeklyMeals, todayStr])
+
+  const todayTable = useMemo(() => {
+    return weeklyTimetable.find(t => t.date === todayStr)?.timetable || "정보 없음"
+  }, [weeklyTimetable, todayStr])
 
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
@@ -103,14 +115,16 @@ export default function DashboardPage() {
   const { data: topUsers, isLoading: isLeaderboardLoading } = useCollection(leaderboardQuery)
 
   const fortuneRef = useMemoFirebase(() => {
-    if (!db || !todayStr || !user) return null
-    return doc(db, "daily_fortunes", todayStr)
-  }, [db, todayStr, user])
+    if (!db || !user) return null
+    const dateStr = format(new Date(), "yyyy-MM-dd")
+    return doc(db, "daily_fortunes", dateStr)
+  }, [db, user])
 
   const problemRef = useMemoFirebase(() => {
-    if (!db || !todayStr || !userData?.grade || !user) return null
-    return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
-  }, [db, todayStr, userData?.grade, user])
+    if (!db || !userData?.grade || !user) return null
+    const dateStr = format(new Date(), "yyyy-MM-dd")
+    return doc(db, "daily_problems", `${dateStr}_${userData.grade}`)
+  }, [db, userData?.grade, user])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: problemData } = useDoc(problemRef)
@@ -143,7 +157,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router])
 
-  if (isUserLoading || isUserDataLoading || !user || !todayStr) {
+  if (isUserLoading || isUserDataLoading || !user) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -202,46 +216,66 @@ export default function DashboardPage() {
                 <CardTitle className="text-lg flex items-center gap-2 text-primary font-bold">
                   <School className="h-5 w-5" /> 우리 학교 소식
                 </CardTitle>
-                <CardDescription className="text-xs">오늘의 일정을 실시간으로 확인하세요.</CardDescription>
+                <CardDescription className="text-xs">오늘과 이번 주의 학급 소식을 확인하세요.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary">
-                      <Maximize2 className="h-3 w-3 mr-1" /> 자세히 보기
+                      <Maximize2 className="h-3 w-3 mr-1" /> 이번 주 전체 보기
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md">
+                  <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2"><School className="h-5 w-5 text-primary" /> {userData?.schoolName} 소식 상세</DialogTitle>
+                      <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-primary" /> {userData?.schoolName} 주간 정보</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
-                      <div className="space-y-3">
-                        <h3 className="font-bold text-sm flex items-center gap-2 text-orange-600"><Utensils className="h-4 w-4" /> 오늘 급식 메뉴</h3>
-                        <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
-                          <ul className="grid grid-cols-2 gap-2">
-                            {meals.split(',').map((item, idx) => (
-                              <li key={idx} className="text-xs text-orange-900 flex items-center gap-1.5">
-                                <span className="h-1 w-1 rounded-full bg-orange-400" /> {item.trim()}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="font-bold text-sm flex items-center gap-2 text-blue-600"><Clock className="h-4 w-4" /> 오늘의 시간표</h3>
-                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                          <div className="space-y-2">
-                            {timetable.split(',').map((item, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-blue-100/50 last:border-0">
-                                <span className="font-bold text-blue-800">{item.split(':')[0]}</span>
-                                <span className="text-blue-900">{item.split(':')[1]}</span>
+                    <Tabs defaultValue="meals" className="w-full mt-4">
+                      <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsTrigger value="meals">주간 급식</TabsTrigger>
+                        <TabsTrigger value="timetable">주간 시간표</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="meals" className="space-y-4">
+                        <div className="grid gap-3">
+                          {weekDates.map((date, idx) => {
+                            const dStr = format(date, "yyyyMMdd")
+                            const meal = weeklyMeals.find(m => m.date === dStr)
+                            return (
+                              <div key={idx} className={`p-4 rounded-xl border ${isSameDay(date, new Date()) ? 'bg-orange-50 border-orange-200' : 'bg-muted/30 border-muted'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-xs font-bold text-muted-foreground">{format(date, "MM월 dd일 (EEEE)", { locale: ko })}</span>
+                                  {isSameDay(date, new Date()) && <Badge className="bg-orange-500 text-[10px]">오늘</Badge>}
+                                </div>
+                                <p className="text-xs text-orange-900 leading-relaxed">{meal?.menu || "급식 정보가 없습니다."}</p>
                               </div>
-                            ))}
-                          </div>
+                            )
+                          })}
                         </div>
-                      </div>
-                    </div>
+                      </TabsContent>
+                      <TabsContent value="timetable" className="space-y-4">
+                         <div className="grid gap-3">
+                          {weekDates.map((date, idx) => {
+                            const dStr = format(date, "yyyyMMdd")
+                            const table = weeklyTimetable.find(t => t.date === dStr)
+                            return (
+                              <div key={idx} className={`p-4 rounded-xl border ${isSameDay(date, new Date()) ? 'bg-blue-50 border-blue-200' : 'bg-muted/30 border-muted'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-xs font-bold text-muted-foreground">{format(date, "MM월 dd일 (EEEE)", { locale: ko })}</span>
+                                  {isSameDay(date, new Date()) && <Badge className="bg-blue-500 text-[10px]">오늘</Badge>}
+                                </div>
+                                <div className="text-xs text-blue-900 leading-relaxed grid grid-cols-2 gap-x-4 gap-y-1">
+                                  {table ? table.timetable.split(',').map((t, i) => (
+                                    <div key={i} className="flex justify-between border-b border-blue-100 last:border-0 pb-1">
+                                      <span className="font-bold">{t.split(':')[0]}</span>
+                                      <span>{t.split(':')[1]}</span>
+                                    </div>
+                                  )) : "시간표 정보가 없습니다."}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </DialogContent>
                 </Dialog>
                 <Link href="/profile">
@@ -265,7 +299,7 @@ export default function DashboardPage() {
                     <Utensils className="h-4 w-4" /> 오늘 급식
                   </h3>
                   <div className="text-xs text-orange-900 leading-relaxed flex-grow line-clamp-3">
-                    {meals || "급식 정보를 불러올 수 없습니다."}
+                    {isLoadingWeekly ? "불러오는 중..." : todayMeal}
                   </div>
                 </div>
                 <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col h-full">
@@ -273,7 +307,7 @@ export default function DashboardPage() {
                     <Clock className="h-4 w-4" /> 오늘의 시간표
                   </h3>
                   <div className="text-xs text-blue-900 leading-relaxed flex-grow line-clamp-3">
-                    {timetable || "시간표 정보를 불러올 수 없습니다."}
+                    {isLoadingWeekly ? "불러오는 중..." : todayTable}
                   </div>
                 </div>
               </div>

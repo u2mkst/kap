@@ -1,16 +1,15 @@
-
 /**
  * @fileOverview 나이스(NEIS) 오픈 API 연동 서비스
  */
 
 const BASE_URL = 'https://open.neis.go.kr/hub';
-const API_KEY = process.env.NEXT_PUBLIC_NEIS_API_KEY;
+const API_KEY = '19f78fd07bfb4243a6333e7bf4641bfc';
 
 async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
-    pSize: '20',
+    pSize: '100', // 주간 데이터 대응을 위해 사이즈 확대
     ...(API_KEY ? { KEY: API_KEY } : {}),
     ...params,
   });
@@ -33,48 +32,63 @@ export async function searchSchool(schoolName: string) {
   return data.schoolInfo[1].row[0];
 }
 
-/** 오늘의 급식 정보 가져오기 */
-export async function getTodayMeals(officeCode: string, schoolCode: string, date: string) {
+/** 주간 급식 정보 가져오기 */
+export async function getWeeklyMeals(officeCode: string, schoolCode: string, fromDate: string, toDate: string) {
   const data = await fetchNeis('mealServiceDietInfo', {
     ATPT_OFCDC_SC_CODE: officeCode,
     SD_SCHUL_CODE: schoolCode,
-    MLSV_YMD: date,
+    MLSV_FROM_YMD: fromDate,
+    MLSV_TO_YMD: toDate,
   });
-  if (!data?.mealServiceDietInfo) return null;
   
-  const rawMenu = data.mealServiceDietInfo[1].row[0].DDISH_NM;
-  // 알레르기 정보 숫자 제거 및 가독성 개선
-  return rawMenu.replace(/\([^)]*\)/g, '').replace(/[0-9.]/g, '').split('<br/>').join(', ');
+  if (!data?.mealServiceDietInfo) return [];
+  
+  return data.mealServiceDietInfo[1].row.map((r: any) => ({
+    date: r.MLSV_YMD,
+    menu: r.DDISH_NM.replace(/\([^)]*\)/g, '').replace(/[0-9.]/g, '').split('<br/>').join(', ')
+  }));
 }
 
-/** 오늘의 시간표 가져오기 */
-export async function getTodayTimetable(
+/** 주간 시간표 가져오기 */
+export async function getWeeklyTimetable(
   officeCode: string, 
   schoolCode: string, 
-  date: string, 
+  fromDate: string, 
+  toDate: string,
   grade: string, 
   classNum: string, 
   schoolType: string
 ) {
-  // 학교 종류에 따른 엔드포인트 결정
-  let endpoint = 'misTimetable'; // 기본 중학교
+  let endpoint = 'misTimetable'; 
   if (schoolType.includes('초등')) endpoint = 'elsTimetable';
   else if (schoolType.includes('고등')) endpoint = 'hisTimetable';
   
   const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,
     SD_SCHUL_CODE: schoolCode,
-    ALL_TI_YMD: date,
+    TI_FROM_YMD: fromDate,
+    TI_TO_YMD: toDate,
     GRADE: grade,
     CLASS_NM: classNum
   });
 
-  if (!data || !data[endpoint]) return "오늘의 시간표 정보가 없습니다.";
+  if (!data || !data[endpoint]) return [];
   
   const rows = data[endpoint][1].row;
-  // 교시순으로 정렬하여 과목명 나열
-  return rows
-    .sort((a: any, b: any) => parseInt(a.PERIO) - parseInt(b.PERIO))
-    .map((r: any) => `${r.PERIO}교시: ${r.ITRT_CNTNT}`)
-    .join(', ');
+  
+  // 날짜별로 그룹화
+  const grouped = rows.reduce((acc: any, curr: any) => {
+    const date = curr.ALL_TI_YMD;
+    if (!acc[date]) acc[date] = [];
+    acc[date].push({ perio: curr.PERIO, content: curr.ITRT_CNTNT });
+    return acc;
+  }, {});
+
+  return Object.keys(grouped).map(date => ({
+    date,
+    timetable: grouped[date]
+      .sort((a: any, b: any) => parseInt(a.perio) - parseInt(b.perio))
+      .map((t: any) => `${t.perio}교시: ${t.content}`)
+      .join(', ')
+  }));
 }
