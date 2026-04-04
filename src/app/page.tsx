@@ -30,7 +30,7 @@ export default function Home() {
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-background to-accent/10">
       <Card className="w-full max-w-md border-none shadow-2xl bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white shadow-lg transform -rotate-6">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg transform -rotate-6">
             <BookOpen className="h-10 w-10" />
           </div>
           <CardTitle className="text-3xl font-bold font-headline">KST HUB</CardTitle>
