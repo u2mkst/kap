@@ -56,7 +56,8 @@ service cloud.firestore {
 
     // 문의 시스템
     match /inquiries/{inquiryId} {
-      allow read: if isAuthenticated();
+      // 본인 문의만 읽기 가능, 관리자는 전체 읽기 가능
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
