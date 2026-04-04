@@ -13,6 +13,8 @@ import { MessageSquare, Send, Loader2, Trash2 } from "lucide-react"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, deleteDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 export default function SupportPage() {
   const { user, isUserLoading } = useUser()
@@ -48,36 +50,46 @@ export default function SupportPage() {
   const handleSendInquiry = async () => {
     if (!subject.trim() || !message.trim() || !user) return
     setIsSending(true)
-    try {
-      await addDoc(collection(db, "inquiries"), {
-        userId: user.uid,
-        userNickname: userData?.nickname || "학생",
-        subject,
-        message,
-        reply: "",
-        status: "open",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      })
-      toast({ title: "문의 등록 완료" })
-      setSubject("")
-      setMessage("")
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsSending(false)
+    
+    const inquiryData = {
+      userId: user.uid,
+      userNickname: userData?.nickname || "학생",
+      subject,
+      message,
+      reply: "",
+      status: "open",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     }
+
+    addDoc(collection(db, "inquiries"), inquiryData)
+      .then(() => {
+        toast({ title: "문의 등록 완료" })
+        setSubject("")
+        setMessage("")
+      })
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'inquiries',
+          operation: 'create',
+          requestResourceData: inquiryData
+        }))
+      })
+      .finally(() => setIsSending(false))
   }
 
-  const handleDeleteInquiry = async (id: string) => {
+  const handleDeleteInquiry = (id: string) => {
     if (!confirm("이 문의 내역을 삭제하시겠습니까?")) return
-    try {
-      await deleteDoc(doc(db, "inquiries", id))
-      toast({ title: "내역 삭제 완료" })
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "삭제 실패", description: "권한이 없거나 오류가 발생했습니다." })
-    }
+    const inquiryRef = doc(db, "inquiries", id)
+    
+    deleteDoc(inquiryRef)
+      .then(() => toast({ title: "내역 삭제 완료" }))
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: inquiryRef.path,
+          operation: 'delete'
+        }))
+      })
   }
 
   if (isUserLoading || !user) {
@@ -86,8 +98,8 @@ export default function SupportPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-        <MessageSquare className="h-6 w-6 text-primary" /> 1:1 고객센터
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2 text-primary">
+        <MessageSquare className="h-6 w-6" /> 1:1 고객센터
       </h1>
 
       <div className="grid gap-6">

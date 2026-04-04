@@ -10,9 +10,13 @@ service cloud.firestore {
       return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // 유저 정보: 인증된 사용자는 목록과 개별 조회가 가능함
+    // 유저 정보
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      // 개별 조회는 본인 또는 관리자만 가능
+      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // 전체 목록 조회는 관리자만 가능
+      allow list: if isAdmin();
+      
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       
       // 개인별 행운 점수
@@ -26,40 +30,46 @@ service cloud.firestore {
       }
     }
 
-    // 선생님/메타데이터: 누구나 읽을 수 있게 하여 초기 로딩 에러 방지
+    // 선생님 정보: 모든 사용자가 읽기 가능 (투표 등)
     match /teachers/{teacherId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
+    // 앱 설정 및 공지
     match /metadata/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // 관리자 권한: 본인 확인 및 관리자 제어
+    // 관리자 권한 확인
     match /roles_admin/{adminId} {
-      allow read: if isAuthenticated();
+      // 본인의 권한 여부 확인은 허용
+      allow get: if isAuthenticated() && (request.auth.uid == adminId || isAdmin());
+      // 전체 관리자 목록은 관리자만 조회 가능
+      allow list: if isAdmin();
+      
       allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == adminId);
     }
     
-    // 일일 문제/운세
+    // 일일 문제
     match /daily_problems/{problemId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
+    // 오늘의 한마디: 비로그인 사용자도 읽기 가능 (Hydration 및 초기 로딩 에러 방지)
     match /daily_fortunes/{date} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // 문의 시스템
+    // 문의 시스템 (고객센터)
     match /inquiries/{inquiryId} {
-      // 본인 문의만 읽기 가능, 관리자는 전체 읽기 가능
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      // 본인이 작성한 문의이거나 관리자인 경우에만 읽기, 수정, 삭제 가능
+      allow read, update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      // 문의 생성 시 본인의 userId를 정확히 기입해야 함
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
   }
 }
