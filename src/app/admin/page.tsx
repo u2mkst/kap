@@ -47,35 +47,36 @@ export default function AdminPage() {
   }, [user, db])
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
+  const isActuallyAdmin = !!isAdminDoc
 
   const configRef = useMemoFirebase(() => {
-    if (!user || !isAdminDoc) return null
+    if (!user || !isActuallyAdmin) return null
     return doc(db, "metadata", "config")
-  }, [user, db, isAdminDoc])
+  }, [user, db, isActuallyAdmin])
   const { data: configData } = useDoc(configRef)
 
   const teachersQuery = useMemoFirebase(() => {
-    if (!user || !isAdminDoc) return null
+    if (!user || !isActuallyAdmin) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
-  }, [db, user, isAdminDoc])
+  }, [db, user, isActuallyAdmin])
   const { data: teachers } = useCollection(teachersQuery)
 
   const usersQuery = useMemoFirebase(() => {
-    if (!user || !isAdminDoc) return null
+    if (!user || !isActuallyAdmin) return null
     return query(collection(db, "users"), orderBy("username", "asc"))
-  }, [db, user, isAdminDoc])
+  }, [db, user, isActuallyAdmin])
   const { data: allUsers } = useCollection(usersQuery)
 
   const inquiriesQuery = useMemoFirebase(() => {
-    if (!user || !isAdminDoc) return null
+    if (!user || !isActuallyAdmin) return null
     return query(collection(db, "inquiries"), orderBy("createdAt", "desc"))
-  }, [db, user, isAdminDoc])
+  }, [db, user, isActuallyAdmin])
   const { data: inquiries } = useCollection(inquiriesQuery)
 
   const adminsQuery = useMemoFirebase(() => {
-    if (!user || !isAdminDoc) return null
+    if (!user || !isActuallyAdmin) return null
     return collection(db, "roles_admin")
-  }, [db, user, isAdminDoc])
+  }, [db, user, isActuallyAdmin])
   const { data: adminDocs } = useCollection(adminsQuery)
 
   const adminIds = adminDocs?.map(d => d.id) || []
@@ -97,11 +98,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isUserLoading && !isAdminLoading && isMounted) {
-      if (!user || !isAdminDoc) {
+      if (!user || !isActuallyAdmin) {
         router.push("/dashboard")
       }
     }
-  }, [user, isAdminDoc, isUserLoading, isAdminLoading, isMounted, router])
+  }, [user, isActuallyAdmin, isUserLoading, isAdminLoading, isMounted, router])
 
   const handleAddTeacher = () => {
     if (!teacherName.trim()) return
@@ -227,7 +228,7 @@ export default function AdminPage() {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   }
 
-  if (!isAdminDoc) return null
+  if (!isActuallyAdmin) return null
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
