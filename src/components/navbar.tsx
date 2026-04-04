@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -61,7 +60,7 @@ export function Navbar() {
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center">
             <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white shadow-sm">
                 <BookOpen className="h-4 w-4" />
               </div>
               <span className="text-lg font-black tracking-tight text-primary font-headline">KST HUB</span>

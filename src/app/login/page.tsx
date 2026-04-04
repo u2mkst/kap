@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -73,10 +72,10 @@ export default function LoginPage() {
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md border-none shadow-xl bg-white">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
             <BookOpen className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-bold font-headline">학생 로그인</CardTitle>
+          <CardTitle className="text-2xl font-bold font-headline">KST HUB 로그인</CardTitle>
           <CardDescription>학원 전용 아이디(ufes)를 사용하세요.</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
