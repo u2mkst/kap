@@ -80,12 +80,20 @@ export default function PlantsPage() {
     const plantNames = ["희망나무", "쑥쑥이", "초록친구", "꿈나무", "행복꽃"]
     const randomName = plantNames[Math.floor(Math.random() * plantNames.length)]
 
+    // 성장 목표치 랜덤 설정
+    const targetSprout = Math.floor(Math.random() * 10) + 1; // 1~10회
+    const targetSapling = targetSprout + (Math.floor(Math.random() * 10) + 2); // 추가 2~11회
+    const targetMature = targetSapling + (Math.floor(Math.random() * 11) + 5); // 추가 5~15회
+
     const newPlant = {
       userId: user.uid,
       plantName: randomName,
       plantType: "해바라기",
       growthStage: "Seed",
       pointsInvested: 0,
+      targetSprout,
+      targetSapling,
+      targetMature,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -107,7 +115,7 @@ export default function PlantsPage() {
       .finally(() => setIsActionLoading(null))
   }
 
-  const handleGrow = (plantId: string, currentPoints: number, type: 'water' | 'sun') => {
+  const handleGrow = (plant: any, type: 'water' | 'sun') => {
     if (!user || !userData || !userDocRef) return
     
     const growCost = 100
@@ -120,7 +128,7 @@ export default function PlantsPage() {
       return
     }
 
-    setIsActionLoading(plantId)
+    setIsActionLoading(plant.id)
 
     updateDoc(userDocRef, {
       points: increment(-growCost)
@@ -131,13 +139,14 @@ export default function PlantsPage() {
       }))
     })
 
-    const plantRef = doc(db, "users", user.uid, "plants", plantId)
-    const newPointsInvested = currentPoints + growCost
+    const plantRef = doc(db, "users", user.uid, "plants", plant.id)
+    const newPointsInvested = (plant.pointsInvested || 0) + growCost
+    const currentActions = newPointsInvested / 100
     
     let nextStage = "Seed"
-    if (newPointsInvested >= 1000) nextStage = "Mature"
-    else if (newPointsInvested >= 500) nextStage = "Sapling"
-    else if (newPointsInvested >= 200) nextStage = "Sprout"
+    if (currentActions >= plant.targetMature) nextStage = "Mature"
+    else if (currentActions >= plant.targetSapling) nextStage = "Sapling"
+    else if (currentActions >= plant.targetSprout) nextStage = "Sprout"
 
     updateDoc(plantRef, {
       pointsInvested: increment(growCost),
@@ -164,7 +173,6 @@ export default function PlantsPage() {
 
     const plantRef = doc(db, "users", user.uid, "plants", plantId)
 
-    // 보상 지급 및 식물 제거
     updateDoc(userDocRef, {
       points: increment(reward)
     }).then(() => {
@@ -202,30 +210,35 @@ export default function PlantsPage() {
       })
   }
 
-  const getStageInfo = (stage: string) => {
+  const getStageInfo = (plant: any) => {
+    const stage = plant.growthStage
+    const currentActions = (plant.pointsInvested || 0) / 100
+    
     let emoji = "🌰"
     let label = "씨앗"
     let color = "bg-orange-500"
-    let progress = 25
+    let progress = 0
 
     switch(stage) {
       case "Seed":
         emoji = "🌰"
         label = "씨앗"
         color = "bg-orange-400"
-        progress = 25
+        progress = (currentActions / plant.targetSprout) * 100
         break
       case "Sprout":
         emoji = "🌱"
         label = "새싹"
         color = "bg-green-400"
-        progress = 50
+        const sproutRange = plant.targetSapling - plant.targetSprout
+        progress = ((currentActions - plant.targetSprout) / sproutRange) * 100
         break
       case "Sapling":
         emoji = "🌿"
         label = "묘목"
         color = "bg-emerald-500"
-        progress = 75
+        const saplingRange = plant.targetMature - plant.targetSapling
+        progress = ((currentActions - plant.targetSapling) / saplingRange) * 100
         break
       case "Mature":
         emoji = "🌳"
@@ -233,16 +246,12 @@ export default function PlantsPage() {
         color = "bg-yellow-400"
         progress = 100
         break
-      default:
-        emoji = "🌰"
-        label = "씨앗"
-        progress = 0
     }
 
     return {
       label,
       color,
-      progress,
+      progress: Math.min(Math.max(progress, 0), 100),
       emoji
     }
   }
@@ -282,7 +291,7 @@ export default function PlantsPage() {
         ) : (
           <>
             {plants?.map((plant, index) => {
-              const stageInfo = getStageInfo(plant.growthStage)
+              const stageInfo = getStageInfo(plant)
               const isMature = plant.growthStage === "Mature"
               
               return (
@@ -302,14 +311,14 @@ export default function PlantsPage() {
                   </div>
 
                   <div className={cn(
-                    "relative h-40 flex items-center justify-center transition-colors duration-500",
+                    "relative h-32 flex items-center justify-center transition-colors duration-500",
                     isMature ? "bg-gradient-to-br from-yellow-50 to-orange-50" : "bg-muted/20"
                   )}>
-                    <div className="relative text-6xl animate-float select-none drop-shadow-md">
+                    <div className="relative text-5xl animate-float select-none drop-shadow-md">
                       {stageInfo.emoji}
                     </div>
                     <Badge className={cn(
-                      "absolute bottom-3 left-3 border-none px-3 py-1 font-black text-[9px] rounded-full shadow-sm",
+                      "absolute bottom-2 left-3 border-none px-3 py-0.5 font-black text-[9px] rounded-full shadow-sm",
                       stageInfo.color,
                       "text-white"
                     )}>
@@ -317,12 +326,17 @@ export default function PlantsPage() {
                     </Badge>
                   </div>
 
-                  <CardContent className="p-5 space-y-4">
-                    <div className="space-y-0.5">
-                      <h3 className="font-black text-sm flex items-center gap-1.5 text-primary">
-                        <Leaf className="h-3.5 w-3.5 text-emerald-500" /> {plant.plantName}
+                  <CardContent className="p-4 space-y-3">
+                    <div className="space-y-1">
+                      <h3 className="font-black text-xs flex items-center gap-1.5 text-primary">
+                        <Leaf className="h-3 w-3 text-emerald-500" /> {plant.plantName}
                       </h3>
-                      <Progress value={stageInfo.progress} className="h-2 bg-muted/50 rounded-full" />
+                      <Progress value={stageInfo.progress} className="h-1.5 bg-muted/50 rounded-full" />
+                      {!isMature && (
+                        <p className="text-[9px] text-right font-bold text-muted-foreground/50">
+                          다음 단계까지 약 {Math.ceil((100 - stageInfo.progress) / 100 * 5)}~{Math.ceil((100 - stageInfo.progress) / 100 * 15)}회
+                        </p>
+                      )}
                     </div>
 
                     <div className="pt-1">
@@ -330,7 +344,7 @@ export default function PlantsPage() {
                         <Button 
                           onClick={() => handleHarvest(plant.id)}
                           disabled={isActionLoading === plant.id}
-                          className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black rounded-xl h-10 shadow-sm animate-pulse"
+                          className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black rounded-xl h-9 text-xs shadow-sm animate-pulse"
                         >
                           {isActionLoading === plant.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Gift className="mr-2 h-4 w-4" /> 2,000P 받기</>}
                         </Button>
@@ -338,18 +352,18 @@ export default function PlantsPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <Button 
                             disabled={isActionLoading === plant.id}
-                            className="bg-primary text-white font-black rounded-xl h-9 text-xs"
-                            onClick={() => handleGrow(plant.id, plant.pointsInvested, 'water')}
+                            className="bg-primary text-white font-black rounded-xl h-8 text-[10px]"
+                            onClick={() => handleGrow(plant, 'water')}
                           >
-                            {isActionLoading === plant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Droplets className="mr-1.5 h-3.5 w-3.5" /> 물주기</>}
+                            {isActionLoading === plant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Droplets className="mr-1 h-3 w-3" /> 물주기</>}
                           </Button>
                           <Button 
                             variant="outline" 
                             disabled={isActionLoading === plant.id}
-                            className="border-primary/10 font-black rounded-xl h-9 text-xs"
-                            onClick={() => handleGrow(plant.id, plant.pointsInvested, 'sun')}
+                            className="border-primary/10 font-black rounded-xl h-8 text-[10px]"
+                            onClick={() => handleGrow(plant, 'sun')}
                           >
-                            <Sun className="mr-1.5 h-3.5 w-3.5 text-orange-500" /> 햇빛
+                            <Sun className="mr-1 h-3 w-3 text-orange-500" /> 햇빛
                           </Button>
                         </div>
                       )}
@@ -361,26 +375,27 @@ export default function PlantsPage() {
 
             <Card 
               className={cn(
-                "border-2 border-dashed border-muted/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-6 h-full min-h-[220px] rounded-[2rem] group",
+                "border-2 border-dashed border-muted/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-6 h-full min-h-[180px] rounded-[2rem] group",
                 isActionLoading === "add" && "opacity-50 pointer-events-none"
               )}
               onClick={handleAddPlant}
             >
-              <div className="p-4 rounded-full bg-primary/10 text-primary mb-3 group-hover:scale-110 transition-transform">
-                {isActionLoading === "add" ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
+              <div className="p-3 rounded-full bg-primary/10 text-primary mb-2 group-hover:scale-110 transition-transform">
+                {isActionLoading === "add" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
               </div>
-              <p className="font-black text-sm text-primary">새 식물 심기</p>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1">500 포인트</p>
+              <p className="font-black text-xs text-primary">새 식물 심기</p>
+              <p className="text-[9px] font-bold text-muted-foreground mt-0.5">500 포인트</p>
             </Card>
           </>
         )}
       </div>
 
       <div className="mt-12 max-w-xl mx-auto text-center space-y-2 p-6 bg-muted/20 rounded-3xl">
-        <h2 className="text-lg font-black text-primary">특별 보상 안내</h2>
-        <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
-          식물을 끝까지 키워 🌳 완성 단계가 되면 <span className="text-primary font-black">2,000P</span>를 보상으로 드립니다!<br/>
-          성장 과정: 씨앗(0) → 새싹(200) → 묘목(500) → 완성(1,000)
+        <h2 className="text-lg font-black text-primary">나만의 정원 가이드</h2>
+        <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
+          각 식물은 자라는 데 필요한 정성(행동 횟수)이 랜덤하게 정해집니다!<br/>
+          <span className="text-primary font-black">🌱 새싹</span>: 1~10회 | <span className="text-primary font-black">🌿 묘목</span>: 추가 2~11회 | <span className="text-primary font-black">🌳 완성</span>: 추가 5~15회<br/>
+          성숙한 식물을 수확하면 <span className="text-primary font-black">2,000P</span>를 보상으로 드립니다!
         </p>
       </div>
     </div>

@@ -45,11 +45,14 @@
         "plantName": { "type": "string" },
         "plantType": { "type": "string" },
         "growthStage": { "type": "string", "enum": ["Seed", "Sprout", "Sapling", "Mature"] },
-        "pointsInvested": { "type": "number" },
+        "pointsInvested": { "type": "number", "description": "Total points spent on this plant (100 points = 1 action)." },
+        "targetSprout": { "type": "number", "description": "Actions needed to reach Sprout stage." },
+        "targetSapling": { "type": "number", "description": "Total actions needed to reach Sapling stage." },
+        "targetMature": { "type": "number", "description": "Total actions needed to reach Mature stage." },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "plantName", "growthStage", "pointsInvested"]
+      "required": ["userId", "plantName", "growthStage", "pointsInvested", "targetSprout", "targetSapling", "targetMature"]
     },
     "Teacher": {
       "title": "Teacher",
