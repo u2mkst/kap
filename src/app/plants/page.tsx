@@ -80,10 +80,10 @@ export default function PlantsPage() {
     const plantNames = ["희망나무", "쑥쑥이", "초록친구", "꿈나무", "행복꽃"]
     const randomName = plantNames[Math.floor(Math.random() * plantNames.length)]
 
-    // 성장 목표치 랜덤 설정
-    const targetSprout = Math.floor(Math.random() * 10) + 1; // 1~10회
-    const targetSapling = targetSprout + (Math.floor(Math.random() * 10) + 2); // 추가 2~11회
-    const targetMature = targetSapling + (Math.floor(Math.random() * 11) + 5); // 추가 5~15회
+    // 성장 목표치 랜덤 설정 (사용자 요청: 1~10, 2~11, 5~15)
+    const targetSprout = Math.floor(Math.random() * 10) + 1; 
+    const targetSapling = targetSprout + (Math.floor(Math.random() * 10) + 2); 
+    const targetMature = targetSapling + (Math.floor(Math.random() * 11) + 5); 
 
     const newPlant = {
       userId: user.uid,
@@ -143,10 +143,15 @@ export default function PlantsPage() {
     const newPointsInvested = (plant.pointsInvested || 0) + growCost
     const currentActions = newPointsInvested / 100
     
+    // 기존 데이터에 목표 수치가 없을 경우를 위한 기본값
+    const targetSprout = plant.targetSprout || 5;
+    const targetSapling = plant.targetSapling || 15;
+    const targetMature = plant.targetMature || 30;
+
     let nextStage = "Seed"
-    if (currentActions >= plant.targetMature) nextStage = "Mature"
-    else if (currentActions >= plant.targetSapling) nextStage = "Sapling"
-    else if (currentActions >= plant.targetSprout) nextStage = "Sprout"
+    if (currentActions >= targetMature) nextStage = "Mature"
+    else if (currentActions >= targetSapling) nextStage = "Sapling"
+    else if (currentActions >= targetSprout) nextStage = "Sprout"
 
     updateDoc(plantRef, {
       pointsInvested: increment(growCost),
@@ -214,6 +219,11 @@ export default function PlantsPage() {
     const stage = plant.growthStage
     const currentActions = (plant.pointsInvested || 0) / 100
     
+    // 기존 데이터에 목표 수치가 없을 경우를 위한 기본값 처리
+    const targetSprout = plant.targetSprout || 5;
+    const targetSapling = plant.targetSapling || 15;
+    const targetMature = plant.targetMature || 30;
+
     let emoji = "🌰"
     let label = "씨앗"
     let color = "bg-orange-500"
@@ -224,21 +234,21 @@ export default function PlantsPage() {
         emoji = "🌰"
         label = "씨앗"
         color = "bg-orange-400"
-        progress = (currentActions / plant.targetSprout) * 100
+        progress = (currentActions / targetSprout) * 100
         break
       case "Sprout":
         emoji = "🌱"
         label = "새싹"
         color = "bg-green-400"
-        const sproutRange = plant.targetSapling - plant.targetSprout
-        progress = ((currentActions - plant.targetSprout) / sproutRange) * 100
+        const sproutRange = targetSapling - targetSprout
+        progress = ((currentActions - targetSprout) / (sproutRange || 1)) * 100
         break
       case "Sapling":
         emoji = "🌿"
         label = "묘목"
         color = "bg-emerald-500"
-        const saplingRange = plant.targetMature - plant.targetSapling
-        progress = ((currentActions - plant.targetSapling) / saplingRange) * 100
+        const saplingRange = targetMature - targetSapling
+        progress = ((currentActions - targetSapling) / (saplingRange || 1)) * 100
         break
       case "Mature":
         emoji = "🌳"
@@ -248,10 +258,12 @@ export default function PlantsPage() {
         break
     }
 
+    const safeProgress = isNaN(progress) ? 0 : Math.min(Math.max(progress, 0), 100);
+
     return {
       label,
       color,
-      progress: Math.min(Math.max(progress, 0), 100),
+      progress: safeProgress,
       emoji
     }
   }
@@ -294,6 +306,9 @@ export default function PlantsPage() {
               const stageInfo = getStageInfo(plant)
               const isMature = plant.growthStage === "Mature"
               
+              const minLeft = Math.max(0, Math.ceil((100 - stageInfo.progress) / 100 * 3));
+              const maxLeft = Math.max(0, Math.ceil((100 - stageInfo.progress) / 100 * 10));
+
               return (
                 <Card key={plant.id} className={cn(
                   "border-none shadow-md hover:shadow-xl transition-all group bg-white overflow-hidden relative rounded-[2rem] animate-in zoom-in-95",
@@ -334,7 +349,7 @@ export default function PlantsPage() {
                       <Progress value={stageInfo.progress} className="h-1.5 bg-muted/50 rounded-full" />
                       {!isMature && (
                         <p className="text-[9px] text-right font-bold text-muted-foreground/50">
-                          다음 단계까지 약 {Math.ceil((100 - stageInfo.progress) / 100 * 5)}~{Math.ceil((100 - stageInfo.progress) / 100 * 15)}회
+                          다음 단계까지 약 {minLeft}~{maxLeft}회
                         </p>
                       )}
                     </div>
