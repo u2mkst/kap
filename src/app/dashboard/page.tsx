@@ -33,7 +33,8 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Clover
+  Clover,
+  Share2
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
@@ -44,6 +45,7 @@ import { format, startOfWeek, addDays, isSameDay, addWeeks } from "date-fns"
 import { ko } from "date-fns/locale"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { initKakao, shareMealToKakao, shareTimetableToKakao } from "@/lib/kakao-share"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -70,6 +72,7 @@ export default function DashboardPage() {
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
   useEffect(() => {
+    initKakao();
     const targetDate = addWeeks(new Date(), weekOffset)
     const start = startOfWeek(targetDate, { weekStartsOn: 1 })
     const dates = Array.from({ length: 5 }).map((_, i) => addDays(start, i))
@@ -184,6 +187,16 @@ export default function DashboardPage() {
     }
   }
 
+  const handleShareMeal = (date: string, menu: string) => {
+    if (!userData?.schoolName) return;
+    shareMealToKakao(date, userData.schoolName, menu);
+  };
+
+  const handleShareTimetable = (date: string, timetable: string) => {
+    if (!userData?.schoolName || !userData?.grade || !userData?.classNum) return;
+    shareTimetableToKakao(date, userData.schoolName, userData.grade, userData.classNum, timetable);
+  };
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login")
@@ -203,7 +216,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-in slide-in-from-top-4 duration-500">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold font-headline tracking-tight">반가워요, {userData?.firstName}님!</h1>
+            <h1 className="text-xl md:text-2xl font-bold font-headline tracking-tight text-foreground">반가워요, {userData?.firstName}님!</h1>
             <div className="flex flex-wrap gap-1.5 mt-1">
               <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px]">
                 {userData?.schoolName || "학교 미설정"} {userData?.grade}학년 {userData?.classNum}반
@@ -252,7 +265,7 @@ export default function DashboardPage() {
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-none">
                 <DialogHeader>
                   <div className="flex items-center justify-between w-full pr-8">
-                    <DialogTitle className="flex items-center gap-2">
+                    <DialogTitle className="flex items-center gap-2 text-foreground font-black">
                       <CalendarDays className="h-5 w-5 text-primary" /> {userData?.schoolName} 주간 정보
                     </DialogTitle>
                     <div className="flex items-center gap-1">
@@ -284,9 +297,21 @@ export default function DashboardPage() {
                           )}>
                             <div className="flex justify-between items-center mb-3">
                               <span className={`text-xs font-black ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                              {isToday && <Badge className="bg-primary text-[10px] hover:bg-primary/90 border-none animate-pulse">TODAY</Badge>}
+                              <div className="flex items-center gap-2">
+                                {isToday && <Badge className="bg-primary text-[10px] hover:bg-primary/90 border-none animate-pulse">TODAY</Badge>}
+                                {meal?.menu && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 rounded-full text-primary hover:bg-primary/10"
+                                    onClick={() => handleShareMeal(dStr, meal.menu)}
+                                  >
+                                    <Share2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-[13px] leading-relaxed font-medium">
+                            <div className="text-[13px] leading-relaxed font-medium text-foreground">
                               {meal?.menu ? (
                                 <div className="flex flex-wrap gap-x-2 gap-y-1">
                                   {meal.menu.split(',').map((item, i) => (
@@ -313,7 +338,19 @@ export default function DashboardPage() {
                           )}>
                             <div className="flex justify-between items-center mb-3">
                               <span className={`text-xs font-black ${isToday ? 'text-accent' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                              {isToday && <Badge className="bg-accent text-accent-foreground text-[10px] hover:bg-accent/90 border-none animate-pulse">TODAY</Badge>}
+                              <div className="flex items-center gap-2">
+                                {isToday && <Badge className="bg-accent text-accent-foreground text-[10px] hover:bg-accent/90 border-none animate-pulse">TODAY</Badge>}
+                                {table?.timetable && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 rounded-full text-accent-foreground hover:bg-accent/10"
+                                    onClick={() => handleShareTimetable(dStr, table.timetable)}
+                                  >
+                                    <Share2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                             <div className="flex flex-col gap-2">
                               {table ? table.timetable.split(',').map((t, i) => (
@@ -322,7 +359,7 @@ export default function DashboardPage() {
                                   <div className="h-4 w-px bg-border" />
                                   <span className="text-xs font-black text-foreground">{t.split(':')[1]}</span>
                                 </div>
-                              )) : <p className="text-xs text-muted-foreground py-2 text-center">시간표 정보가 없습니다.</p>}
+                              )) : <p className="text-xs text-muted-foreground py-2 text-center font-medium">시간표 정보가 없습니다.</p>}
                             </div>
                           </div>
                         )
@@ -336,14 +373,24 @@ export default function DashboardPage() {
 
           <div className="grid gap-6 animate-in slide-in-from-bottom-4 duration-500">
             <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
-                  <Utensils className="h-4 w-4 text-primary" /> 오늘의 급식
+                  <Utensils className="h-4 w-4 text-orange-500" /> 오늘의 급식
                 </CardTitle>
+                {todayMeal && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
+                    onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="min-h-[120px]">
                 {!userData?.schoolName ? (
-                   <p className="text-xs text-muted-foreground/40 italic py-8 text-center">학교 정보를 설정해 주세요.</p>
+                   <p className="text-xs text-muted-foreground/40 italic py-8 text-center font-medium">학교 정보를 설정해 주세요.</p>
                 ) : isLoadingWeekly ? (
                   <div className="flex items-center justify-center h-full py-8 gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> <span className="text-xs">급식 정보를 불러오는 중...</span>
@@ -364,14 +411,24 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
                   <Clock className="h-4 w-4 text-accent-foreground" /> 오늘의 시간표
                 </CardTitle>
+                {todayTable && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full text-accent-foreground hover:bg-accent/5"
+                    onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="min-h-[120px]">
                 {!userData?.schoolName ? (
-                   <p className="text-xs text-muted-foreground/40 italic py-8 text-center">학교 정보를 설정해 주세요.</p>
+                   <p className="text-xs text-muted-foreground/40 italic py-8 text-center font-medium">학교 정보를 설정해 주세요.</p>
                 ) : isLoadingWeekly ? (
                   <div className="flex items-center justify-center h-full py-8 gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> <span className="text-xs">시간표를 불러오는 중...</span>
@@ -414,7 +471,7 @@ export default function DashboardPage() {
 
             <Card className="border-none shadow-sm bg-card hover:bg-accent/5 transition-colors rounded-3xl overflow-hidden animate-in zoom-in-95 duration-500 delay-100">
               <CardHeader className="p-5">
-                <CardTitle className="text-sm flex items-center gap-2 font-black">
+                <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
                   <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 animate-spin-slow" /> 오늘의 한마디
                 </CardTitle>
               </CardHeader>
@@ -428,7 +485,7 @@ export default function DashboardPage() {
 
           <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-200">
             <CardHeader className="p-5">
-              <CardTitle className="text-sm flex items-center gap-2 font-black">
+              <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
                 <Clover className="h-4 w-4 text-green-500" /> 오늘의 나의 행운점수🍀
               </CardTitle>
             </CardHeader>
@@ -464,21 +521,21 @@ export default function DashboardPage() {
 
           <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-300">
             <CardHeader className="p-5">
-              <CardTitle className="text-sm flex items-center gap-2 font-black">
+              <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
                 <Zap className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 외부 학습 사이트
               </CardTitle>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-3 p-5 pt-0">
               <a href="https://www.u2math.co.kr/Login/Index" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-card hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-between shadow-sm">
                 <div>
-                  <p className="font-black text-xs group-hover:text-primary transition-colors">유투엠 (U2M)</p>
+                  <p className="font-black text-xs group-hover:text-primary transition-colors text-foreground">유투엠 (U2M)</p>
                   <p className="text-[10px] text-muted-foreground font-medium">말하는 수학</p>
                 </div>
                 <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
               </a>
               <a href="https://student.mathflat.com/#/history?_si=2" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-card hover:border-accent hover:bg-accent/5 transition-all flex items-center justify-between shadow-sm">
                 <div>
-                  <p className="font-black text-xs group-hover:text-accent-foreground transition-colors">매쓰플랫</p>
+                  <p className="font-black text-xs group-hover:text-accent-foreground transition-colors text-foreground">매쓰플랫</p>
                   <p className="text-[10px] text-muted-foreground font-medium">맞춤형 수학 학습</p>
                 </div>
                 <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground transition-colors" />
