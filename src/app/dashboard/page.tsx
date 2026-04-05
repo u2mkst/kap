@@ -396,7 +396,7 @@ export default function DashboardPage() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
+                    className="h-8 w-8 rounded-full text-foreground hover:bg-foreground/5"
                     onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}
                   >
                     <Share2 className="h-4 w-4" />
