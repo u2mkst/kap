@@ -290,7 +290,7 @@ export default function DashboardPage() {
                               {meal?.menu ? (
                                 <div className="flex flex-wrap gap-x-2 gap-y-1">
                                   {meal.menu.split(',').map((item, i) => (
-                                    <span key={i} className="bg-card/50 px-2 py-0.5 rounded-md border border-border/50">{item.trim()}</span>
+                                    <span key={i} className="bg-card/50 px-2 py-0.5 rounded-md border border-border/50 text-foreground">{item.trim()}</span>
                                   ))}
                                 </div>
                               ) : "급식 정보가 없습니다."}
@@ -320,7 +320,7 @@ export default function DashboardPage() {
                                 <div key={i} className="flex items-center gap-3 p-2 bg-card/60 border border-border/50 rounded-xl">
                                   <span className="w-10 text-[10px] text-primary font-bold text-center">{t.split(':')[0]}</span>
                                   <div className="h-4 w-px bg-border" />
-                                  <span className="text-xs font-black">{t.split(':')[1]}</span>
+                                  <span className="text-xs font-black text-foreground">{t.split(':')[1]}</span>
                                 </div>
                               )) : <p className="text-xs text-muted-foreground py-2 text-center">시간표 정보가 없습니다.</p>}
                             </div>
@@ -337,8 +337,8 @@ export default function DashboardPage() {
           <div className="grid gap-6 animate-in slide-in-from-bottom-4 duration-500">
             <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-primary font-black">
-                  <Utensils className="h-4 w-4" /> 오늘의 급식
+                <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
+                  <Utensils className="h-4 w-4 text-primary" /> 오늘의 급식
                 </CardTitle>
               </CardHeader>
               <CardContent className="min-h-[120px]">
@@ -353,7 +353,7 @@ export default function DashboardPage() {
                     {todayMeal.split(',').map((item, i) => (
                       <div key={i} className="bg-muted/30 p-3 rounded-xl border border-border/50 flex items-center gap-3 shadow-sm hover:translate-x-1 transition-transform">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                        <span className="text-sm font-bold">{item.trim()}</span>
+                        <span className="text-sm font-bold text-foreground">{item.trim()}</span>
                       </div>
                     ))}
                   </div>
@@ -365,8 +365,8 @@ export default function DashboardPage() {
 
             <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-accent-foreground font-black">
-                  <Clock className="h-4 w-4" /> 오늘의 시간표
+                <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
+                  <Clock className="h-4 w-4 text-accent-foreground" /> 오늘의 시간표
                 </CardTitle>
               </CardHeader>
               <CardContent className="min-h-[120px]">
@@ -382,7 +382,7 @@ export default function DashboardPage() {
                       <div key={i} className="bg-muted/30 p-3 rounded-xl border border-border/50 flex items-center gap-4 shadow-sm hover:translate-x-1 transition-transform">
                         <span className="text-xs font-black text-primary w-10 text-center">{t.split(':')[0]}</span>
                         <div className="h-4 w-px bg-border" />
-                        <span className="text-sm font-black">{t.split(':')[1]}</span>
+                        <span className="text-sm font-black text-foreground">{t.split(':')[1]}</span>
                       </div>
                     ))}
                   </div>
@@ -490,7 +490,7 @@ export default function DashboardPage() {
         <div className="md:col-span-4 space-y-6">
            <Card className="border-none shadow-sm bg-card overflow-hidden h-full rounded-3xl animate-in slide-in-from-right-4 duration-700">
             <CardHeader className="p-5 border-b mb-4 bg-muted/10">
-              <CardTitle className="text-md flex items-center gap-2 font-black">
+              <CardTitle className="text-md flex items-center gap-2 font-black text-foreground">
                 <Sparkles className="h-4 w-4 text-primary animate-pulse" /> 오늘의 도전 문제
               </CardTitle>
             </CardHeader>
@@ -499,12 +499,12 @@ export default function DashboardPage() {
                 <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10 space-y-4 shadow-sm hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-1.5">
                     <Badge className="bg-primary text-white text-[9px] h-4 rounded-full border-none px-2">{problemData.topic}</Badge>
-                    <Badge variant="outline" className="text-[9px] h-4 rounded-full bg-card border-primary/20">{problemData.difficulty}</Badge>
-                    <Badge variant="secondary" className="text-[9px] h-4 rounded-full bg-accent/20 border-none font-bold">{userData?.grade}학년</Badge>
+                    <Badge variant="outline" className="text-[9px] h-4 rounded-full bg-card border-primary/20 text-foreground">{problemData.difficulty}</Badge>
+                    <Badge variant="secondary" className="text-[9px] h-4 rounded-full bg-accent/20 border-none font-bold text-foreground">{userData?.grade}학년</Badge>
                   </div>
                   <div>
                     <h3 className="font-black text-sm mb-2 text-primary">{problemData.title}</h3>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-medium">
+                    <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap font-medium">
                       {problemData.problemText}
                     </p>
                   </div>
@@ -516,7 +516,7 @@ export default function DashboardPage() {
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
                         placeholder="정답" 
-                        className="h-9 w-full px-3 text-xs bg-card border rounded-xl focus:ring-1 focus:ring-primary outline-none transition-all"
+                        className="h-9 w-full px-3 text-xs bg-card border rounded-xl focus:ring-1 focus:ring-primary outline-none transition-all text-foreground"
                         onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
                       />
                       <Button 
@@ -539,7 +539,7 @@ export default function DashboardPage() {
             </CardContent>
 
             <CardHeader className="p-5 border-t border-b mt-4 bg-muted/10 border-border">
-              <CardTitle className="text-md flex items-center gap-2 font-black">
+              <CardTitle className="text-md flex items-center gap-2 font-black text-foreground">
                 <Trophy className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 오늘의 포인트 TOP 10
               </CardTitle>
             </CardHeader>
@@ -575,7 +575,7 @@ export default function DashboardPage() {
                           {isMe && <span className="ml-1.5 text-[9px] font-bold opacity-60">(나)</span>}
                         </span>
                       </div>
-                      <span className={`text-[11px] font-black ${isMe ? 'text-primary' : 'text-muted-foreground'}`}>
+                      <span className={`text-[11px] font-black ${isMe ? 'text-primary' : 'text-foreground'}`}>
                         {u ? u.points.toLocaleString() : "0"} <span className="text-[9px] font-bold opacity-50">P</span>
                       </span>
                     </div>
