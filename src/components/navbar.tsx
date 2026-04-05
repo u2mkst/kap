@@ -1,10 +1,10 @@
+
 "use client"
 
-import Link from "next/link"
+import Link from "next/navigation"
 import { usePathname, useRouter } from "next/navigation"
 import { 
   BookOpen, 
-  User, 
   Home, 
   Gamepad2, 
   Menu, 
@@ -12,8 +12,7 @@ import {
   Sprout,
   ShieldCheck,
   LogOut,
-  UserCircle,
-  HelpCircle
+  UserCircle
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -22,12 +21,12 @@ import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from "@/fireb
 import { signOut } from "firebase/auth"
 import { doc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import LinkNext from "next/link"
 
 const navItems = [
   { name: "홈", href: "/dashboard", icon: Home },
   { name: "나의 정원", href: "/plants", icon: Sprout },
   { name: "라운지", href: "/lounge", icon: Gamepad2 },
-  { name: "고객센터", href: "/support", icon: HelpCircle },
 ]
 
 export function Navbar() {
@@ -59,12 +58,12 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center">
-            <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
+            <LinkNext href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                 <BookOpen className="h-4 w-4" />
               </div>
               <span className="text-lg font-black tracking-tight text-primary font-headline">KST HUB</span>
-            </Link>
+            </LinkNext>
           </div>
 
           {user && (
@@ -72,7 +71,7 @@ export function Navbar() {
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 return (
-                  <Link
+                  <LinkNext
                     key={item.name}
                     href={item.href}
                     className={cn(
@@ -82,22 +81,22 @@ export function Navbar() {
                   >
                     <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
                     <span>{item.name}</span>
-                  </Link>
+                  </LinkNext>
                 )
               })}
               <div className="h-4 w-px bg-border mx-2" />
               {isAdminDoc && (
-                <Link href="/admin">
+                <LinkNext href="/admin">
                   <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10">
                     <ShieldCheck className="h-4 w-4 text-destructive" />
                   </Button>
-                </Link>
+                </LinkNext>
               )}
-              <Link href="/profile">
+              <LinkNext href="/profile">
                 <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
                   <UserCircle className="h-4 w-4 text-muted-foreground" />
                 </Button>
-              </Link>
+              </LinkNext>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -111,12 +110,12 @@ export function Navbar() {
 
           {!user && (
             <div className="hidden md:flex space-x-2">
-              <Link href="/login">
+              <LinkNext href="/login">
                 <Button variant="ghost" size="sm" className="text-xs font-bold">로그인</Button>
-              </Link>
-              <Link href="/signup">
-                <Button size="sm" className="bg-primary font-bold rounded-full text-xs">회원가입</Button>
-              </Link>
+              </LinkNext>
+              <LinkNext href="/signup">
+                <Button size="sm" className="bg-primary font-bold rounded-full text-xs text-white">회원가입</Button>
+              </LinkNext>
             </div>
           )}
 
@@ -133,7 +132,7 @@ export function Navbar() {
       {user && isOpen && (
         <div className="md:hidden border-t bg-background p-3 space-y-1 animate-in slide-in-from-top-4 duration-200">
           {navItems.map((item) => (
-            <Link
+            <LinkNext
               key={item.name}
               href={item.href}
               onClick={() => setIsOpen(false)}
@@ -144,25 +143,25 @@ export function Navbar() {
             >
               <item.icon className="h-4 w-4" />
               <span>{item.name}</span>
-            </Link>
+            </LinkNext>
           ))}
-          <Link
+          <LinkNext
             href="/profile"
             onClick={() => setIsOpen(false)}
             className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted"
           >
             <UserCircle className="h-4 w-4" />
-            <span>마이페이지 (학교 설정)</span>
-          </Link>
+            <span>마이페이지</span>
+          </LinkNext>
           {isAdminDoc && (
-            <Link
+            <LinkNext
               href="/admin"
               onClick={() => setIsOpen(false)}
               className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-destructive hover:bg-destructive/5"
             >
               <ShieldCheck className="h-4 w-4" />
               <span>관리자 모드</span>
-            </Link>
+            </LinkNext>
           )}
           <div className="pt-2 border-t mt-2">
             <Button 
