@@ -4,55 +4,55 @@
     {
       "id": "hero-education",
       "description": "A modern classroom with students engaged in learning",
-      "imageUrl": "https://picsum.photos/seed/edu-main/1200/600",
+      "imageUrl": "https://picsum.photos/seed/991/1200/600",
       "imageHint": "modern classroom"
     },
     {
       "id": "plant-seed",
       "description": "A single small seed in a pot",
-      "imageUrl": "https://picsum.photos/seed/small-seed/400/400",
+      "imageUrl": "https://picsum.photos/seed/821/400/400",
       "imageHint": "plant seed"
     },
     {
       "id": "plant-sprout",
       "description": "A fresh green sprout growing from soil",
-      "imageUrl": "https://picsum.photos/seed/green-sprout/400/400",
+      "imageUrl": "https://picsum.photos/seed/832/400/400",
       "imageHint": "green sprout"
     },
     {
       "id": "plant-sapling",
       "description": "A small young tree with green leaves",
-      "imageUrl": "https://picsum.photos/seed/young-tree/400/400",
+      "imageUrl": "https://picsum.photos/seed/843/400/400",
       "imageHint": "young tree"
     },
     {
       "id": "plant-mature",
       "description": "A beautiful blooming sunflower or a large tree",
-      "imageUrl": "https://picsum.photos/seed/sunflower-gold/400/400",
+      "imageUrl": "https://picsum.photos/seed/854/400/400",
       "imageHint": "blooming flower"
     },
     {
       "id": "course-math",
       "description": "Mathematics formulas on a chalkboard",
-      "imageUrl": "https://picsum.photos/seed/math-board/600/400",
+      "imageUrl": "https://picsum.photos/seed/711/600/400",
       "imageHint": "mathematics blackboard"
     },
     {
       "id": "course-coding",
       "description": "Computer screen with code",
-      "imageUrl": "https://picsum.photos/seed/code-screen/600/400",
+      "imageUrl": "https://picsum.photos/seed/722/600/400",
       "imageHint": "coding programming"
     },
     {
       "id": "course-english",
       "description": "English books and study materials",
-      "imageUrl": "https://picsum.photos/seed/english-book/600/400",
+      "imageUrl": "https://picsum.photos/seed/733/600/400",
       "imageHint": "english study"
     },
     {
       "id": "course-science",
       "description": "Science laboratory equipment",
-      "imageUrl": "https://picsum.photos/seed/lab-tool/600/400",
+      "imageUrl": "https://picsum.photos/seed/744/600/400",
       "imageHint": "science lab"
     }
   ]
