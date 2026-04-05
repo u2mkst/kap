@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -184,7 +185,7 @@ export default function AdminPage() {
         deleteDocumentNonBlocking(targetRef)
       }
     })
-    toast({ title: "전체 삭제 요청이 완료되었습니다." })
+    toast({ title: "전체 삭제 완료" })
   }
 
   const handleUpdatePoints = (userId: string) => {

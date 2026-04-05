@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview 카카오톡 공유 API 헬퍼
  */
@@ -18,16 +19,15 @@ export const initKakao = (apiKey?: string) => {
   const finalKey = apiKey || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
   
   if (window.Kakao && finalKey) {
-    if (!window.Kakao.isInitialized()) {
-      try {
+    try {
+      if (!window.Kakao.isInitialized()) {
         window.Kakao.init(finalKey);
-        return true;
-      } catch (e) {
-        console.warn("Kakao SDK Initialization failed:", e);
-        return false;
       }
+      return true;
+    } catch (e) {
+      console.warn("Kakao SDK Initialization failed:", e);
+      return false;
     }
-    return true;
   }
   return false;
 };
