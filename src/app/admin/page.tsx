@@ -18,14 +18,13 @@ import {
   Loader2, 
   BrainCircuit, 
   Coins,
-  Star,
-  MessageSquare,
   Save,
   FileText,
-  Quote
+  Quote,
+  MessageSquare
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs, updateDoc, limit } from "firebase/firestore"
+import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, updateDoc, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function AdminPage() {
@@ -261,7 +260,7 @@ export default function AdminPage() {
         <TabsContent value="inquiry">
           <div className="space-y-4">
             {inquiries?.map((iq) => (
-              <Card key={iq.id} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+              <Card key={iq.id} className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
                 <CardContent className="p-6 space-y-4">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
@@ -307,7 +306,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="users">
-          <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
               <CardTitle className="text-sm font-black">학생 명단 및 포인트 관리</CardTitle>
               <Select value={selectedTeacherFilter} onValueChange={setSelectedTeacherFilter}>
@@ -320,14 +319,14 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent className="space-y-2 p-4">
               {allUsers?.filter(u => selectedTeacherFilter === "all" || u.teacherId === selectedTeacherFilter).map((u) => (
-                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-muted/20 rounded-2xl text-[11px] hover:bg-muted/30 transition-all gap-3">
+                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-muted/30 rounded-2xl text-[11px] hover:bg-muted/50 transition-all gap-3">
                   <div className="flex items-center gap-3">
                     <span className="font-black text-sm">{u.nickname}</span>
                     <span className="opacity-60 font-bold">{u.schoolName} {u.grade}학년</span>
                     <span className="text-[9px] opacity-40 font-mono">({u.username})</span>
                   </div>
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="flex items-center gap-2 bg-white/50 p-1.5 rounded-xl border border-primary/10 shadow-sm">
+                    <div className="flex items-center gap-2 bg-background/50 p-1.5 rounded-xl border border-primary/10 shadow-sm">
                       <Coins className="h-3 w-3 text-primary" />
                       <Input 
                         type="number" 
@@ -363,7 +362,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="vote">
-          <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
              <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">선생님 투표 관리</CardTitle></CardHeader>
              <CardContent className="p-6 space-y-4">
                 <div className="flex gap-2">
@@ -386,7 +385,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="bulk">
-          <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
              <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록</CardTitle></CardHeader>
              <CardContent className="p-6 space-y-6">
                 <div className="space-y-2">
@@ -429,7 +428,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="notice">
-          <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
             <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">실시간 공지 사항</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
@@ -442,7 +441,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="config">
-          <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
             <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 보안 설정</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
