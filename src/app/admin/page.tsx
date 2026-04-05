@@ -168,8 +168,10 @@ export default function AdminPage() {
   }
 
   const handleDeleteInquiry = (id: string) => {
+    if (!id) return
     if (!confirm("이 문의를 영구 삭제하시겠습니까?")) return
-    deleteDocumentNonBlocking(doc(db, "inquiries", id))
+    const targetRef = doc(db, "inquiries", id)
+    deleteDocumentNonBlocking(targetRef)
     toast({ title: "문의가 삭제되었습니다." })
   }
 
@@ -178,7 +180,10 @@ export default function AdminPage() {
     if (!confirm(`정말 ${inquiries.length}개의 모든 문의를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return
     
     inquiries.forEach(iq => {
-      deleteDocumentNonBlocking(doc(db, "inquiries", iq.id))
+      if (iq.id) {
+        const targetRef = doc(db, "inquiries", iq.id)
+        deleteDocumentNonBlocking(targetRef)
+      }
     })
     toast({ title: "전체 삭제 요청이 완료되었습니다." })
   }
@@ -294,7 +299,7 @@ export default function AdminPage() {
               disabled={!inquiries || inquiries.length === 0}
               className="rounded-full font-black text-[10px] h-8"
             >
-              <Eraser className="h-3 w-3 mr-1" /> 전체 삭제
+              <Eraser className="h-3 w-3 mr-1" /> 전체 문의 삭제
             </Button>
           </div>
           <div className="space-y-4">
@@ -310,7 +315,9 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-muted-foreground font-medium">{iq.createdAt?.toDate?.().toLocaleString() || "방금 전"}</span>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteInquiry(iq.id)} className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full"><Trash2 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteInquiry(iq.id)} className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                   <div className="text-sm">
