@@ -69,7 +69,6 @@ export default function PlantsPage() {
 
     setIsActionLoading("add")
     
-    // Optimistic Point deduction
     updateDoc(userDocRef, {
       points: increment(-cost)
     }).catch(async (err) => {
@@ -271,7 +270,6 @@ export default function PlantsPage() {
                   "border-none shadow-lg hover:shadow-2xl transition-all group bg-white overflow-hidden relative rounded-[2.5rem] animate-in zoom-in-95",
                   `duration-${300 + (index * 100)}`
                 )}>
-                  {/* Action Buttons Overlay */}
                   <div className="absolute top-4 right-4 z-20 flex gap-2">
                     <Button 
                       variant="ghost" 
@@ -284,19 +282,19 @@ export default function PlantsPage() {
                   </div>
 
                   <div className={cn(
-                    "relative h-56 flex items-center justify-center overflow-hidden transition-colors duration-700",
-                    isMature ? "bg-gradient-to-br from-yellow-50 to-orange-50" : "bg-muted/30"
+                    "relative h-64 flex items-center justify-center overflow-hidden transition-colors duration-700",
+                    isMature ? "bg-gradient-to-br from-yellow-50 via-white to-orange-50" : "bg-muted/30"
                   )}>
                     <div className="absolute inset-0 opacity-10 pointer-events-none">
                       <Wind className="h-full w-full p-12 text-muted-foreground animate-pulse-gentle" />
                     </div>
                     
-                    <div className="relative h-40 w-40 animate-float">
+                    <div className="relative h-48 w-48 animate-float drop-shadow-[0_25px_25px_rgba(0,0,0,0.15)]">
                       <Image 
                         src={stageInfo.imageUrl} 
                         alt={stageInfo.label} 
                         fill 
-                        className="object-contain p-4 group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl"
+                        className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
                         data-ai-hint={stageInfo.imageHint}
                       />
                     </div>
@@ -375,7 +373,6 @@ export default function PlantsPage() {
         )}
       </div>
 
-      {/* Info Section */}
       <div className="mt-20 max-w-2xl mx-auto text-center space-y-4 animate-in slide-in-from-bottom-8 duration-1000">
         <div className="inline-flex p-3 bg-emerald-100 rounded-full mb-2">
           <Leaf className="h-6 w-6 text-emerald-600" />

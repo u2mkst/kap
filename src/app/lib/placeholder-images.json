@@ -9,26 +9,26 @@
     },
     {
       "id": "plant-seed",
-      "description": "A small seed in a pot",
-      "imageUrl": "https://picsum.photos/seed/seed-pot/400/400",
+      "description": "A small decorative seed in a mini pot",
+      "imageUrl": "https://picsum.photos/seed/seed-v2/400/400",
       "imageHint": "plant seed"
     },
     {
       "id": "plant-sprout",
-      "description": "A fresh green sprout coming out of soil",
-      "imageUrl": "https://picsum.photos/seed/sprout-soil/400/400",
+      "description": "A vibrant green sprout emerging from the earth",
+      "imageUrl": "https://picsum.photos/seed/sprout-v2/400/400",
       "imageHint": "green sprout"
     },
     {
       "id": "plant-sapling",
-      "description": "A young small tree with few leaves",
-      "imageUrl": "https://picsum.photos/seed/young-tree/400/400",
+      "description": "A healthy young tree with fresh green leaves",
+      "imageUrl": "https://picsum.photos/seed/sapling-v2/400/400",
       "imageHint": "young tree"
     },
     {
       "id": "plant-mature",
-      "description": "A beautiful blooming sunflower or a big tree",
-      "imageUrl": "https://picsum.photos/seed/mature-plant/400/400",
+      "description": "A fully grown blooming sunflower or a lush green tree",
+      "imageUrl": "https://picsum.photos/seed/mature-v2/400/400",
       "imageHint": "blooming flower"
     },
     {
