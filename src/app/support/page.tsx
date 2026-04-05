@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { MessageSquare, Send, Loader2, CheckCircle2, Clock } from "lucide-react"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
-import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, limit } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, limit, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -42,6 +42,17 @@ export default function SupportPage() {
   }, [user?.uid, db])
   const { data: userData } = useDoc(userDocRef)
 
+  // 페이지 접속 시 안 읽은 문의 모두 읽음 처리
+  useEffect(() => {
+    if (myInquiries) {
+      myInquiries.forEach(iq => {
+        if (iq.status === "replied" && iq.isRead === false) {
+          updateDoc(doc(db, "inquiries", iq.id), { isRead: true })
+        }
+      })
+    }
+  }, [myInquiries, db])
+
   const handleSendInquiry = async () => {
     if (!subject.trim() || !message.trim() || !user) return
     setIsSending(true)
@@ -53,6 +64,7 @@ export default function SupportPage() {
       message: message.trim(),
       reply: "",
       status: "open",
+      isRead: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }
@@ -153,6 +165,9 @@ export default function SupportPage() {
                           <Badge variant={iq.status === "open" ? "destructive" : "secondary"} className="text-[9px] font-black rounded-full px-2 py-0 h-5 border-none">
                             {iq.status === "open" ? "답변 대기" : "답변 완료"}
                           </Badge>
+                          {!iq.isRead && iq.status === "replied" && (
+                            <Badge className="bg-destructive text-white text-[9px] font-black rounded-full h-5 animate-pulse">NEW</Badge>
+                          )}
                           <span className="text-[10px] text-muted-foreground font-black">
                             {iq.createdAt?.toDate ? iq.createdAt.toDate().toLocaleDateString() : "방금 전"}
                           </span>

@@ -143,6 +143,7 @@ export default function AdminPage() {
     updateDoc(doc(db, "inquiries", inquiryId), {
       reply: text.trim(),
       status: "replied",
+      isRead: false,
       updatedAt: serverTimestamp()
     }).then(() => {
       toast({ title: "답변이 전송되었습니다." })
