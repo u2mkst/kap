@@ -13,7 +13,8 @@ service cloud.firestore {
     // 유저 정보
     match /users/{userId} {
       allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin();
+      // 리더보드 조회를 위해 인증된 모든 사용자의 리스트 조회를 허용합니다.
+      allow list: if isAuthenticated();
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       
       match /personal_fortunes/{date} {
