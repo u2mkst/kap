@@ -19,10 +19,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users, GraduationCap, Trash2 } from "lucide-react"
+import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users, GraduationCap, Lock } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, serverTimestamp, setDoc, collection, deleteDoc } from "firebase/firestore"
-import { deleteUser } from "firebase/auth"
+import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const [adminCode, setAdminCode] = useState("")
   const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [showCode, setShowCode] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -127,32 +128,42 @@ export default function ProfilePage() {
   }
 
   const handleDeleteAccount = async () => {
-    if (!user || !userDocRef) return
+    if (!user || !userDocRef || !deletePassword) return
     setIsLoading(true)
     try {
-      // 1. Firestore 데이터 삭제
+      // 1. 재인증 (삭제를 위해서는 최근 로그인이 필요함)
+      const email = user.email
+      if (!email) throw new Error("이메일 정보를 찾을 수 없습니다.")
+      
+      const credential = EmailAuthProvider.credential(email, deletePassword)
+      await reauthenticateWithCredential(user, credential)
+
+      // 2. Firestore 데이터 삭제
       await deleteDoc(userDocRef)
-      // 2. Auth 계정 삭제
+      
+      // 3. Auth 계정 삭제
       await deleteUser(user)
+      
       toast({ title: "계정 삭제 완료", description: "그동안 이용해주셔서 감사합니다." })
       router.push("/")
     } catch (error: any) {
       console.error(error)
-      if (error.code === 'auth/requires-recent-login') {
-        toast({ 
-          variant: "destructive", 
-          title: "보안 인증 필요", 
-          description: "계정 삭제를 위해 다시 로그인 후 시도해 주세요." 
-        })
-      } else {
-        toast({ 
-          variant: "destructive", 
-          title: "삭제 실패", 
-          description: "오류가 발생했습니다. 잠시 후 다시 시도해 주세요." 
-        })
+      let message = "오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+      
+      if (error.code === 'auth/wrong-password') {
+        message = "비밀번호가 일치하지 않습니다."
+      } else if (error.code === 'auth/too-many-requests') {
+        message = "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해 주세요."
       }
+      
+      toast({ 
+        variant: "destructive", 
+        title: "삭제 실패", 
+        description: message 
+      })
     } finally {
       setIsLoading(false)
+      setDeletePassword("")
     }
   }
 
@@ -339,14 +350,31 @@ export default function ProfilePage() {
               <AlertDialogContent className="rounded-3xl">
                 <AlertDialogHeader>
                   <AlertDialogTitle>정말 탈퇴하시겠습니까?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    탈퇴 시 모든 학습 포인트, 정원 데이터, 문의 내역이 영구적으로 삭제되며 복구할 수 없습니다.
+                  <AlertDialogDescription className="space-y-4">
+                    <span>탈퇴 시 모든 학습 포인트, 정원 데이터, 문의 내역이 영구적으로 삭제되며 복구할 수 없습니다.</span>
+                    <div className="mt-4 space-y-2 text-left">
+                      <Label className="text-xs font-bold ml-1">본인 확인을 위해 비밀번호를 입력해 주세요.</Label>
+                      <Input 
+                        type="password" 
+                        placeholder="비밀번호 입력" 
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        className="rounded-xl border-muted-foreground/20"
+                      />
+                    </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel className="rounded-xl">취소</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-white rounded-xl hover:bg-destructive/90">
-                    계정 삭제 확인
+                  <AlertDialogCancel className="rounded-xl" onClick={() => setDeletePassword("")}>취소</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleDeleteAccount();
+                    }} 
+                    disabled={isLoading || !deletePassword}
+                    className="bg-destructive text-white rounded-xl hover:bg-destructive/90"
+                  >
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "계정 삭제 확인"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
