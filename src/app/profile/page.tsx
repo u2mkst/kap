@@ -8,9 +8,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users, GraduationCap } from "lucide-react"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users, GraduationCap, Trash2 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
-import { doc, updateDoc, serverTimestamp, setDoc, collection } from "firebase/firestore"
+import { doc, updateDoc, serverTimestamp, setDoc, collection, deleteDoc } from "firebase/firestore"
+import { deleteUser } from "firebase/auth"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -114,6 +126,36 @@ export default function ProfilePage() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    if (!user || !userDocRef) return
+    setIsLoading(true)
+    try {
+      // 1. Firestore 데이터 삭제
+      await deleteDoc(userDocRef)
+      // 2. Auth 계정 삭제
+      await deleteUser(user)
+      toast({ title: "계정 삭제 완료", description: "그동안 이용해주셔서 감사합니다." })
+      router.push("/")
+    } catch (error: any) {
+      console.error(error)
+      if (error.code === 'auth/requires-recent-login') {
+        toast({ 
+          variant: "destructive", 
+          title: "보안 인증 필요", 
+          description: "계정 삭제를 위해 다시 로그인 후 시도해 주세요." 
+        })
+      } else {
+        toast({ 
+          variant: "destructive", 
+          title: "삭제 실패", 
+          description: "오류가 발생했습니다. 잠시 후 다시 시도해 주세요." 
+        })
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   if (isUserLoading || isUserDataLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
@@ -139,7 +181,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="space-y-6">
-        <Card className="border-none shadow-sm bg-white">
+        <Card className="border-none shadow-sm bg-white dark:bg-card">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <User className="h-5 w-5 text-primary" /> 기본 정보
@@ -174,7 +216,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white">
+        <Card className="border-none shadow-sm bg-white dark:bg-card">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" /> 담당 선생님 관리
@@ -197,7 +239,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white">
+        <Card className="border-none shadow-sm bg-white dark:bg-card">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <School className="h-5 w-5 text-primary" /> 학교 정보 설정
@@ -241,50 +283,76 @@ export default function ProfilePage() {
           {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "변경 사항 저장"}
         </Button>
 
-        {!isAdminDoc && (
-          <div className="pt-10">
-            {!showAdminPanel ? (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-muted-foreground hover:bg-transparent"
-                onClick={() => setShowAdminPanel(true)}
-              >
-                권한 획득이 필요하신가요?
-              </Button>
-            ) : (
-              <Card className="border-2 border-dashed border-destructive/20 bg-destructive/5 animate-in fade-in duration-300">
-                <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                    <ShieldAlert className="h-4 w-4" /> 관리자 코드 인증
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowAdminPanel(false)}>닫기</Button>
-                </CardHeader>
-                <CardContent className="flex gap-2">
-                  <div className="relative flex-grow">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                    <Input 
-                      type={showCode ? "text" : "password"}
-                      placeholder="Admin Code" 
-                      value={adminCode}
-                      onChange={(e) => setAdminCode(e.target.value)}
-                      className="pl-8 h-9 text-xs"
-                    />
-                    <button 
-                      onClick={() => setShowCode(!showCode)} 
-                      className="absolute right-3 top-1/2 -translate-y-1/2"
-                    >
-                      {showCode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                    </button>
-                  </div>
-                  <Button size="sm" variant="destructive" onClick={handleClaimAdmin} disabled={isLoading}>
-                    인증
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+        <div className="pt-10 space-y-4">
+          {!isAdminDoc && (
+            <div>
+              {!showAdminPanel ? (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-muted-foreground hover:bg-transparent text-[10px]"
+                  onClick={() => setShowAdminPanel(true)}
+                >
+                  권한 획득이 필요하신가요?
+                </Button>
+              ) : (
+                <Card className="border-2 border-dashed border-destructive/20 bg-destructive/5 animate-in fade-in duration-300">
+                  <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+                      <ShieldAlert className="h-4 w-4" /> 관리자 코드 인증
+                    </CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => setShowAdminPanel(false)}>닫기</Button>
+                  </CardHeader>
+                  <CardContent className="flex gap-2">
+                    <div className="relative flex-grow">
+                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      <Input 
+                        type={showCode ? "text" : "password"}
+                        placeholder="Admin Code" 
+                        value={adminCode}
+                        onChange={(e) => setAdminCode(e.target.value)}
+                        className="pl-8 h-9 text-xs"
+                      />
+                      <button 
+                        onClick={() => setShowCode(!showCode)} 
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                      >
+                        {showCode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </button>
+                    </div>
+                    <Button size="sm" variant="destructive" onClick={handleClaimAdmin} disabled={isLoading}>
+                      인증
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-center">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="link" className="text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors">
+                  계정 탈퇴 (서비스 종료)
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-3xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>정말 탈퇴하시겠습니까?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    탈퇴 시 모든 학습 포인트, 정원 데이터, 문의 내역이 영구적으로 삭제되며 복구할 수 없습니다.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-xl">취소</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-white rounded-xl hover:bg-destructive/90">
+                    계정 삭제 확인
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

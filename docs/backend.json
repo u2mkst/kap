@@ -18,6 +18,7 @@
         "classNum": { "type": "string" },
         "teacherId": { "type": "string", "description": "The ID of the assigned teacher." },
         "points": { "type": "number" },
+        "theme": { "type": "string", "enum": ["light", "dark"], "default": "light" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

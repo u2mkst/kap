@@ -11,14 +11,16 @@ import {
   Sprout,
   ShieldCheck,
   LogOut,
-  UserCircle
+  UserCircle,
+  Sun,
+  Moon
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { signOut } from "firebase/auth"
-import { doc } from "firebase/firestore"
+import { doc, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import LinkNext from "next/link"
 
@@ -36,6 +38,12 @@ export function Navbar() {
   const auth = useAuth()
   const db = useFirestore()
 
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "users", user.uid)
+  }, [user, db])
+  const { data: userData } = useDoc(userDocRef)
+
   const adminRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "roles_admin", user.uid)
@@ -47,6 +55,16 @@ export function Navbar() {
       await signOut(auth)
       toast({ title: "로그아웃", description: "안전하게 로그아웃 되었습니다." })
       router.push("/login")
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const toggleTheme = async () => {
+    if (!userDocRef || !userData) return
+    const newTheme = userData.theme === 'dark' ? 'light' : 'dark'
+    try {
+      await updateDoc(userDocRef, { theme: newTheme })
     } catch (error) {
       console.error(error)
     }
@@ -84,6 +102,17 @@ export function Navbar() {
                 )
               })}
               <div className="h-4 w-px bg-border mx-2" />
+              
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-full hover:bg-muted mr-1" 
+                onClick={toggleTheme}
+                title="테마 변경"
+              >
+                {userData?.theme === 'dark' ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+              </Button>
+
               {isAdminDoc && (
                 <LinkNext href="/admin">
                   <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10">
@@ -144,6 +173,18 @@ export function Navbar() {
               <span>{item.name}</span>
             </LinkNext>
           ))}
+          
+          <div
+            onClick={() => {
+              toggleTheme()
+              setIsOpen(false)
+            }}
+            className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted cursor-pointer"
+          >
+            {userData?.theme === 'dark' ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+            <span>{userData?.theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}</span>
+          </div>
+
           <LinkNext
             href="/profile"
             onClick={() => setIsOpen(false)}
