@@ -56,22 +56,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 문의 시스템 (고객센터)
+    // 문의 시스템 (최대한 간소화된 규칙)
     match /inquiries/{inquiryId} {
-      // read는 get과 list를 모두 포함합니다.
-      // 학생은 본인의 것만(쿼리 필터 필요), 관리자는 전체 조회 가능
+      // 읽기: 본인의 글이거나 관리자일 때만 허용
       allow read: if isAuthenticated() && (
-        isAdmin() || 
-        (resource.data.userId == request.auth.uid)
+        resource.data.userId == request.auth.uid || 
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
       );
       
-      // 생성: 인증된 사용자가 본인의 ID로 생성
+      // 생성: 인증된 사용자가 본인의 ID로만 생성
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // 수정/삭제: 본인의 것이거나 관리자인 경우
+      // 수정/삭제: 본인의 글이거나 관리자일 때만 허용
       allow update, delete: if isAuthenticated() && (
-        isAdmin() || 
-        (resource.data.userId == request.auth.uid)
+        resource.data.userId == request.auth.uid || 
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
       );
     }
   }
