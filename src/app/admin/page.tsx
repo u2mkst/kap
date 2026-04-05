@@ -109,7 +109,11 @@ export default function AdminPage() {
   const handleAddTeacher = () => {
     if (!teacherName.trim()) return
     setIsSaving(true)
-    addDoc(collection(db, "teachers"), { name: teacherName, vote: 0, createdAt: serverTimestamp() })
+    addDoc(collection(db, "teachers"), { 
+      name: teacherName, 
+      vote: 0, 
+      createdAt: serverTimestamp() 
+    })
       .then(() => {
         toast({ title: "교사 등록 완료" })
         setTeacherName("")
