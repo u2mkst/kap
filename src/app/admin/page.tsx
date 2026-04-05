@@ -510,7 +510,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-destructive text-white">전체 설정 저장</Button>
+              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 font-black bg-destructive text-white">전체 설정 저장</Button>
             </CardContent>
           </Card>
         </TabsContent>
