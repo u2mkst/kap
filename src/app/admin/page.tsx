@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -21,10 +22,11 @@ import {
   FileText,
   Quote,
   MessageSquare,
-  Key
+  Key,
+  Eraser
 } from "lucide-react"
-import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, updateDoc, limit } from "firebase/firestore"
+import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
+import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function AdminPage() {
@@ -68,7 +70,7 @@ export default function AdminPage() {
 
   const inquiriesQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    return query(collection(db, "inquiries"), orderBy("createdAt", "desc"), limit(50))
+    return query(collection(db, "inquiries"), orderBy("createdAt", "desc"), limit(100))
   }, [db, isActuallyAdmin])
   const { data: inquiries } = useCollection(inquiriesQuery)
 
@@ -117,7 +119,8 @@ export default function AdminPage() {
 
   const handleDeleteTeacher = (id: string) => {
     if (!confirm("삭제하시겠습니까?")) return
-    deleteDoc(doc(db, "teachers", id)).then(() => toast({ title: "삭제 완료" }))
+    deleteDocumentNonBlocking(doc(db, "teachers", id))
+    toast({ title: "삭제 완료" })
   }
 
   const handleUpdateConfig = () => {
@@ -136,7 +139,8 @@ export default function AdminPage() {
     if (userId === user?.uid) return
     const targetAdminRef = doc(db, "roles_admin", userId)
     if (isCurrentlyAdmin) {
-      deleteDoc(targetAdminRef).then(() => toast({ title: "권한 해제" }))
+      deleteDocumentNonBlocking(targetAdminRef)
+      toast({ title: "권한 해제" })
     } else {
       setDoc(targetAdminRef, { addedAt: serverTimestamp() }).then(() => toast({ title: "권한 부여" }))
     }
@@ -146,20 +150,33 @@ export default function AdminPage() {
     const text = replyText[inquiryId]
     if (!text?.trim()) return
     setIsSaving(true)
-    updateDoc(doc(db, "inquiries", inquiryId), {
+    
+    updateDocumentNonBlocking(doc(db, "inquiries", inquiryId), {
       reply: text.trim(),
       status: "replied",
       isRead: false,
       updatedAt: serverTimestamp()
-    }).then(() => {
-      toast({ title: "답변이 전송되었습니다." })
-      setReplyText({ ...replyText, [inquiryId]: "" })
-    }).finally(() => setIsSaving(false))
+    })
+    
+    toast({ title: "답변이 전송되었습니다." })
+    setReplyText({ ...replyText, [inquiryId]: "" })
+    setIsSaving(false)
   }
 
   const handleDeleteInquiry = (id: string) => {
     if (!confirm("이 문의를 영구 삭제하시겠습니까?")) return
-    deleteDoc(doc(db, "inquiries", id)).then(() => toast({ title: "문의가 삭제되었습니다." }))
+    deleteDocumentNonBlocking(doc(db, "inquiries", id))
+    toast({ title: "문의가 삭제되었습니다." })
+  }
+
+  const handleDeleteAllInquiries = () => {
+    if (!inquiries || inquiries.length === 0) return
+    if (!confirm(`정말 ${inquiries.length}개의 모든 문의를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return
+    
+    inquiries.forEach(iq => {
+      deleteDocumentNonBlocking(doc(db, "inquiries", iq.id))
+    })
+    toast({ title: "전체 삭제 요청이 완료되었습니다." })
   }
 
   const handleUpdatePoints = (userId: string) => {
@@ -167,12 +184,12 @@ export default function AdminPage() {
     if (newPoints === undefined || isNaN(newPoints)) return
     
     setIsSaving(true)
-    updateDoc(doc(db, "users", userId), {
+    updateDocumentNonBlocking(doc(db, "users", userId), {
       points: newPoints,
       updatedAt: serverTimestamp()
-    }).then(() => {
-      toast({ title: "포인트 수정 완료", description: `포인트가 ${newPoints}P로 변경되었습니다.` })
-    }).finally(() => setIsSaving(false))
+    })
+    toast({ title: "포인트 수정 완료", description: `포인트가 ${newPoints}P로 변경되었습니다.` })
+    setIsSaving(false)
   }
 
   const handleBulkProblems = async () => {
@@ -265,6 +282,17 @@ export default function AdminPage() {
         </TabsList>
 
         <TabsContent value="inquiry">
+          <div className="flex justify-end mb-4">
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleDeleteAllInquiries}
+              disabled={!inquiries || inquiries.length === 0}
+              className="rounded-full font-black text-[10px] h-8"
+            >
+              <Eraser className="h-3 w-3 mr-1" /> 전체 삭제
+            </Button>
+          </div>
           <div className="space-y-4">
             {inquiries?.map((iq) => (
               <Card key={iq.id} className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
