@@ -5,7 +5,7 @@ import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { BottomNav } from '@/components/bottom-nav';
+import { FloatingInquiry } from '@/components/floating-inquiry';
 
 export const metadata: Metadata = {
   title: {
@@ -30,13 +30,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased flex flex-col min-h-screen pb-20 md:pb-0">
+      <body className="font-body antialiased flex flex-col min-h-screen">
         <FirebaseClientProvider>
           <Navbar />
           <main className="flex-grow">
             {children}
           </main>
-          <BottomNav />
+          <FloatingInquiry />
           <Footer />
           <Toaster />
         </FirebaseClientProvider>

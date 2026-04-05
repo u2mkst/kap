@@ -11,10 +11,10 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-2">
             <BookOpen className="h-5 w-5 text-primary" />
-            <span className="text-sm font-bold text-primary font-headline">KST 학생 허브</span>
+            <span className="text-sm font-bold text-primary font-headline">KST HUB</span>
           </div>
           <p className="text-[10px] text-muted-foreground text-center">
-            KST 학생 허브는 학생들의 즐거운 학원 생활을 응원합니다. © 2026 KST HUB.
+            KST HUB는 학생들의 즐거운 학원 생활을 응원합니다. © 2026 KST HUB.
           </p>
           <div className="flex gap-4">
             <Link href="/dashboard" className="text-[10px] text-muted-foreground hover:text-primary transition-colors">홈</Link>
