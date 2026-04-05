@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -103,7 +102,7 @@ export default function AdminPage() {
         router.push("/dashboard")
       }
     }
-  }, [user, isActuallyAdmin, isUserLoading, isAdminLoading, iisMounted, router])
+  }, [user, isActuallyAdmin, isUserLoading, isAdminLoading, isMounted, router])
 
   const handleAddTeacher = () => {
     if (!teacherName.trim()) return
