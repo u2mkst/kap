@@ -326,9 +326,12 @@ export default function DashboardPage() {
                               {isLoadingWeekly ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
                               ) : meal?.menu ? (
-                                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                                <div className="flex flex-col gap-1">
                                   {meal.menu.split(',').map((item, i) => (
-                                    <span key={i} className="bg-card/50 px-2 py-0.5 rounded-md border border-border/50 text-foreground">{item.trim()}</span>
+                                    <div key={i} className="flex items-center gap-2">
+                                      <span className="h-1 w-1 rounded-full bg-primary/40" />
+                                      <span className="text-foreground">{item.trim()}</span>
+                                    </div>
                                   ))}
                                 </div>
                               ) : "급식 정보가 없습니다."}
