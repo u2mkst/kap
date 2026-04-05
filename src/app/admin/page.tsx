@@ -20,7 +20,9 @@ import {
   Coins,
   Star,
   MessageSquare,
-  Save
+  Save,
+  FileText,
+  Quote
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs, updateDoc, limit } from "firebase/firestore"
@@ -165,6 +167,68 @@ export default function AdminPage() {
     }).then(() => {
       toast({ title: "포인트 수정 완료", description: `포인트가 ${newPoints}P로 변경되었습니다.` })
     }).finally(() => setIsSaving(false))
+  }
+
+  const handleBulkProblems = async () => {
+    if (!bulkProblemText.trim()) return
+    setIsSaving(true)
+    const lines = bulkProblemText.trim().split("\n")
+    let count = 0
+    try {
+      for (const line of lines) {
+        const [date, grade, title, topic, difficulty, problemText, answer, rewardPoints] = line.split("|")
+        if (date && grade && title && problemText && answer) {
+          const problemId = `${date}_${grade}`
+          await setDoc(doc(db, "daily_problems", problemId), {
+            id: problemId,
+            date,
+            grade,
+            title,
+            topic: topic || "일반",
+            difficulty: difficulty || "중",
+            problemText,
+            answer,
+            rewardPoints: parseInt(rewardPoints || "100"),
+            updatedAt: serverTimestamp()
+          })
+          count++
+        }
+      }
+      toast({ title: "문제 일괄 등록 완료", description: `${count}개의 문제가 등록되었습니다.` })
+      setBulkProblemText("")
+    } catch (e) {
+      console.error(e)
+      toast({ variant: "destructive", title: "등록 실패", description: "데이터 형식을 확인해주세요." })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleBulkFortunes = async () => {
+    if (!bulkFortuneText.trim()) return
+    setIsSaving(true)
+    const lines = bulkFortuneText.trim().split("\n")
+    let count = 0
+    try {
+      for (const line of lines) {
+        const [date, fortuneText] = line.split("|")
+        if (date && fortuneText) {
+          await setDoc(doc(db, "daily_fortunes", date), {
+            date,
+            fortuneText,
+            updatedAt: serverTimestamp()
+          })
+          count++
+        }
+      }
+      toast({ title: "한마디 일괄 등록 완료", description: `${count}개의 한마디가 등록되었습니다.` })
+      setBulkFortuneText("")
+    } catch (e) {
+      console.error(e)
+      toast({ variant: "destructive", title: "등록 실패", description: "데이터 형식을 확인해주세요." })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (isUserLoading || isAdminLoading || !isMounted) {
@@ -326,14 +390,39 @@ export default function AdminPage() {
              <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록</CardTitle></CardHeader>
              <CardContent className="p-6 space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-muted-foreground ml-1">일일 문제 등록</Label>
-                  <Textarea placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답" value={bulkProblemText} onChange={(e) => setBulkProblemText(e.target.value)} className="rounded-2xl min-h-[100px]" />
-                  <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11">문제 일괄 등록</Button>
+                  <div className="flex items-center gap-2 mb-1">
+                    <BrainCircuit className="h-4 w-4 text-primary" />
+                    <Label className="text-xs font-bold text-muted-foreground">일일 문제 일괄 등록</Label>
+                  </div>
+                  <Textarea 
+                    placeholder={`예시:\n2024-05-20|1|기초 연산|수학|하|1+1은 무엇일까요?|2|100\n2024-05-21|2|분수 문제|수학|중|1/2 + 1/2는?|1|200`} 
+                    value={bulkProblemText} 
+                    onChange={(e) => setBulkProblemText(e.target.value)} 
+                    className="rounded-2xl min-h-[150px] text-[11px] font-mono leading-relaxed" 
+                  />
+                  <p className="text-[10px] text-muted-foreground ml-1">형식: 날짜|학년|제목|토픽|난이도|문제내용|정답|지급포인트</p>
+                  <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11">
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
+                    문제 일괄 등록 실행
+                  </Button>
                 </div>
-                <div className="space-y-2 pt-4 border-t">
-                  <Label className="text-xs font-bold text-muted-foreground ml-1">오늘의 한마디 등록</Label>
-                  <Textarea placeholder="날짜|내용" value={bulkFortuneText} onChange={(e) => setBulkFortuneText(e.target.value)} className="rounded-2xl min-h-[100px]" />
-                  <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11">한마디 일괄 등록</Button>
+                
+                <div className="space-y-2 pt-6 border-t">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Quote className="h-4 w-4 text-accent" />
+                    <Label className="text-xs font-bold text-muted-foreground">오늘의 한마디 일괄 등록</Label>
+                  </div>
+                  <Textarea 
+                    placeholder={`예시:\n2024-05-20|오늘은 당신의 꿈을 향해 한 걸음 더 나아가세요!\n2024-05-21|작은 성취들이 모여 큰 기적을 만듭니다.`} 
+                    value={bulkFortuneText} 
+                    onChange={(e) => setBulkFortuneText(e.target.value)} 
+                    className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed" 
+                  />
+                  <p className="text-[10px] text-muted-foreground ml-1">형식: 날짜|한마디내용</p>
+                  <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Quote className="h-4 w-4 mr-2" />}
+                    한마디 일괄 등록 실행
+                  </Button>
                 </div>
              </CardContent>
           </Card>
