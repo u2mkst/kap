@@ -3,7 +3,6 @@
 
 import { useMemo, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -26,7 +25,6 @@ import { collection, doc, addDoc, updateDoc, increment, serverTimestamp, deleteD
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
-import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { cn } from "@/lib/utils"
 
 export default function PlantsPage() {
@@ -179,49 +177,47 @@ export default function PlantsPage() {
   }
 
   const getStageInfo = (stage: string) => {
-    let imageId = "plant-seed"
+    let emoji = "🌰"
     let label = "씨앗"
     let color = "bg-orange-500"
     let progress = 25
 
     switch(stage) {
       case "Seed":
-        imageId = "plant-seed"
+        emoji = "🌰"
         label = "씨앗"
         color = "bg-orange-400"
         progress = 25
         break
       case "Sprout":
-        imageId = "plant-sprout"
+        emoji = "🌱"
         label = "새싹"
         color = "bg-green-400"
         progress = 50
         break
       case "Sapling":
-        imageId = "plant-sapling"
+        emoji = "🌿"
         label = "묘목"
         color = "bg-emerald-500"
         progress = 75
         break
       case "Mature":
-        imageId = "plant-mature"
+        emoji = "🌳"
         label = "완성!"
         color = "bg-yellow-400"
         progress = 100
         break
       default:
-        imageId = "plant-seed"
+        emoji = "🌰"
         label = "씨앗"
         progress = 0
     }
 
-    const img = PlaceHolderImages.find(p => p.id === imageId)
     return {
       label,
       color,
       progress,
-      imageUrl: img?.imageUrl || "https://picsum.photos/seed/plant/400/400",
-      imageHint: img?.imageHint || "plant"
+      emoji
     }
   }
 
@@ -289,14 +285,8 @@ export default function PlantsPage() {
                       <Wind className="h-full w-full p-12 text-muted-foreground animate-pulse-gentle" />
                     </div>
                     
-                    <div className="relative h-48 w-48 animate-float drop-shadow-[0_25px_25px_rgba(0,0,0,0.15)]">
-                      <Image 
-                        src={stageInfo.imageUrl} 
-                        alt={stageInfo.label} 
-                        fill 
-                        className="object-contain p-4 group-hover:scale-110 transition-transform duration-500"
-                        data-ai-hint={stageInfo.imageHint}
-                      />
+                    <div className="relative text-8xl md:text-9xl animate-float drop-shadow-2xl select-none">
+                      {stageInfo.emoji}
                     </div>
 
                     <Badge className={cn(
