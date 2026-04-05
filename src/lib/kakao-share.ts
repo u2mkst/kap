@@ -22,9 +22,6 @@ export const initKakao = (apiKey?: string) => {
     try {
       if (!window.Kakao.isInitialized()) {
         window.Kakao.init(finalKey);
-      } else if (apiKey && window.Kakao.isInitialized()) {
-        // 이미 초기화되었으나 다른 키가 전달된 경우에 대한 대응은 SDK 제약상 어려움이 있으나
-        // 일관된 사용을 위해 초기화 상태를 반환함
       }
       return true;
     } catch (e) {
@@ -44,13 +41,13 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
   const initialized = initKakao(apiKey);
   
   if (!initialized || !window.Kakao?.Share) {
-    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요.");
+    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요. (관리자 설정에서 API 키가 정확한지 확인해 주세요)");
     return;
   }
   
   const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
-  // 급식 메뉴 줄바꿈 처리 및 공백 최적화
-  const formattedMenu = menu.split(',').map(item => item.trim()).filter(Boolean).join('\n');
+  // 말줄임 방지를 위해 콤팩트하게 구성
+  const formattedMenu = menu.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
@@ -87,20 +84,19 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
   const initialized = initKakao(apiKey);
   
   if (!initialized || !window.Kakao?.Share) {
-    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요.");
+    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요. (관리자 설정에서 API 키가 정확한지 확인해 주세요)");
     return;
   }
   
   const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
-  // 시간표 줄바꿈 처리 및 콤팩트하게 구성
-  const formattedTimetable = timetable.split(',').map(item => item.trim()).filter(Boolean).join('\n');
+  const formattedTimetable = timetable.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: schoolName,
-        description: `[${formattedDate} 시간표]\n(${grade}학년 ${classNum}반)\n${formattedTimetable}`,
+        title: `${schoolName} (${grade}학년 ${classNum}반)`,
+        description: `[${formattedDate} 시간표]\n${formattedTimetable}`,
         link: {
           mobileWebUrl: window.location.href,
           webUrl: window.location.href,
