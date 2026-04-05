@@ -9,7 +9,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
-    pSize: '1000', // 충분한 데이터 확보를 위해 1000개로 대폭 확대 (시간표 누락 방지)
+    pSize: '1000', // 충분한 데이터 확보를 위해 1000개로 확대
     ...(API_KEY ? { KEY: API_KEY } : {}),
     ...params,
   });
@@ -63,7 +63,6 @@ export async function getWeeklyTimetable(
   if (schoolType.includes('초등')) endpoint = 'elsTimetable';
   else if (schoolType.includes('고등')) endpoint = 'hisTimetable';
   
-  // API 파라미터 보정 (학년, 반 정보 포함하여 정확한 주간 데이터 요청)
   const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,
     SD_SCHUL_CODE: schoolCode,

@@ -33,6 +33,7 @@ export const initKakao = (apiKey?: string) => {
 
 /**
  * 오늘의 급식 카카오톡 공유
+ * 내용을 모두 제목에 넣고 아래에 페이지 링크를 추가합니다.
  */
 export const shareMealToKakao = (date: string, schoolName: string, menu: string, apiKey?: string) => {
   if (typeof window === 'undefined') return;
@@ -40,31 +41,31 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
   const initialized = initKakao(apiKey);
   
   if (!initialized || !window.Kakao?.Share) {
-    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요. (관리자 설정에서 API 키가 정확한지 확인해 주세요)");
+    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요.");
     return;
   }
   
   const formattedDate = `${parseInt(date.substring(4, 6))}월 ${parseInt(date.substring(6, 8))}일`;
-  // 줄바꿈으로 가독성 확보하되 불필요한 공백 제거
-  const formattedMenu = menu.split(',').map(item => `•${item.trim()}`).filter(Boolean).join('\n');
+  const menuList = menu.split(',').map(item => `•${item.trim()}`).filter(Boolean).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: `[${schoolName}] ${formattedDate} 급식`,
-        description: formattedMenu,
+        title: `[${schoolName}] ${formattedDate} 급식\n${menuList}`,
+        description: 'KST HUB에서 오늘의 정보를 확인하세요!',
+        imageUrl: '', // 사진 삭제
         link: {
-          mobileWebUrl: window.location.href,
-          webUrl: window.location.href,
+          mobileWebUrl: window.location.origin + '/dashboard',
+          webUrl: window.location.origin + '/dashboard',
         },
       },
       buttons: [
         {
-          title: '자세히 보기',
+          title: 'KST HUB 바로가기',
           link: {
-            mobileWebUrl: window.location.href,
-            webUrl: window.location.href,
+            mobileWebUrl: window.location.origin + '/dashboard',
+            webUrl: window.location.origin + '/dashboard',
           },
         },
       ],
@@ -76,6 +77,7 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
 
 /**
  * 시간표 카카오톡 공유
+ * 내용을 모두 제목에 넣고 아래에 페이지 링크를 추가합니다.
  */
 export const shareTimetableToKakao = (date: string, schoolName: string, grade: string, classNum: string, timetable: string, apiKey?: string) => {
   if (typeof window === 'undefined') return;
@@ -83,30 +85,31 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
   const initialized = initKakao(apiKey);
   
   if (!initialized || !window.Kakao?.Share) {
-    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요. (관리자 설정에서 API 키가 정확한지 확인해 주세요)");
+    alert("카카오톡 공유를 준비 중입니다. 잠시 후 다시 시도해 주세요.");
     return;
   }
   
   const formattedDate = `${parseInt(date.substring(4, 6))}월 ${parseInt(date.substring(6, 8))}일`;
-  const formattedTimetable = timetable.split(',').map(item => `•${item.trim()}`).filter(Boolean).join('\n');
+  const tableList = timetable.split(',').map(item => `•${item.trim()}`).filter(Boolean).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: `[${schoolName}] ${formattedDate} 시간표`,
-        description: `${grade}학년 ${classNum}반\n${formattedTimetable}`,
+        title: `[${schoolName}] ${formattedDate} 시간표 (${grade}학년 ${classNum}반)\n${tableList}`,
+        description: 'KST HUB에서 우리 반 시간표를 확인하세요!',
+        imageUrl: '', // 사진 삭제
         link: {
-          mobileWebUrl: window.location.href,
-          webUrl: window.location.href,
+          mobileWebUrl: window.location.origin + '/dashboard',
+          webUrl: window.location.origin + '/dashboard',
         },
       },
       buttons: [
         {
-          title: '자세히 보기',
+          title: 'KST HUB 바로가기',
           link: {
-            mobileWebUrl: window.location.href,
-            webUrl: window.location.href,
+            mobileWebUrl: window.location.origin + '/dashboard',
+            webUrl: window.location.origin + '/dashboard',
           },
         },
       ],

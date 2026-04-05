@@ -70,7 +70,6 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // 전역 설정 데이터 (카카오 API 키 포함)
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
@@ -87,36 +86,45 @@ export default function DashboardPage() {
     setWeekDates(dates)
   }, [weekOffset])
 
+  // 주간 데이터를 필요할 때만 불러오도록 최적화
+  const fetchWeeklyData = async () => {
+    if (!userData?.schoolName || !userData?.grade || !userData?.classNum || weekDates.length === 0) return;
+    
+    setIsLoadingWeekly(true)
+    try {
+      const schoolInfo = await searchSchool(userData.schoolName)
+      if (schoolInfo) {
+        const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
+        const schoolCode = schoolInfo.SD_SCHUL_CODE
+        const schoolKind = userData.schoolType || schoolInfo.SCHUL_KND_NM
+        
+        const fromDate = format(weekDates[0], "yyyyMMdd")
+        const toDate = format(weekDates[4], "yyyyMMdd")
+
+        const [meals, table] = await Promise.all([
+          getWeeklyMeals(officeCode, schoolCode, fromDate, toDate),
+          getWeeklyTimetable(officeCode, schoolCode, fromDate, toDate, userData.grade, userData.classNum, schoolKind)
+        ])
+        
+        setWeeklyMeals(meals || [])
+        setWeeklyTimetable(table || [])
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsLoadingWeekly(false)
+    }
+  }
+
+  // 초기 로딩 및 날짜 변경 시 fetch
   useEffect(() => {
     const now = new Date()
     setTodayStr(format(now, "yyyy-MM-dd"))
-
-    if (userData?.schoolName && userData?.grade && userData?.classNum && weekDates.length > 0) {
-      setIsLoadingWeekly(true)
-      searchSchool(userData.schoolName).then(schoolInfo => {
-        if (schoolInfo) {
-          const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
-          const schoolCode = schoolInfo.SD_SCHUL_CODE
-          const schoolKind = userData.schoolType || schoolInfo.SCHUL_KND_NM
-          
-          const fromDate = format(weekDates[0], "yyyyMMdd")
-          const toDate = format(weekDates[4], "yyyyMMdd")
-
-          Promise.all([
-            getWeeklyMeals(officeCode, schoolCode, fromDate, toDate),
-            getWeeklyTimetable(officeCode, schoolCode, fromDate, toDate, userData.grade, userData.classNum, schoolKind)
-          ]).then(([meals, table]) => {
-            setWeeklyMeals(meals || [])
-            setWeeklyTimetable(table || [])
-          }).finally(() => {
-            setIsLoadingWeekly(false)
-          })
-        } else {
-          setIsLoadingWeekly(false)
-        }
-      }).catch(() => setIsLoadingWeekly(false))
+    
+    if (userData?.schoolName) {
+      fetchWeeklyData()
     }
-  }, [userData, weekDates])
+  }, [userData?.schoolName, weekDates])
 
   const todayMeal = useMemo(() => {
     if (!todayStr) return ""
@@ -268,7 +276,12 @@ export default function DashboardPage() {
             </h2>
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary shadow-sm bg-card">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary shadow-sm bg-card"
+                  onClick={fetchWeeklyData}
+                >
                   <Maximize2 className="h-3 w-3 mr-1" /> 이번 주 전체 보기
                 </Button>
               </DialogTrigger>
@@ -308,7 +321,7 @@ export default function DashboardPage() {
                             <div className="flex justify-between items-center mb-3">
                               <span className={`text-xs font-black ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
                               <div className="flex items-center gap-2">
-                                {isToday && <Badge className="bg-primary text-[10px] hover:bg-primary/90 border-none animate-pulse">TODAY</Badge>}
+                                {isToday && <Badge className="bg-primary text-white text-[10px] hover:bg-primary/90 border-none animate-pulse">TODAY</Badge>}
                                 {meal?.menu && (
                                   <Button 
                                     variant="ghost" 
@@ -323,7 +336,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="text-[13px] leading-relaxed font-medium text-foreground">
                               {isLoadingWeekly ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <div className="flex items-center gap-2 py-2"><Loader2 className="h-3 w-3 animate-spin" /> 정보 로딩 중...</div>
                               ) : meal?.menu ? (
                                 <div className="flex flex-col gap-1">
                                   {meal.menu.split(',').map((item, i) => (
@@ -369,7 +382,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="flex flex-col gap-2">
                               {isLoadingWeekly ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <div className="flex items-center gap-2 py-2"><Loader2 className="h-3 w-3 animate-spin" /> 정보 로딩 중...</div>
                               ) : table ? table.timetable.split(',').map((t, i) => (
                                 <div key={i} className="flex items-center gap-3 p-2 bg-card/60 border border-border/50 rounded-xl">
                                   <span className="w-10 text-[10px] text-primary font-bold text-center">{t.split(':')[0]}</span>
