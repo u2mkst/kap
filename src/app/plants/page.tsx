@@ -18,7 +18,8 @@ import {
   Loader2,
   Sparkles,
   TreeDeciduous,
-  Wind
+  Wind,
+  Gift
 } from "lucide-react"
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase"
 import { collection, doc, addDoc, updateDoc, increment, serverTimestamp, deleteDoc } from "firebase/firestore"
@@ -93,7 +94,7 @@ export default function PlantsPage() {
       .then(() => {
         toast({
           title: "새로운 생명이 찾아왔어요! ✨",
-          description: `"${randomName}"이(가) 정원에 심어졌습니다. 정성껏 키워주세요!`,
+          description: `"${randomName}"이(가) 정원에 심어졌습니다.`,
         })
       })
       .catch(async (err) => {
@@ -156,6 +157,31 @@ export default function PlantsPage() {
     }).finally(() => setIsActionLoading(null))
   }
 
+  const handleHarvest = (plantId: string) => {
+    if (!user || !userDocRef) return
+    const reward = 2000
+    setIsActionLoading(plantId)
+
+    const plantRef = doc(db, "users", user.uid, "plants", plantId)
+
+    // 보상 지급 및 식물 제거
+    updateDoc(userDocRef, {
+      points: increment(reward)
+    }).then(() => {
+      deleteDoc(plantRef).then(() => {
+        toast({
+          title: "수확 완료! 🎉",
+          description: `정성껏 키운 식물을 수확하여 보상으로 ${reward}P를 받았습니다!`,
+        })
+      })
+    }).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update'
+      }))
+    }).finally(() => setIsActionLoading(null))
+  }
+
   const handleDeletePlant = (plantId: string) => {
     if (!user) return
     if (!confirm("정말 이 식물을 제거하시겠습니까? (투자한 포인트는 반환되지 않습니다.)")) return
@@ -164,7 +190,7 @@ export default function PlantsPage() {
     deleteDoc(plantRef)
       .then(() => {
         toast({
-          title: "안녕, 고마웠어! 👋",
+          title: "제거 완료",
           description: "식물이 정원을 떠났습니다.",
         })
       })
@@ -230,30 +256,28 @@ export default function PlantsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6 animate-in slide-in-from-top-4 duration-500">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black font-headline text-primary flex items-center gap-3">
-            <TreeDeciduous className="h-10 w-10 text-emerald-600 animate-float" /> 나만의 스마트 정원
+    <div className="container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6 animate-in slide-in-from-top-4 duration-500">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-black font-headline text-primary flex items-center gap-2">
+            <TreeDeciduous className="h-8 w-8 text-emerald-600" /> 나만의 스마트 정원
           </h1>
-          <p className="text-muted-foreground font-bold tracking-tight">학습 포인트를 모아 나만의 가상 정원을 가꾸어 보세요. 식물이 자랄수록 보람도 커집니다!</p>
+          <p className="text-xs text-muted-foreground font-bold tracking-tight">학습 포인트로 식물을 키우고 성숙해지면 보상을 받으세요!</p>
         </div>
-        <Card className="bg-white border-primary/10 px-8 py-5 flex items-center gap-5 shadow-xl rounded-[2rem] hover:scale-105 transition-transform">
-          <div className="p-3 bg-primary/10 rounded-2xl">
-            <TrendingUp className="h-7 w-7 text-primary" />
-          </div>
+        <Card className="bg-white border-primary/10 px-6 py-3 flex items-center gap-4 shadow-md rounded-3xl">
+          <TrendingUp className="h-5 w-5 text-primary" />
           <div>
-            <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">My Points</p>
-            <p className="text-3xl font-black text-primary tracking-tighter">{userData?.points?.toLocaleString() || 0} <span className="text-sm font-bold opacity-50">P</span></p>
+            <p className="text-[9px] font-black text-primary/60 uppercase mb-0.5">My Points</p>
+            <p className="text-xl font-black text-primary tracking-tighter">{userData?.points?.toLocaleString() || 0} P</p>
           </div>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {isPlantsLoading ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-24 gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-primary opacity-30" />
-            <p className="text-sm font-bold text-muted-foreground italic">정원을 불러오고 있어요...</p>
+          <div className="col-span-full flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary opacity-30" />
+            <p className="text-xs font-bold text-muted-foreground italic">정원 불러오는 중...</p>
           </div>
         ) : (
           <>
@@ -263,77 +287,72 @@ export default function PlantsPage() {
               
               return (
                 <Card key={plant.id} className={cn(
-                  "border-none shadow-lg hover:shadow-2xl transition-all group bg-white overflow-hidden relative rounded-[2.5rem] animate-in zoom-in-95",
-                  `duration-${300 + (index * 100)}`
+                  "border-none shadow-md hover:shadow-xl transition-all group bg-white overflow-hidden relative rounded-[2rem] animate-in zoom-in-95",
+                  `duration-${200 + (index * 50)}`
                 )}>
-                  <div className="absolute top-4 right-4 z-20 flex gap-2">
+                  <div className="absolute top-3 right-3 z-20">
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-9 w-9 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 backdrop-blur-sm rounded-full text-destructive hover:bg-destructive/10"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full text-destructive hover:bg-destructive/10"
                       onClick={() => handleDeletePlant(plant.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
 
                   <div className={cn(
-                    "relative h-64 flex items-center justify-center overflow-hidden transition-colors duration-700",
-                    isMature ? "bg-gradient-to-br from-yellow-50 via-white to-orange-50" : "bg-muted/30"
+                    "relative h-40 flex items-center justify-center transition-colors duration-500",
+                    isMature ? "bg-gradient-to-br from-yellow-50 to-orange-50" : "bg-muted/20"
                   )}>
-                    <div className="absolute inset-0 opacity-10 pointer-events-none">
-                      <Wind className="h-full w-full p-12 text-muted-foreground animate-pulse-gentle" />
-                    </div>
-                    
-                    <div className="relative text-8xl md:text-9xl animate-float drop-shadow-2xl select-none">
+                    <div className="relative text-6xl animate-float select-none drop-shadow-md">
                       {stageInfo.emoji}
                     </div>
-
                     <Badge className={cn(
-                      "absolute bottom-6 left-6 border-none px-4 py-1.5 font-black text-[10px] tracking-wider rounded-full shadow-lg animate-in slide-in-from-left-4",
+                      "absolute bottom-3 left-3 border-none px-3 py-1 font-black text-[9px] rounded-full shadow-sm",
                       stageInfo.color,
                       "text-white"
                     )}>
-                      {isMature && <Sparkles className="h-3 w-3 inline mr-1 animate-spin-slow" />}
                       {stageInfo.label}
                     </Badge>
                   </div>
 
-                  <CardContent className="p-8 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-black text-xl flex items-center gap-2 text-primary group-hover:translate-x-1 transition-transform">
-                          <Leaf className="h-5 w-5 text-emerald-500" /> {plant.plantName}
-                        </h3>
-                        <p className="text-[10px] font-bold text-muted-foreground ml-7">누적 정성: {plant.pointsInvested}P</p>
-                      </div>
-                      {isMature && <div className="p-2 bg-yellow-100 rounded-full animate-pulse"><Sparkles className="h-5 w-5 text-yellow-600" /></div>}
+                  <CardContent className="p-5 space-y-4">
+                    <div className="space-y-0.5">
+                      <h3 className="font-black text-sm flex items-center gap-1.5 text-primary">
+                        <Leaf className="h-3.5 w-3.5 text-emerald-500" /> {plant.plantName}
+                      </h3>
+                      <Progress value={stageInfo.progress} className="h-2 bg-muted/50 rounded-full" />
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-end">
-                        <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">Growth Level</span>
-                        <span className="text-lg font-black text-primary leading-none">{stageInfo.progress}%</span>
-                      </div>
-                      <Progress value={stageInfo.progress} className="h-3 bg-muted/50 overflow-hidden rounded-full shadow-inner" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <Button 
-                        disabled={isMature || (isActionLoading === plant.id)}
-                        className="bg-primary hover:bg-primary/90 text-white font-black rounded-[1.25rem] h-12 shadow-md active:scale-95 transition-all"
-                        onClick={() => handleGrow(plant.id, plant.pointsInvested, 'water')}
-                      >
-                        {isActionLoading === plant.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Droplets className="mr-2 h-4 w-4" /> 물 주기</>}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        disabled={isMature || (isActionLoading === plant.id)}
-                        className="border-primary/20 hover:bg-orange-50 hover:border-orange-200 font-black rounded-[1.25rem] h-12 transition-all active:scale-95"
-                        onClick={() => handleGrow(plant.id, plant.pointsInvested, 'sun')}
-                      >
-                        <Sun className="mr-2 h-4 w-4 text-orange-500" /> 햇빛
-                      </Button>
+                    <div className="pt-1">
+                      {isMature ? (
+                        <Button 
+                          onClick={() => handleHarvest(plant.id)}
+                          disabled={isActionLoading === plant.id}
+                          className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black rounded-xl h-10 shadow-sm animate-pulse"
+                        >
+                          {isActionLoading === plant.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Gift className="mr-2 h-4 w-4" /> 2,000P 받기</>}
+                        </Button>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button 
+                            disabled={isActionLoading === plant.id}
+                            className="bg-primary text-white font-black rounded-xl h-9 text-xs"
+                            onClick={() => handleGrow(plant.id, plant.pointsInvested, 'water')}
+                          >
+                            {isActionLoading === plant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Droplets className="mr-1.5 h-3.5 w-3.5" /> 물주기</>}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            disabled={isActionLoading === plant.id}
+                            className="border-primary/10 font-black rounded-xl h-9 text-xs"
+                            onClick={() => handleGrow(plant.id, plant.pointsInvested, 'sun')}
+                          >
+                            <Sun className="mr-1.5 h-3.5 w-3.5 text-orange-500" /> 햇빛
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -342,35 +361,26 @@ export default function PlantsPage() {
 
             <Card 
               className={cn(
-                "border-4 border-dashed border-muted/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-12 h-full min-h-[480px] rounded-[2.5rem] group animate-in zoom-in-95 duration-500 delay-200",
+                "border-2 border-dashed border-muted/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-6 h-full min-h-[220px] rounded-[2rem] group",
                 isActionLoading === "add" && "opacity-50 pointer-events-none"
               )}
               onClick={handleAddPlant}
             >
-              <div className="p-6 rounded-[2rem] bg-primary/10 text-primary mb-6 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-inner">
-                {isActionLoading === "add" ? <Loader2 className="h-12 w-12 animate-spin" /> : <Plus className="h-12 w-12" />}
+              <div className="p-4 rounded-full bg-primary/10 text-primary mb-3 group-hover:scale-110 transition-transform">
+                {isActionLoading === "add" ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
               </div>
-              <h3 className="font-black text-2xl mb-2 text-primary">새 식물 심기</h3>
-              <div className="text-center space-y-1">
-                <p className="text-sm font-bold text-muted-foreground/60">500 포인트를 사용하여</p>
-                <p className="text-sm font-bold text-muted-foreground/60">새로운 친구를 데려오세요!</p>
-              </div>
-              <Badge variant="secondary" className="mt-8 bg-primary/5 text-primary border-none px-6 py-2 rounded-full font-black text-xs animate-pulse">
-                Click to Plant
-              </Badge>
+              <p className="font-black text-sm text-primary">새 식물 심기</p>
+              <p className="text-[10px] font-bold text-muted-foreground mt-1">500 포인트</p>
             </Card>
           </>
         )}
       </div>
 
-      <div className="mt-20 max-w-2xl mx-auto text-center space-y-4 animate-in slide-in-from-bottom-8 duration-1000">
-        <div className="inline-flex p-3 bg-emerald-100 rounded-full mb-2">
-          <Leaf className="h-6 w-6 text-emerald-600" />
-        </div>
-        <h2 className="text-2xl font-black text-primary">어떻게 성장하나요?</h2>
-        <p className="text-muted-foreground font-medium leading-relaxed">
-          공부를 하고 문제를 풀어서 얻은 포인트로 식물을 정성껏 보살펴주세요.<br/>
-          누적 포인트가 <span className="text-primary font-black">200P(새싹)</span>, <span className="text-primary font-black">500P(묘목)</span>, <span className="text-primary font-black">1000P(성숙)</span>가 되면 모습이 변합니다!
+      <div className="mt-12 max-w-xl mx-auto text-center space-y-2 p-6 bg-muted/20 rounded-3xl">
+        <h2 className="text-lg font-black text-primary">특별 보상 안내</h2>
+        <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+          식물을 끝까지 키워 🌳 완성 단계가 되면 <span className="text-primary font-black">2,000P</span>를 보상으로 드립니다!<br/>
+          성장 과정: 씨앗(0) → 새싹(200) → 묘목(500) → 완성(1,000)
         </p>
       </div>
     </div>
