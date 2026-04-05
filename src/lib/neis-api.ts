@@ -10,7 +10,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
-    pSize: '100', // 주간 데이터 대응을 위해 사이즈 확대
+    pSize: '500', // 충분한 데이터 확보를 위해 크기 확대
     ...(API_KEY ? { KEY: API_KEY } : {}),
     ...params,
   });
@@ -76,10 +76,12 @@ export async function getWeeklyTimetable(
   if (!data || !data[endpoint]) return [];
   
   const rows = data[endpoint][1].row;
+  if (!rows) return [];
   
   // 날짜별로 그룹화
   const grouped = rows.reduce((acc: any, curr: any) => {
     const date = curr.ALL_TI_YMD;
+    if (!date) return acc;
     if (!acc[date]) acc[date] = [];
     acc[date].push({ perio: curr.PERIO, content: curr.ITRT_CNTNT });
     return acc;

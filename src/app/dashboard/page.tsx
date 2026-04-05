@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -106,13 +107,15 @@ export default function DashboardPage() {
             getWeeklyMeals(officeCode, schoolCode, fromDate, toDate),
             getWeeklyTimetable(officeCode, schoolCode, fromDate, toDate, userData.grade, userData.classNum, schoolKind)
           ]).then(([meals, table]) => {
-            setWeeklyMeals(meals)
-            setWeeklyTimetable(table)
+            setWeeklyMeals(meals || [])
+            setWeeklyTimetable(table || [])
           }).finally(() => {
             setIsLoadingWeekly(false)
           })
+        } else {
+          setIsLoadingWeekly(false)
         }
-      })
+      }).catch(() => setIsLoadingWeekly(false))
     }
   }, [userData, weekDates])
 
@@ -320,7 +323,9 @@ export default function DashboardPage() {
                               </div>
                             </div>
                             <div className="text-[13px] leading-relaxed font-medium text-foreground">
-                              {meal?.menu ? (
+                              {isLoadingWeekly ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : meal?.menu ? (
                                 <div className="flex flex-wrap gap-x-2 gap-y-1">
                                   {meal.menu.split(',').map((item, i) => (
                                     <span key={i} className="bg-card/50 px-2 py-0.5 rounded-md border border-border/50 text-foreground">{item.trim()}</span>
@@ -361,7 +366,9 @@ export default function DashboardPage() {
                               </div>
                             </div>
                             <div className="flex flex-col gap-2">
-                              {table ? table.timetable.split(',').map((t, i) => (
+                              {isLoadingWeekly ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : table ? table.timetable.split(',').map((t, i) => (
                                 <div key={i} className="flex items-center gap-3 p-2 bg-card/60 border border-border/50 rounded-xl">
                                   <span className="w-10 text-[10px] text-primary font-bold text-center">{t.split(':')[0]}</span>
                                   <div className="h-4 w-px bg-border" />
@@ -491,41 +498,43 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-200">
-            <CardHeader className="p-5">
-              <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
-                <Clover className="h-4 w-4 text-green-500" /> 오늘의 나의 행운점수🍀
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              {personalFortuneData ? (
-                <div className="space-y-4 animate-in fade-in duration-700">
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-black text-primary">{personalFortuneData.score} <span className="text-sm font-bold opacity-40">/ 100</span></span>
-                    <Badge className="bg-primary text-white border-none font-bold animate-bounce">
-                      {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : personalFortuneData.score >= 80 ? "운이 좋네요! 😊" : "무난한 하루! 👍"}
-                    </Badge>
+          <div className="grid grid-cols-1 gap-4">
+            <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-200">
+              <CardHeader className="p-5">
+                <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
+                  <Clover className="h-4 w-4 text-green-500" /> 오늘의 나의 행운점수🍀
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 pt-0">
+                {personalFortuneData ? (
+                  <div className="space-y-4 animate-in fade-in duration-700">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-black text-primary">{personalFortuneData.score} <span className="text-sm font-bold opacity-40">/ 100</span></span>
+                      <Badge className="bg-primary text-white border-none font-bold animate-bounce">
+                        {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : personalFortuneData.score >= 80 ? "운이 좋네요! 😊" : "무난한 하루! 👍"}
+                      </Badge>
+                    </div>
+                    <Progress value={personalFortuneData.score} className="h-3 bg-muted" />
+                    <p className="text-[11px] text-muted-foreground font-medium text-center italic">
+                      행운은 기록되었습니다. 오늘 하루 동안 당신과 함께할 거예요!
+                    </p>
                   </div>
-                  <Progress value={personalFortuneData.score} className="h-3 bg-muted" />
-                  <p className="text-[11px] text-muted-foreground font-medium text-center italic">
-                    행운은 기록되었습니다. 오늘 하루 동안 당신과 함께할 거예요!
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-xs text-muted-foreground mb-4 font-medium">오늘 나의 행운은 몇 점일까요? 지금 확인해 보세요!</p>
-                  <Button 
-                    onClick={handleGenerateLuckyScore} 
-                    disabled={isGeneratingLuck}
-                    className="rounded-full bg-primary hover:bg-primary/90 text-white font-black text-xs px-8 shadow-sm active:scale-95 transition-transform"
-                  >
-                    {isGeneratingLuck ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
-                    행운 점수 확인하기
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-xs text-muted-foreground mb-4 font-medium">오늘 나의 행운은 몇 점일까요? 지금 확인해 보세요!</p>
+                    <Button 
+                      onClick={handleGenerateLuckyScore} 
+                      disabled={isGeneratingLuck}
+                      className="rounded-full bg-primary hover:bg-primary/90 text-white font-black text-xs px-8 shadow-sm active:scale-95 transition-transform"
+                    >
+                      {isGeneratingLuck ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
+                      행운 점수 확인하기
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-300">
             <CardHeader className="p-5">
