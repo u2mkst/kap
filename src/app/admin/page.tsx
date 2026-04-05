@@ -21,7 +21,8 @@ import {
   Save,
   FileText,
   Quote,
-  MessageSquare
+  MessageSquare,
+  Key
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, updateDoc, limit } from "firebase/firestore"
@@ -83,6 +84,7 @@ export default function AdminPage() {
   const [teacherName, setTeacherName] = useState("")
   const [noticeText, setNoticeText] = useState("")
   const [adminSecretCode, setAdminSecretCode] = useState("")
+  const [kakaoApiKey, setKakaoApiKey] = useState("")
   const [bulkProblemText, setBulkProblemText] = useState("")
   const [bulkFortuneText, setBulkFortuneText] = useState("")
 
@@ -91,6 +93,7 @@ export default function AdminPage() {
     if (configData) {
       setNoticeText(configData.notice || "")
       setAdminSecretCode(configData.adminSecret || "ufes-admin-777")
+      setKakaoApiKey(configData.kakaoApiKey || "")
     }
   }, [configData])
 
@@ -100,7 +103,7 @@ export default function AdminPage() {
         router.push("/dashboard")
       }
     }
-  }, [user, isActuallyAdmin, isUserLoading, isAdminLoading, isMounted, router])
+  }, [user, isActuallyAdmin, isUserLoading, isAdminLoading, iisMounted, router])
 
   const handleAddTeacher = () => {
     if (!teacherName.trim()) return
@@ -121,7 +124,11 @@ export default function AdminPage() {
   const handleUpdateConfig = () => {
     if (!configRef) return
     setIsSaving(true)
-    setDoc(configRef, { notice: noticeText, adminSecret: adminSecretCode }, { merge: true })
+    setDoc(configRef, { 
+      notice: noticeText, 
+      adminSecret: adminSecretCode,
+      kakaoApiKey: kakaoApiKey 
+    }, { merge: true })
       .then(() => toast({ title: "저장 완료" }))
       .finally(() => setIsSaving(false))
   }
@@ -443,13 +450,29 @@ export default function AdminPage() {
 
         <TabsContent value="config">
           <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-            <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 보안 설정</CardTitle></CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 보안 및 API 설정</CardTitle></CardHeader>
+            <CardContent className="p-6 space-y-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground ml-1">관리자 인증 코드</Label>
+                <Label className="text-xs font-bold text-muted-foreground ml-1 flex items-center gap-2">
+                  <ShieldAlert className="h-3 w-3" /> 관리자 인증 코드
+                </Label>
                 <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} className="rounded-2xl h-11" />
               </div>
-              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-destructive text-white">보안 설정 저장</Button>
+
+              <div className="space-y-2 pt-4 border-t">
+                <Label className="text-xs font-bold text-muted-foreground ml-1 flex items-center gap-2">
+                  <Key className="h-3 w-3" /> 카카오 JavaScript 키 (공유용)
+                </Label>
+                <Input 
+                  type="text" 
+                  value={kakaoApiKey} 
+                  onChange={(e) => setKakaoApiKey(e.target.value)} 
+                  className="rounded-2xl h-11" 
+                  placeholder="카카오 개발자 콘솔에서 발급받은 키를 입력하세요."
+                />
+              </div>
+
+              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-destructive text-white">전체 설정 저장</Button>
             </CardContent>
           </Card>
         </TabsContent>

@@ -71,8 +71,17 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
+  // 전역 설정 데이터 (카카오 API 키 포함)
+  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
+  const { data: configData } = useDoc(configRef)
+
   useEffect(() => {
-    initKakao();
+    if (configData?.kakaoApiKey) {
+      initKakao(configData.kakaoApiKey);
+    }
+  }, [configData])
+
+  useEffect(() => {
     const targetDate = addWeeks(new Date(), weekOffset)
     const start = startOfWeek(targetDate, { weekStartsOn: 1 })
     const dates = Array.from({ length: 5 }).map((_, i) => addDays(start, i))
@@ -375,7 +384,7 @@ export default function DashboardPage() {
             <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
               <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
-                  <Utensils className="h-4 w-4 text-orange-500" /> 오늘의 급식
+                  <Utensils className="h-4 w-4 text-foreground" /> 오늘의 급식
                 </CardTitle>
                 {todayMeal && (
                   <Button 
@@ -413,7 +422,7 @@ export default function DashboardPage() {
             <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl hover:shadow-md transition-shadow">
               <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
-                  <Clock className="h-4 w-4 text-accent-foreground" /> 오늘의 시간표
+                  <Clock className="h-4 w-4 text-foreground" /> 오늘의 시간표
                 </CardTitle>
                 {todayTable && (
                   <Button 

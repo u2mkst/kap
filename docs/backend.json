@@ -104,7 +104,8 @@
       "type": "object",
       "properties": {
         "notice": { "type": "string" },
-        "adminSecret": { "type": "string", "description": "Secret code to claim admin role." }
+        "adminSecret": { "type": "string", "description": "Secret code to claim admin role." },
+        "kakaoApiKey": { "type": "string", "description": "JavaScript key for Kakao Share API." }
       }
     }
   },

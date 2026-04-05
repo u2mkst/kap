@@ -9,16 +9,22 @@ declare global {
   }
 }
 
-const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY || 'YOUR_KAKAO_JS_KEY';
-
-export const initKakao = () => {
-  if (typeof window !== 'undefined' && window.Kakao && !window.Kakao.isInitialized()) {
-    window.Kakao.init(KAKAO_KEY);
+export const initKakao = (apiKey?: string) => {
+  const finalKey = apiKey || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
+  if (typeof window !== 'undefined' && window.Kakao && finalKey && !window.Kakao.isInitialized()) {
+    try {
+      window.Kakao.init(finalKey);
+    } catch (e) {
+      console.warn("Kakao SDK Initialization failed:", e);
+    }
   }
 };
 
 export const shareMealToKakao = (date: string, schoolName: string, menu: string) => {
-  if (typeof window === 'undefined' || !window.Kakao) return;
+  if (typeof window === 'undefined' || !window.Kakao || !window.Kakao.isInitialized()) {
+    console.warn("Kakao SDK not initialized for sharing");
+    return;
+  }
   
   const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
   
@@ -46,7 +52,10 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string)
 };
 
 export const shareTimetableToKakao = (date: string, schoolName: string, grade: string, classNum: string, timetable: string) => {
-  if (typeof window === 'undefined' || !window.Kakao) return;
+  if (typeof window === 'undefined' || !window.Kakao || !window.Kakao.isInitialized()) {
+    console.warn("Kakao SDK not initialized for sharing");
+    return;
+  }
   
   const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
   
