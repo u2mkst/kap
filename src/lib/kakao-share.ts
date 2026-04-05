@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview 카카오톡 공유 API 헬퍼
  */
@@ -9,19 +8,38 @@ declare global {
   }
 }
 
+/**
+ * 카카오 SDK 초기화
+ * @param apiKey 카카오 JavaScript 키
+ */
 export const initKakao = (apiKey?: string) => {
+  if (typeof window === 'undefined') return;
+  
   const finalKey = apiKey || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
-  if (typeof window !== 'undefined' && window.Kakao && finalKey && !window.Kakao.isInitialized()) {
-    try {
-      window.Kakao.init(finalKey);
-    } catch (e) {
-      console.warn("Kakao SDK Initialization failed:", e);
+  
+  if (window.Kakao && finalKey) {
+    if (!window.Kakao.isInitialized()) {
+      try {
+        window.Kakao.init(finalKey);
+      } catch (e) {
+        console.warn("Kakao SDK Initialization failed:", e);
+      }
     }
+  } else if (!window.Kakao) {
+    console.warn("Kakao SDK script not loaded yet");
   }
 };
 
-export const shareMealToKakao = (date: string, schoolName: string, menu: string) => {
-  if (typeof window === 'undefined' || !window.Kakao || !window.Kakao.isInitialized()) {
+/**
+ * 오늘의 급식 카카오톡 공유
+ */
+export const shareMealToKakao = (date: string, schoolName: string, menu: string, apiKey?: string) => {
+  if (typeof window === 'undefined') return;
+  
+  // 실행 전 한 번 더 초기화 시도
+  if (apiKey) initKakao(apiKey);
+  
+  if (!window.Kakao || !window.Kakao.isInitialized()) {
     console.warn("Kakao SDK not initialized for sharing");
     return;
   }
@@ -51,8 +69,16 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string)
   });
 };
 
-export const shareTimetableToKakao = (date: string, schoolName: string, grade: string, classNum: string, timetable: string) => {
-  if (typeof window === 'undefined' || !window.Kakao || !window.Kakao.isInitialized()) {
+/**
+ * 시간표 카카오톡 공유
+ */
+export const shareTimetableToKakao = (date: string, schoolName: string, grade: string, classNum: string, timetable: string, apiKey?: string) => {
+  if (typeof window === 'undefined') return;
+  
+  // 실행 전 한 번 더 초기화 시도
+  if (apiKey) initKakao(apiKey);
+  
+  if (!window.Kakao || !window.Kakao.isInitialized()) {
     console.warn("Kakao SDK not initialized for sharing");
     return;
   }

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -198,12 +197,12 @@ export default function DashboardPage() {
 
   const handleShareMeal = (date: string, menu: string) => {
     if (!userData?.schoolName) return;
-    shareMealToKakao(date, userData.schoolName, menu);
+    shareMealToKakao(date, userData.schoolName, menu, configData?.kakaoApiKey);
   };
 
   const handleShareTimetable = (date: string, timetable: string) => {
     if (!userData?.schoolName || !userData?.grade || !userData?.classNum) return;
-    shareTimetableToKakao(date, userData.schoolName, userData.grade, userData.classNum, timetable);
+    shareTimetableToKakao(date, userData.schoolName, userData.grade, userData.classNum, timetable, configData?.kakaoApiKey);
   };
 
   useEffect(() => {
