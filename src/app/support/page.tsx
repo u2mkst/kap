@@ -24,6 +24,7 @@ export default function SupportPage() {
   const [subject, setSubject] = useState("")
   const [message, setMessage] = useState("")
 
+  // 쿼리를 메모이제이션하고 user.uid가 확실할 때만 실행
   const inquiriesQuery = useMemoFirebase(() => {
     if (!user?.uid) return null
     return query(
@@ -102,7 +103,7 @@ export default function SupportPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl animate-in fade-in duration-700">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2 text-primary">
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2 text-primary font-headline">
         <MessageSquare className="h-6 w-6" /> 1:1 고객센터
       </h1>
 
@@ -150,7 +151,7 @@ export default function SupportPage() {
             </div>
           ) : myInquiries && myInquiries.length > 0 ? (
             myInquiries.map((iq) => (
-              <Card key={iq.id} className="border-none shadow-sm relative group bg-white rounded-2xl overflow-hidden animate-in slide-in-from-bottom-2">
+              <Card key={iq.id} className="border-none shadow-sm relative group bg-white rounded-2xl overflow-hidden animate-in slide-in-from-bottom-2 transition-all hover:shadow-md">
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -171,7 +172,7 @@ export default function SupportPage() {
                   <p className="text-sm font-bold text-foreground leading-tight">{iq.subject}</p>
                   <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{iq.message}</p>
                   {iq.reply && (
-                    <div className="mt-2 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <div className="mt-2 p-4 bg-primary/5 rounded-xl border border-primary/10 animate-in fade-in slide-in-from-top-1">
                       <p className="text-[10px] font-black text-primary mb-1 uppercase tracking-wider">선생님 답변</p>
                       <p className="text-xs font-bold leading-relaxed text-primary/80">{iq.reply}</p>
                     </div>

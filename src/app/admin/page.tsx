@@ -1,9 +1,9 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,19 +14,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { 
   ShieldAlert, 
-  Plus, 
   Trash2, 
-  Users, 
   Loader2, 
-  Megaphone, 
   BrainCircuit, 
-  UserCog, 
-  RefreshCcw, 
-  Key, 
-  ClipboardPaste,
-  Star,
   Coins,
-  MessageSquare
+  Star
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs, updateDoc } from "firebase/firestore"
@@ -47,7 +39,11 @@ export default function AdminPage() {
   }, [user?.uid, db])
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
-  const isActuallyAdmin = !!isAdminDoc && !isAdminLoading
+  
+  // 관리자 권한 여부를 더 확실하게 판단
+  const isActuallyAdmin = useMemo(() => {
+    return !!isAdminDoc && !isAdminLoading;
+  }, [isAdminDoc, isAdminLoading]);
 
   const configRef = useMemoFirebase(() => {
     if (!isActuallyAdmin || !user?.uid) return null
@@ -79,12 +75,11 @@ export default function AdminPage() {
   }, [db, user?.uid, isActuallyAdmin])
   const { data: adminDocs } = useCollection(adminsQuery)
 
-  const adminIds = adminDocs?.map(d => d.id) || []
+  const adminIds = useMemo(() => adminDocs?.map(d => d.id) || [], [adminDocs])
 
   const [teacherName, setTeacherName] = useState("")
   const [noticeText, setNoticeText] = useState("")
   const [adminSecretCode, setAdminSecretCode] = useState("")
-
   const [bulkProblemText, setBulkProblemText] = useState("")
   const [bulkFortuneText, setBulkFortuneText] = useState("")
 
