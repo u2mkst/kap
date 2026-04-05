@@ -4,32 +4,32 @@
     {
       "id": "hero-education",
       "description": "A modern classroom with students engaged in learning",
-      "imageUrl": "https://picsum.photos/seed/edu-hero/1200/600",
+      "imageUrl": "https://picsum.photos/seed/school-v2/1200/600",
       "imageHint": "modern classroom"
     },
     {
       "id": "plant-seed",
       "description": "A single small seed in a pot",
-      "imageUrl": "https://picsum.photos/seed/seed-v1/400/400",
+      "imageUrl": "https://picsum.photos/seed/nature-seed-99/400/400",
       "imageHint": "plant seed"
     },
     {
       "id": "plant-sprout",
       "description": "A fresh green sprout growing from soil",
-      "imageUrl": "https://picsum.photos/seed/sprout-v1/400/400",
+      "imageUrl": "https://picsum.photos/seed/green-sprout-88/400/400",
       "imageHint": "green sprout"
     },
     {
       "id": "plant-sapling",
       "description": "A small young tree with green leaves",
-      "imageUrl": "https://picsum.photos/seed/sapling-v1/400/400",
+      "imageUrl": "https://picsum.photos/seed/young-tree-77/400/400",
       "imageHint": "young tree"
     },
     {
       "id": "plant-mature",
       "description": "A beautiful blooming sunflower or a large tree",
-      "imageUrl": "https://picsum.photos/seed/mature-v1/400/400",
-      "imageHint": "blooming flower"
+      "imageUrl": "https://picsum.photos/seed/forest-tree-66/400/400",
+      "imageHint": "large tree"
     },
     {
       "id": "course-math",
