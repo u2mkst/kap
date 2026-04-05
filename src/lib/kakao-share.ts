@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview 카카오톡 공유 API 헬퍼
  */
@@ -38,7 +37,6 @@ export const initKakao = (apiKey?: string) => {
 export const shareMealToKakao = (date: string, schoolName: string, menu: string, apiKey?: string) => {
   if (typeof window === 'undefined') return;
   
-  // 실행 전 초기화 확인 및 시도
   const initialized = initKakao(apiKey);
   
   if (!initialized || !window.Kakao?.Share) {
@@ -47,14 +45,15 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
   }
   
   const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
+  // 급식 메뉴 줄바꿈 처리
+  const formattedMenu = menu.split(',').map(item => item.trim()).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: `🍴 ${schoolName} 오늘의 급식`,
-        description: `[${formattedDate}]\n${menu}`,
-        imageUrl: 'https://picsum.photos/seed/meal/400/400',
+        title: `${schoolName}`,
+        description: `${formattedDate} 급식\n\n${formattedMenu}`,
         link: {
           mobileWebUrl: window.location.href,
           webUrl: window.location.href,
@@ -89,14 +88,15 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
   }
   
   const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
+  // 시간표 줄바꿈 처리
+  const formattedTimetable = timetable.split(',').map(item => item.trim()).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: `📅 ${schoolName} 시간표`,
-        description: `[${formattedDate}] ${grade}학년 ${classNum}반\n${timetable}`,
-        imageUrl: 'https://picsum.photos/seed/timetable/400/400',
+        title: `${schoolName}`,
+        description: `${formattedDate} (${grade}학년 ${classNum}반) 시간표\n\n${formattedTimetable}`,
         link: {
           mobileWebUrl: window.location.href,
           webUrl: window.location.href,
