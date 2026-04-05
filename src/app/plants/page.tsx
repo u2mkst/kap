@@ -56,7 +56,7 @@ export default function PlantsPage() {
   const handleAddPlant = () => {
     if (!user || !plantsRef || !userData || !userDocRef) return
     
-    const cost = 500
+    const cost = 250
     if (userData.points < cost) {
       toast({
         variant: "destructive",
@@ -143,7 +143,7 @@ export default function PlantsPage() {
     const newPointsInvested = (plant.pointsInvested || 0) + growCost
     const currentActions = newPointsInvested / 100
     
-    // 기존 데이터에 목표 수치가 없을 경우를 위한 기본값
+    // 기존 데이터에 목표 수치가 없을 경우를 위한 기본값 처리
     const targetSprout = plant.targetSprout || 5;
     const targetSapling = plant.targetSapling || 15;
     const targetMature = plant.targetMature || 30;
@@ -399,7 +399,7 @@ export default function PlantsPage() {
                 {isActionLoading === "add" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
               </div>
               <p className="font-black text-xs text-primary">새 식물 심기</p>
-              <p className="text-[9px] font-bold text-muted-foreground mt-0.5">500 포인트</p>
+              <p className="text-[9px] font-bold text-muted-foreground mt-0.5">250 포인트</p>
             </Card>
           </>
         )}
