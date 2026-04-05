@@ -20,9 +20,10 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { signOut } from "firebase/auth"
-import { doc, updateDoc } from "firebase/firestore"
+import { doc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import LinkNext from "next/link"
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 
 const navItems = [
   { name: "홈", href: "/dashboard", icon: Home },
@@ -60,14 +61,10 @@ export function Navbar() {
     }
   }
 
-  const toggleTheme = async () => {
+  const toggleTheme = () => {
     if (!userDocRef || !userData) return
     const newTheme = userData.theme === 'dark' ? 'light' : 'dark'
-    try {
-      await updateDoc(userDocRef, { theme: newTheme })
-    } catch (error) {
-      console.error(error)
-    }
+    updateDocumentNonBlocking(userDocRef, { theme: newTheme })
   }
 
   return (

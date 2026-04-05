@@ -24,7 +24,7 @@
     --border: 216 20% 88%;
     --input: 216 20% 88%;
     --ring: 214 58% 55%;
-    --radius: 0.75rem;
+    --radius: 1rem;
     --chart-1: 214 58% 55%;
     --chart-2: 191 59% 63%;
     --chart-3: 197 37% 24%;
@@ -32,24 +32,24 @@
     --chart-5: 27 87% 67%;
   }
   .dark {
-    --background: 214 58% 10%;
+    --background: 214 58% 5%;
     --foreground: 216 45% 97%;
-    --card: 214 58% 12%;
+    --card: 214 58% 8%;
     --card-foreground: 216 45% 97%;
-    --popover: 214 58% 12%;
+    --popover: 214 58% 8%;
     --popover-foreground: 216 45% 97%;
     --primary: 214 58% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 58% 20%;
+    --secondary: 214 58% 15%;
     --secondary-foreground: 216 45% 97%;
-    --muted: 214 58% 20%;
+    --muted: 214 58% 15%;
     --muted-foreground: 214 20% 70%;
     --accent: 191 59% 50%;
     --accent-foreground: 216 45% 97%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214 58% 25%;
-    --input: 214 58% 25%;
+    --border: 214 58% 20%;
+    --input: 214 58% 20%;
     --ring: 214 58% 60%;
   }
 }
@@ -59,7 +59,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    @apply bg-background text-foreground font-body antialiased transition-colors duration-300;
   }
 }
 
@@ -69,5 +69,8 @@
   }
   .animate-spin-slow {
     animation: spin 6s linear infinite;
+  }
+  .animate-pulse-gentle {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }

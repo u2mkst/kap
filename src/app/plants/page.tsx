@@ -80,7 +80,6 @@ export default function PlantsPage() {
     const plantNames = ["희망나무", "쑥쑥이", "초록친구", "꿈나무", "행복꽃"]
     const randomName = plantNames[Math.floor(Math.random() * plantNames.length)]
 
-    // 성장 목표치 랜덤 설정 (사용자 요청: 1~10, 2~11, 5~15)
     const targetSprout = Math.floor(Math.random() * 10) + 1; 
     const targetSapling = targetSprout + (Math.floor(Math.random() * 10) + 2); 
     const targetMature = targetSapling + (Math.floor(Math.random() * 11) + 5); 
@@ -143,7 +142,6 @@ export default function PlantsPage() {
     const newPointsInvested = (plant.pointsInvested || 0) + growCost
     const currentActions = newPointsInvested / 100
     
-    // 기존 데이터에 목표 수치가 없을 경우를 위한 기본값 처리
     const targetSprout = plant.targetSprout || 5;
     const targetSapling = plant.targetSapling || 15;
     const targetMature = plant.targetMature || 30;
@@ -219,7 +217,6 @@ export default function PlantsPage() {
     const stage = plant.growthStage
     const currentActions = (plant.pointsInvested || 0) / 100
     
-    // 기존 데이터에 목표 수치가 없을 경우를 위한 기본값 처리
     const targetSprout = plant.targetSprout || 5;
     const targetSapling = plant.targetSapling || 15;
     const targetMature = plant.targetMature || 30;
@@ -285,7 +282,7 @@ export default function PlantsPage() {
           </h1>
           <p className="text-xs text-muted-foreground font-bold tracking-tight">학습 포인트로 식물을 키우고 성숙해지면 보상을 받으세요!</p>
         </div>
-        <Card className="bg-white border-primary/10 px-6 py-3 flex items-center gap-4 shadow-md rounded-3xl">
+        <Card className="bg-card border-border px-6 py-3 flex items-center gap-4 shadow-md rounded-3xl">
           <TrendingUp className="h-5 w-5 text-primary" />
           <div>
             <p className="text-[9px] font-black text-primary/60 uppercase mb-0.5">My Points</p>
@@ -311,7 +308,7 @@ export default function PlantsPage() {
 
               return (
                 <Card key={plant.id} className={cn(
-                  "border-none shadow-md hover:shadow-xl transition-all group bg-white overflow-hidden relative rounded-[2rem] animate-in zoom-in-95",
+                  "border-none shadow-md hover:shadow-xl transition-all group bg-card overflow-hidden relative rounded-[2rem] animate-in zoom-in-95",
                   `duration-${200 + (index * 50)}`
                 )}>
                   <div className="absolute top-3 right-3 z-20">
@@ -327,7 +324,7 @@ export default function PlantsPage() {
 
                   <div className={cn(
                     "relative h-32 flex items-center justify-center transition-colors duration-500",
-                    isMature ? "bg-gradient-to-br from-yellow-50 to-orange-50" : "bg-muted/20"
+                    isMature ? "bg-primary/5" : "bg-muted/30"
                   )}>
                     <div className="relative text-5xl animate-float select-none drop-shadow-md">
                       {stageInfo.emoji}
@@ -344,9 +341,9 @@ export default function PlantsPage() {
                   <CardContent className="p-4 space-y-3">
                     <div className="space-y-1">
                       <h3 className="font-black text-xs flex items-center gap-1.5 text-primary">
-                        <Leaf className="h-3 w-3 text-emerald-500" /> {plant.plantName}
+                        <Leaf className="h-3 w-3" /> {plant.plantName}
                       </h3>
-                      <Progress value={stageInfo.progress} className="h-1.5 bg-muted/50 rounded-full" />
+                      <Progress value={stageInfo.progress} className="h-1.5 bg-muted rounded-full" />
                       {!isMature && (
                         <p className="text-[9px] text-right font-bold text-muted-foreground/50">
                           다음 단계까지 약 {minLeft}~{maxLeft}회
@@ -359,7 +356,7 @@ export default function PlantsPage() {
                         <Button 
                           onClick={() => handleHarvest(plant.id)}
                           disabled={isActionLoading === plant.id}
-                          className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black rounded-xl h-9 text-xs shadow-sm animate-pulse"
+                          className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black rounded-xl h-9 text-xs shadow-sm animate-pulse border-none"
                         >
                           {isActionLoading === plant.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Gift className="mr-2 h-4 w-4" /> 2,000P 받기</>}
                         </Button>
@@ -367,7 +364,7 @@ export default function PlantsPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <Button 
                             disabled={isActionLoading === plant.id}
-                            className="bg-primary text-white font-black rounded-xl h-8 text-[10px]"
+                            className="bg-primary text-white font-black rounded-xl h-8 text-[10px] border-none"
                             onClick={() => handleGrow(plant, 'water')}
                           >
                             {isActionLoading === plant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Droplets className="mr-1 h-3 w-3" /> 물주기</>}
@@ -375,10 +372,10 @@ export default function PlantsPage() {
                           <Button 
                             variant="outline" 
                             disabled={isActionLoading === plant.id}
-                            className="border-primary/10 font-black rounded-xl h-8 text-[10px]"
+                            className="border-primary/20 bg-card text-primary font-black rounded-xl h-8 text-[10px]"
                             onClick={() => handleGrow(plant, 'sun')}
                           >
-                            <Sun className="mr-1 h-3 w-3 text-orange-500" /> 햇빛
+                            <Sun className="mr-1 h-3 w-3 text-yellow-500" /> 햇빛
                           </Button>
                         </div>
                       )}
@@ -390,7 +387,7 @@ export default function PlantsPage() {
 
             <Card 
               className={cn(
-                "border-2 border-dashed border-muted/50 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-6 h-full min-h-[180px] rounded-[2rem] group",
+                "border-2 border-dashed border-muted hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center p-6 h-full min-h-[180px] rounded-[2rem] group bg-card",
                 isActionLoading === "add" && "opacity-50 pointer-events-none"
               )}
               onClick={handleAddPlant}
@@ -405,7 +402,7 @@ export default function PlantsPage() {
         )}
       </div>
 
-      <div className="mt-12 max-w-xl mx-auto text-center space-y-2 p-6 bg-muted/20 rounded-3xl">
+      <div className="mt-12 max-w-xl mx-auto text-center space-y-2 p-6 bg-muted/20 rounded-3xl border border-border">
         <h2 className="text-lg font-black text-primary">나만의 정원 가이드</h2>
         <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
           각 식물은 자라는 데 필요한 정성(행동 횟수)이 랜덤하게 정해집니다!<br/>
