@@ -72,7 +72,7 @@ export default function LoungePage() {
   if (!user) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background text-foreground p-4 text-center">
-        <div className="bg-white p-8 rounded-[28px] shadow-xl max-w-sm w-full animate-in zoom-in-95 duration-500">
+        <div className="bg-card p-8 rounded-[28px] shadow-xl max-w-sm w-full animate-in zoom-in-95 duration-500">
           <Trophy className="h-16 w-16 mx-auto mb-4 text-yellow-500 animate-bounce-slow" />
           <h2 className="text-2xl font-black mb-4">선생님 인기 투표</h2>
           <p className="mb-8 opacity-70">로그인한 학생만 투표에 참여할 수 있습니다.</p>
@@ -89,7 +89,7 @@ export default function LoungePage() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-background flex items-center justify-center p-4 animate-in fade-in duration-700">
-      <div className="w-full max-w-[420px] bg-white rounded-[28px] p-6 shadow-xl border relative overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+      <div className="w-full max-w-[420px] bg-card text-card-foreground rounded-[28px] p-6 shadow-xl border relative overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary"></div>
         
         <div className="flex items-center justify-center gap-2 mb-6 pt-2">
@@ -117,7 +117,7 @@ export default function LoungePage() {
                 key={teacher.id}
                 onClick={() => handleVote(teacher.id, teacher.name)}
                 className={cn(
-                  "group flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm border bg-white hover:border-primary/30 animate-in slide-in-from-right-4",
+                  "group flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm border bg-card hover:border-primary/30 animate-in slide-in-from-right-4",
                   `duration-${300 + (index * 100)}`
                 )}
               >

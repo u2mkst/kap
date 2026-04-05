@@ -74,7 +74,7 @@ export function BottomNav() {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md">
-      <div className="bg-white/90 backdrop-blur-md border shadow-2xl rounded-full h-14 flex items-center justify-around px-4">
+      <div className="bg-card/90 backdrop-blur-md border shadow-2xl rounded-full h-14 flex items-center justify-around px-4">
         {items.map((item) => {
           const isActive = pathname === item.href
           return (
@@ -97,7 +97,7 @@ export function BottomNav() {
               <span className="text-[9px] font-black">문의</span>
             </button>
           </DialogTrigger>
-          <DialogContent className="max-w-[90%] rounded-3xl sm:max-w-md">
+          <DialogContent className="max-w-[90%] rounded-3xl sm:max-w-md bg-card border-none">
             <DialogHeader>
               <DialogTitle className="font-black flex items-center gap-2">
                 <MessageSquarePlus className="h-5 w-5 text-primary" /> 선생님께 문의하기
