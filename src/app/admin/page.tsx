@@ -19,7 +19,8 @@ import {
   BrainCircuit, 
   Coins,
   Star,
-  MessageSquare
+  MessageSquare,
+  Save
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, collection, addDoc, writeBatch, getDocs, updateDoc, limit } from "firebase/firestore"
@@ -33,6 +34,7 @@ export default function AdminPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [selectedTeacherFilter, setSelectedTeacherFilter] = useState("all")
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
+  const [tempPoints, setTempPoints] = useState<{ [key: string]: number }>({})
 
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
@@ -152,6 +154,19 @@ export default function AdminPage() {
     deleteDoc(doc(db, "inquiries", id)).then(() => toast({ title: "문의가 삭제되었습니다." }))
   }
 
+  const handleUpdatePoints = (userId: string) => {
+    const newPoints = tempPoints[userId]
+    if (newPoints === undefined || isNaN(newPoints)) return
+    
+    setIsSaving(true)
+    updateDoc(doc(db, "users", userId), {
+      points: newPoints,
+      updatedAt: serverTimestamp()
+    }).then(() => {
+      toast({ title: "포인트 수정 완료", description: `포인트가 ${newPoints}P로 변경되었습니다.` })
+    }).finally(() => setIsSaving(false))
+  }
+
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
@@ -166,7 +181,7 @@ export default function AdminPage() {
     <div className="container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-500">
       <div className="flex items-center gap-3 mb-8">
         <ShieldAlert className="h-8 w-8 text-destructive" />
-        <h1 className="text-2xl font-black font-headline tracking-tight">학원 관리 시스템</h1>
+        <h1 className="text-2xl font-black font-headline tracking-tight text-primary">KST HUB 관리 시스템</h1>
       </div>
 
       <Tabs defaultValue="inquiry">
@@ -230,7 +245,7 @@ export default function AdminPage() {
         <TabsContent value="users">
           <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-              <CardTitle className="text-sm font-black">학생 명단</CardTitle>
+              <CardTitle className="text-sm font-black">학생 명단 및 포인트 관리</CardTitle>
               <Select value={selectedTeacherFilter} onValueChange={setSelectedTeacherFilter}>
                 <SelectTrigger className="w-40 h-8 text-[10px] rounded-full"><SelectValue placeholder="교사 필터" /></SelectTrigger>
                 <SelectContent>
@@ -241,18 +256,34 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent className="space-y-2 p-4">
               {allUsers?.filter(u => selectedTeacherFilter === "all" || u.teacherId === selectedTeacherFilter).map((u) => (
-                <div key={u.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-2xl text-[11px] hover:bg-muted/30 transition-colors">
+                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-muted/20 rounded-2xl text-[11px] hover:bg-muted/30 transition-all gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="font-black">{u.nickname}</span>
+                    <span className="font-black text-sm">{u.nickname}</span>
                     <span className="opacity-60 font-bold">{u.schoolName} {u.grade}학년</span>
+                    <span className="text-[9px] opacity-40 font-mono">({u.username})</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                    <div className="flex items-center gap-2 bg-white/50 p-1.5 rounded-xl border border-primary/10 shadow-sm">
                       <Coins className="h-3 w-3 text-primary" />
-                      <span className="font-black text-primary">{u.points.toLocaleString()}P</span>
+                      <Input 
+                        type="number" 
+                        defaultValue={u.points} 
+                        onChange={(e) => setTempPoints({ ...tempPoints, [u.id]: parseInt(e.target.value) })}
+                        className="w-20 h-7 text-[10px] border-none bg-transparent font-black text-primary p-0 text-right focus-visible:ring-0" 
+                      />
+                      <span className="text-[10px] font-black text-primary pr-1">P</span>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-6 w-6 rounded-lg text-primary hover:bg-primary/10"
+                        onClick={() => handleUpdatePoints(u.id)}
+                        disabled={isSaving || tempPoints[u.id] === undefined}
+                      >
+                        <Save className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="opacity-60 font-bold">관리자</span>
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className="opacity-60 font-bold">Admin</span>
                       <Switch 
                         checked={adminIds.includes(u.id)} 
                         onCheckedChange={() => handleToggleAdmin(u.id, adminIds.includes(u.id))} 
@@ -267,7 +298,6 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
-        {/* ... 나머지 탭 내용은 기존과 동일하게 유지하되 간소화된 디자인 적용 가능 ... */}
         <TabsContent value="vote">
           <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
              <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">선생님 투표 관리</CardTitle></CardHeader>
