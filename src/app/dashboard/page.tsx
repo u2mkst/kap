@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -437,7 +436,7 @@ export default function DashboardPage() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 rounded-full text-accent-foreground hover:bg-accent/5"
+                    className="h-8 w-8 rounded-full text-foreground hover:bg-foreground/5"
                     onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}
                   >
                     <Share2 className="h-4 w-4" />
@@ -539,29 +538,31 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-300">
-            <CardHeader className="p-5">
-              <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
-                <Zap className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 외부 학습 사이트
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid sm:grid-cols-2 gap-3 p-5 pt-0">
-              <a href="https://www.u2math.co.kr/Login/Index" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-card hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-between shadow-sm">
-                <div>
-                  <p className="font-black text-xs group-hover:text-primary transition-colors text-foreground">유투엠 (U2M)</p>
-                  <p className="text-[10px] text-muted-foreground font-medium">말하는 수학</p>
-                </div>
-                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
-              </a>
-              <a href="https://student.mathflat.com/#/history?_si=2" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-card hover:border-accent hover:bg-accent/5 transition-all flex items-center justify-between shadow-sm">
-                <div>
-                  <p className="font-black text-xs group-hover:text-accent-foreground transition-colors text-foreground">매쓰플랫</p>
-                  <p className="text-[10px] text-muted-foreground font-medium">맞춤형 수학 학습</p>
-                </div>
-                <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground transition-colors" />
-              </a>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 gap-4">
+            <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl animate-in slide-in-from-bottom-4 duration-500 delay-300">
+              <CardHeader className="p-5">
+                <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
+                  <Zap className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 외부 학습 사이트
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid sm:grid-cols-2 gap-3 p-5 pt-0">
+                <a href="https://www.u2math.co.kr/Login/Index" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-card hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="font-black text-xs group-hover:text-primary transition-colors text-foreground">유투엠 (U2M)</p>
+                    <p className="text-[10px] text-muted-foreground font-medium">말하는 수학</p>
+                  </div>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                </a>
+                <a href="https://student.mathflat.com/#/history?_si=2" target="_blank" rel="noopener noreferrer" className="group p-4 rounded-2xl border bg-card hover:border-accent hover:bg-accent/5 transition-all flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="font-black text-xs group-hover:text-accent-foreground transition-colors text-foreground">매쓰플랫</p>
+                    <p className="text-[10px] text-muted-foreground font-medium">맞춤형 수학 학습</p>
+                  </div>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground transition-colors" />
+                </a>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="md:col-span-4 space-y-6">

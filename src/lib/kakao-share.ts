@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview 카카오톡 공유 API 헬퍼
  */
@@ -45,16 +44,16 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
     return;
   }
   
-  const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
-  // 말줄임 방지를 위해 콤팩트하게 구성
-  const formattedMenu = menu.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
+  const formattedDate = `${parseInt(date.substring(4, 6))}월 ${parseInt(date.substring(6, 8))}일`;
+  // 줄바꿈으로 가독성 확보하되 불필요한 공백 제거
+  const formattedMenu = menu.split(',').map(item => `•${item.trim()}`).filter(Boolean).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: schoolName,
-        description: `[${formattedDate} 급식]\n${formattedMenu}`,
+        title: `[${schoolName}] ${formattedDate} 급식`,
+        description: formattedMenu,
         link: {
           mobileWebUrl: window.location.href,
           webUrl: window.location.href,
@@ -62,7 +61,7 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
       },
       buttons: [
         {
-          title: '급식 보러가기',
+          title: '자세히 보기',
           link: {
             mobileWebUrl: window.location.href,
             webUrl: window.location.href,
@@ -88,15 +87,15 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
     return;
   }
   
-  const formattedDate = `${date.substring(4, 6)}월 ${date.substring(6, 8)}일`;
-  const formattedTimetable = timetable.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
+  const formattedDate = `${parseInt(date.substring(4, 6))}월 ${parseInt(date.substring(6, 8))}일`;
+  const formattedTimetable = timetable.split(',').map(item => `•${item.trim()}`).filter(Boolean).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: `${schoolName} (${grade}학년 ${classNum}반)`,
-        description: `[${formattedDate} 시간표]\n${formattedTimetable}`,
+        title: `[${schoolName}] ${formattedDate} 시간표`,
+        description: `${grade}학년 ${classNum}반\n${formattedTimetable}`,
         link: {
           mobileWebUrl: window.location.href,
           webUrl: window.location.href,
@@ -104,7 +103,7 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
       },
       buttons: [
         {
-          title: '시간표 보러가기',
+          title: '자세히 보기',
           link: {
             mobileWebUrl: window.location.href,
             webUrl: window.location.href,
