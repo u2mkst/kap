@@ -56,10 +56,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 문의 시스템 (생성만 허용)
+    // 문의 시스템
     match /inquiries/{inquiryId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if isAdmin();
+      // 자신이 작성한 문의는 읽을 수 있어야 답변을 확인 가능합니다.
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
     }
   }
 }
