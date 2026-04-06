@@ -86,7 +86,7 @@ export default function DashboardPage() {
     setWeekDates(dates)
   }, [weekOffset])
 
-  // 주간 데이터를 필요할 때만 불러오도록 최적화
+  // 주간 데이터를 불러오는 기능
   const fetchWeeklyData = async () => {
     if (!userData?.schoolName || !userData?.grade || !userData?.classNum || weekDates.length === 0) return;
     
@@ -116,12 +116,14 @@ export default function DashboardPage() {
     }
   }
 
-  // 초기 로딩 및 날짜 변경 시 fetch
+  // 초기 로딩 시 이번 주 데이터 로드
   useEffect(() => {
     const now = new Date()
     setTodayStr(format(now, "yyyy-MM-dd"))
-    
-    if (userData?.schoolName) {
+  }, [])
+
+  useEffect(() => {
+    if (userData?.schoolName && weekDates.length > 0) {
       fetchWeeklyData()
     }
   }, [userData?.schoolName, weekDates])

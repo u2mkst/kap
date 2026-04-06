@@ -9,7 +9,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
-    pSize: '1000', // 충분한 데이터 확보를 위해 1000개로 확대
+    pSize: '1000', // 충분한 데이터 확보를 위해 1000개로 설정하여 전체 데이터를 누락 없이 가져옵니다.
     ...(API_KEY ? { KEY: API_KEY } : {}),
     ...params,
   });
