@@ -9,7 +9,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
-    pSize: '1000', // 충분한 데이터 확보를 위해 1000개로 설정하여 전체 데이터를 누락 없이 가져옵니다.
+    pSize: '1000', // 전교생 데이터 중 해당 학급 데이터를 누락 없이 가져오기 위해 1000으로 설정
     ...(API_KEY ? { KEY: API_KEY } : {}),
     ...params,
   });
@@ -25,7 +25,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
   }
 }
 
-/** 학교 정보 검색 (학교 코드를 찾기 위함) */
+/** 학교 정보 검색 */
 export async function searchSchool(schoolName: string) {
   const data = await fetchNeis('schoolInfo', { SCHUL_NM: schoolName });
   if (!data?.schoolInfo) return null;
@@ -49,7 +49,7 @@ export async function getWeeklyMeals(officeCode: string, schoolCode: string, fro
   }));
 }
 
-/** 주간 시간표 가져오기 */
+/** 주간 시간표 가져오기 (월~금 모든 교시 포함) */
 export async function getWeeklyTimetable(
   officeCode: string, 
   schoolCode: string, 
@@ -77,7 +77,7 @@ export async function getWeeklyTimetable(
   const rows = data[endpoint][1].row;
   if (!rows) return [];
   
-  // 날짜별로 그룹화
+  // 날짜별로 그룹화하여 모든 교시 데이터 수집
   const grouped = rows.reduce((acc: any, curr: any) => {
     const date = curr.ALL_TI_YMD;
     if (!date) return acc;
@@ -90,7 +90,7 @@ export async function getWeeklyTimetable(
     date,
     timetable: grouped[date]
       .sort((a: any, b: any) => parseInt(a.perio) - parseInt(b.perio))
-      .map((t: any) => `${t.perio}교시: ${t.content}`)
-      .join(', ')
+      .map((t: any) => `${t.perio}교시:${t.content}`)
+      .join(',')
   }));
 }

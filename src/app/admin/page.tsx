@@ -169,19 +169,17 @@ export default function AdminPage() {
   const handleDeleteInquiry = (id: string) => {
     if (!id) return
     if (!confirm("이 문의를 영구 삭제하시겠습니까?")) return
-    const targetRef = doc(db, "inquiries", id)
-    deleteDocumentNonBlocking(targetRef)
+    deleteDocumentNonBlocking(doc(db, "inquiries", id))
     toast({ title: "문의가 삭제되었습니다." })
   }
 
   const handleDeleteAllInquiries = () => {
     if (!inquiries || inquiries.length === 0) return
-    if (!confirm(`정말 ${inquiries.length}개의 모든 문의를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return
+    if (!confirm(`정말 ${inquiries.length}개의 모든 문의를 삭제하시겠습니까?`)) return
     
     inquiries.forEach(iq => {
       if (iq.id) {
-        const targetRef = doc(db, "inquiries", iq.id)
-        deleteDocumentNonBlocking(targetRef)
+        deleteDocumentNonBlocking(doc(db, "inquiries", iq.id))
       }
     })
     toast({ title: "전체 삭제 완료" })
@@ -196,7 +194,7 @@ export default function AdminPage() {
       points: newPoints,
       updatedAt: serverTimestamp()
     })
-    toast({ title: "포인트 수정 완료", description: `포인트가 ${newPoints}P로 변경되었습니다.` })
+    toast({ title: "포인트 수정 완료" })
     setIsSaving(false)
   }
 
@@ -228,8 +226,7 @@ export default function AdminPage() {
       toast({ title: "문제 일괄 등록 완료", description: `${count}개의 문제가 등록되었습니다.` })
       setBulkProblemText("")
     } catch (e) {
-      console.error(e)
-      toast({ variant: "destructive", title: "등록 실패", description: "데이터 형식을 확인해주세요." })
+      toast({ variant: "destructive", title: "등록 실패" })
     } finally {
       setIsSaving(false)
     }
@@ -255,8 +252,7 @@ export default function AdminPage() {
       toast({ title: "한마디 일괄 등록 완료", description: `${count}개의 한마디가 등록되었습니다.` })
       setBulkFortuneText("")
     } catch (e) {
-      console.error(e)
-      toast({ variant: "destructive", title: "등록 실패", description: "데이터 형식을 확인해주세요." })
+      toast({ variant: "destructive", title: "등록 실패" })
     } finally {
       setIsSaving(false)
     }
@@ -368,7 +364,6 @@ export default function AdminPage() {
                   <div className="flex items-center gap-3">
                     <span className="font-black text-sm">{u.nickname}</span>
                     <span className="opacity-60 font-bold">{u.schoolName} {u.grade}학년</span>
-                    <span className="text-[9px] opacity-40 font-mono">({u.username})</span>
                   </div>
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                     <div className="flex items-center gap-2 bg-background/50 p-1.5 rounded-xl border border-primary/10 shadow-sm">
@@ -379,7 +374,6 @@ export default function AdminPage() {
                         onChange={(e) => setTempPoints({ ...tempPoints, [u.id]: parseInt(e.target.value) })}
                         className="w-20 h-7 text-[10px] border-none bg-transparent font-black text-primary p-0 text-right focus-visible:ring-0" 
                       />
-                      <span className="text-[10px] font-black text-primary pr-1">P</span>
                       <Button 
                         size="icon" 
                         variant="ghost" 
@@ -439,16 +433,12 @@ export default function AdminPage() {
                     <Label className="text-xs font-bold text-muted-foreground">일일 문제 일괄 등록</Label>
                   </div>
                   <Textarea 
-                    placeholder={`예시:\n2024-05-20|1|기초 연산|수학|하|1+1은 무엇일까요?|2|100\n2024-05-21|2|분수 문제|수학|중|1/2 + 1/2는?|1|200`} 
+                    placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답|지급포인트" 
                     value={bulkProblemText} 
                     onChange={(e) => setBulkProblemText(e.target.value)} 
                     className="rounded-2xl min-h-[150px] text-[11px] font-mono leading-relaxed" 
                   />
-                  <p className="text-[10px] text-muted-foreground ml-1">형식: 날짜|학년|제목|토픽|난이도|문제내용|정답|지급포인트</p>
-                  <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11">
-                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
-                    문제 일괄 등록 실행
-                  </Button>
+                  <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11">문제 일괄 등록</Button>
                 </div>
                 
                 <div className="space-y-2 pt-6 border-t">
@@ -457,16 +447,12 @@ export default function AdminPage() {
                     <Label className="text-xs font-bold text-muted-foreground">오늘의 한마디 일괄 등록</Label>
                   </div>
                   <Textarea 
-                    placeholder={`예시:\n2024-05-20|오늘은 당신의 꿈을 향해 한 걸음 더 나아가세요!\n2024-05-21|작은 성취들이 모여 큰 기적을 만듭니다.`} 
+                    placeholder="날짜|한마디내용" 
                     value={bulkFortuneText} 
                     onChange={(e) => setBulkFortuneText(e.target.value)} 
                     className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed" 
                   />
-                  <p className="text-[10px] text-muted-foreground ml-1">형식: 날짜|한마디내용</p>
-                  <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">
-                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Quote className="h-4 w-4 mr-2" />}
-                    한마디 일괄 등록 실행
-                  </Button>
+                  <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">한마디 일괄 등록</Button>
                 </div>
              </CardContent>
           </Card>
@@ -476,10 +462,7 @@ export default function AdminPage() {
           <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
             <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">실시간 공지 사항</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground ml-1">공지 내용</Label>
-                <Input value={noticeText} onChange={(e) => setNoticeText(e.target.value)} className="rounded-2xl h-11" placeholder="학원 전체에 노출되는 공지입니다." />
-              </div>
+              <Input value={noticeText} onChange={(e) => setNoticeText(e.target.value)} className="rounded-2xl h-11" placeholder="공지 내용" />
               <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-primary text-white">공지 업데이트</Button>
             </CardContent>
           </Card>
@@ -487,28 +470,16 @@ export default function AdminPage() {
 
         <TabsContent value="config">
           <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-            <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 보안 및 API 설정</CardTitle></CardHeader>
+            <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 설정</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground ml-1 flex items-center gap-2">
-                  <ShieldAlert className="h-3 w-3" /> 관리자 인증 코드
-                </Label>
+                <Label className="text-xs font-bold text-muted-foreground">관리자 인증 코드</Label>
                 <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} className="rounded-2xl h-11" />
               </div>
-
               <div className="space-y-2 pt-4 border-t">
-                <Label className="text-xs font-bold text-muted-foreground ml-1 flex items-center gap-2">
-                  <Key className="h-3 w-3" /> 카카오 JavaScript 키 (공유용)
-                </Label>
-                <Input 
-                  type="text" 
-                  value={kakaoApiKey} 
-                  onChange={(e) => setKakaoApiKey(e.target.value)} 
-                  className="rounded-2xl h-11" 
-                  placeholder="카카오 개발자 콘솔에서 발급받은 키를 입력하세요."
-                />
+                <Label className="text-xs font-bold text-muted-foreground">카카오 JavaScript 키</Label>
+                <Input type="text" value={kakaoApiKey} onChange={(e) => setKakaoApiKey(e.target.value)} className="rounded-2xl h-11" />
               </div>
-
               <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 font-black bg-destructive text-white">전체 설정 저장</Button>
             </CardContent>
           </Card>
