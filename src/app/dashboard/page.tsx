@@ -34,7 +34,8 @@ import {
   Share2,
   Quote,
   CalendarCheck,
-  History
+  History,
+  BookOpen
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
@@ -299,8 +300,14 @@ export default function DashboardPage() {
 
   if (isUserLoading || isUserDataLoading || !user) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
+            <BookOpen className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
+          </div>
+          <p className="text-sm font-black text-primary/60 animate-pulse">KST HUB 로딩 중...</p>
+        </div>
       </div>
     )
   }

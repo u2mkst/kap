@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -63,7 +64,13 @@ export default function LoginPage() {
   if (isUserLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
-        <Loader2 className="animate-spin h-8 w-8 text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
+            <BookOpen className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
+          </div>
+          <p className="text-sm font-black text-primary/60 animate-pulse">KST HUB 로딩 중...</p>
+        </div>
       </div>
     )
   }

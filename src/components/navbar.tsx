@@ -24,6 +24,13 @@ import { doc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import LinkNext from "next/link"
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 
 const navItems = [
   { name: "홈", href: "/dashboard", icon: Home },
@@ -146,74 +153,95 @@ export function Navbar() {
 
           {user && (
             <div className="flex md:hidden">
-              <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="rounded-full h-8 w-8">
-                {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
+              <Sheet open={isOpen} onOpenChange={setIsOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[280px] p-0 border-none rounded-l-[2.5rem]">
+                  <SheetHeader className="p-6 pb-2">
+                    <SheetTitle className="text-left font-black flex items-center gap-2 text-primary">
+                      <div className="h-8 w-8 bg-primary rounded-xl flex items-center justify-center">
+                        <BookOpen className="h-4 w-4 text-white" />
+                      </div>
+                      KST HUB
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-2 p-4">
+                    <div className="bg-muted/30 p-4 rounded-3xl mb-4">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">나의 정보</p>
+                      <p className="font-black text-sm">{userData?.nickname} 학생</p>
+                      <p className="text-[10px] opacity-60 font-bold">{userData?.schoolName} {userData?.grade}학년</p>
+                    </div>
+                    
+                    {navItems.map((item) => (
+                      <LinkNext
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={cn(
+                          "flex items-center space-x-3 p-3.5 rounded-2xl text-sm font-bold transition-all",
+                          pathname === item.href ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted/50"
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.name}</span>
+                      </LinkNext>
+                    ))}
+                    
+                    <div className="h-px bg-muted my-2" />
+
+                    <div
+                      onClick={() => {
+                        toggleTheme()
+                        setIsOpen(false)
+                      }}
+                      className="flex items-center space-x-3 p-3.5 rounded-2xl text-sm font-bold text-muted-foreground hover:bg-muted/50 cursor-pointer"
+                    >
+                      {userData?.theme === 'dark' ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+                      <span>{userData?.theme === 'dark' ? '라이트 모드' : '다크 모드'}</span>
+                    </div>
+
+                    <LinkNext
+                      href="/profile"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center space-x-3 p-3.5 rounded-2xl text-sm font-bold text-muted-foreground hover:bg-muted/50"
+                    >
+                      <UserCircle className="h-4 w-4" />
+                      <span>마이페이지</span>
+                    </LinkNext>
+
+                    {isAdminDoc && (
+                      <LinkNext
+                        href="/admin"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center space-x-3 p-3.5 rounded-2xl text-sm font-bold text-destructive hover:bg-destructive/5"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>관리자 모드</span>
+                      </LinkNext>
+                    )}
+
+                    <div className="mt-auto pt-6">
+                      <Button 
+                        variant="ghost" 
+                        className="w-full text-destructive font-bold justify-start px-3.5 h-12 rounded-2xl hover:bg-destructive/5"
+                        onClick={() => {
+                          setIsOpen(false)
+                          handleLogout()
+                        }}
+                      >
+                        <LogOut className="h-4 w-4 mr-3" /> 로그아웃
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           )}
         </div>
       </div>
-
-      {user && isOpen && (
-        <div className="md:hidden border-t bg-background p-3 space-y-1 animate-in slide-in-from-top-4 duration-200">
-          {navItems.map((item) => (
-            <LinkNext
-              key={item.name}
-              href={item.href}
-              onClick={() => setIsOpen(false)}
-              className={cn(
-                "flex items-center space-x-3 p-3 rounded-lg text-sm font-bold transition-all",
-                pathname === item.href ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              <span>{item.name}</span>
-            </LinkNext>
-          ))}
-          
-          <div
-            onClick={() => {
-              toggleTheme()
-              setIsOpen(false)
-            }}
-            className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted cursor-pointer"
-          >
-            {userData?.theme === 'dark' ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
-            <span>{userData?.theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}</span>
-          </div>
-
-          <LinkNext
-            href="/profile"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted"
-          >
-            <UserCircle className="h-4 w-4" />
-            <span>마이페이지</span>
-          </LinkNext>
-          {isAdminDoc && (
-            <LinkNext
-              href="/admin"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center space-x-3 p-3 rounded-lg text-sm font-bold text-destructive hover:bg-destructive/5"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span>관리자 모드</span>
-            </LinkNext>
-          )}
-          <div className="pt-2 border-t mt-2">
-            <Button 
-              variant="ghost" 
-              className="w-full text-destructive font-bold justify-start px-3 h-10 text-sm"
-              onClick={() => {
-                setIsOpen(false)
-                handleLogout()
-              }}
-            >
-              <LogOut className="h-4 w-4 mr-3" /> 로그아웃
-            </Button>
-          </div>
-        </div>
-      )}
     </nav>
   )
 }
