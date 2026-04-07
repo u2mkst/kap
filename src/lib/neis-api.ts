@@ -10,7 +10,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
-    pSize: '1000', // 전교생 데이터 중 해당 학급 데이터를 누락 없이 가져오기 위해 1000으로 설정
+    pSize: '1000',
     ...(API_KEY ? { KEY: API_KEY } : {}),
     ...params,
   });
@@ -64,13 +64,16 @@ export async function getWeeklyTimetable(
   if (schoolType.includes('초등')) endpoint = 'elsTimetable';
   else if (schoolType.includes('고등')) endpoint = 'hisTimetable';
   
+  // API 규격에 맞춰 학년/반 정보를 2자리 숫자로 변환 (예: 1 -> 01)
+  const formatNum = (n: string) => n.toString().padStart(2, '0');
+
   const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,
     SD_SCHUL_CODE: schoolCode,
     TI_FROM_YMD: fromDate,
     TI_TO_YMD: toDate,
-    GRADE: grade,
-    CLASS_NM: classNum
+    GRADE: formatNum(grade),
+    CLASS_NM: formatNum(classNum)
   });
 
   if (!data || !data[endpoint]) return [];

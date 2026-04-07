@@ -372,8 +372,10 @@ export default function DashboardPage() {
       <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
         <DialogContent className="max-w-md rounded-[2.5rem] bg-card border-none p-8">
           <DialogHeader>
-            <DialogTitle className="sr-only">KST HUB 튜토리얼</DialogTitle>
-            <DialogDescription className="sr-only">앱의 주요 기능에 대해 안내해 드립니다.</DialogDescription>
+            <DialogTitle className="text-lg font-black text-primary">KST HUB 가이드</DialogTitle>
+            <DialogDescription className="text-sm font-medium">
+              학원 생활을 200% 즐기는 방법을 알려드려요.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center text-center space-y-6">
             <div className="p-4 rounded-[2rem] bg-primary/10 animate-in zoom-in duration-500">
@@ -460,7 +462,9 @@ export default function DashboardPage() {
                     <DialogTitle className="flex items-center gap-2 text-foreground font-black">
                       <CalendarDays className="h-5 w-5 text-primary" /> 주간 정보
                     </DialogTitle>
-                    <DialogDescription className="sr-only">선택한 주차의 학교 급식 및 시간표 정보를 확인합니다.</DialogDescription>
+                    <DialogDescription className="text-xs font-medium">
+                      일주일의 학교 급식과 시간표 정보를 확인합니다.
+                    </DialogDescription>
                     <div className="flex items-center gap-1">
                       <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev - 1)}>
                         <ChevronLeft className="h-4 w-4" />
@@ -626,7 +630,7 @@ export default function DashboardPage() {
                         <DialogTitle className="flex items-center gap-2 text-primary font-black">
                           <History className="h-5 w-5" /> 나의 출석 내역
                         </DialogTitle>
-                        <DialogDescription className="text-xs">
+                        <DialogDescription className="text-xs font-medium">
                           파란색 점으로 표시된 날짜가 출석한 날입니다.
                         </DialogDescription>
                       </DialogHeader>
@@ -675,33 +679,35 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl">
-            <CardHeader className="p-5">
-              <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
-                <Clover className="h-4 w-4 text-green-500" /> 오늘의 나의 행운점수🍀
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              {personalFortuneData ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-black text-primary">{displayScore}점</span>
-                    <Badge className="bg-primary text-white border-none">
-                      {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : "좋은 하루! 😊"}
-                    </Badge>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden relative">
+              <CardHeader className="p-5">
+                <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
+                  <Clover className="h-4 w-4 text-green-500" /> 오늘의 나의 행운점수🍀
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 pt-0">
+                {personalFortuneData ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-black text-primary">{displayScore}점</span>
+                      <Badge className="bg-primary text-white border-none">
+                        {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : "좋은 하루! 😊"}
+                      </Badge>
+                    </div>
+                    <Progress value={displayScore} className="h-2 bg-muted" />
                   </div>
-                  <Progress value={displayScore} className="h-2 bg-muted" />
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="rounded-full bg-primary font-black text-xs px-8">
-                    {isGeneratingLuck ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
-                    행운 점수 확인
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="text-center py-4">
+                    <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="rounded-full bg-primary font-black text-xs px-8">
+                      {isGeneratingLuck ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
+                      행운 점수 확인
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="md:col-span-4 space-y-6">
