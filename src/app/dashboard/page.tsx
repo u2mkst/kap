@@ -261,16 +261,16 @@ export default function DashboardPage() {
 
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold">{userData?.nickname}님, 반가워요!</h1>
+          <h1 className="text-2xl font-bold">{userData?.nickname || "학생"}님, 반가워요!</h1>
           <Badge variant="secondary" className="mt-1">
-            {userData?.schoolName} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
+            {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
           </Badge>
         </div>
         <Card className="bg-primary text-white p-4 rounded-2xl flex items-center gap-4 shadow-lg">
           <Zap className="h-5 w-5" />
           <div>
             <p className="text-[10px] opacity-80 uppercase font-black">Points</p>
-            <p className="text-xl font-black">{userData?.points?.toLocaleString()} P</p>
+            <p className="text-xl font-black">{userData?.points?.toLocaleString() || 0} P</p>
           </div>
         </Card>
       </div>

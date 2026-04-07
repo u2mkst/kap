@@ -4,14 +4,14 @@
  */
 
 const BASE_URL = 'https://open.neis.go.kr/hub';
-const API_KEY = process.env.NEXT_PUBLIC_NEIS_API_KEY || '19f78fd07bfb4243a6333e7bf4641bfc';
+const API_KEY = '19f78fd07bfb4243a6333e7bf4641bfc';
 
 async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
     Type: 'json',
     pIndex: '1',
     pSize: '1000',
-    ...(API_KEY ? { KEY: API_KEY } : {}),
+    KEY: API_KEY,
     ...params,
   });
 
@@ -74,19 +74,17 @@ export async function getWeeklyTimetable(
   if (schoolType?.includes('초등')) endpoint = 'elsTimetable';
   else if (schoolType?.includes('고등')) endpoint = 'hisTimetable';
   
-  // 나이스 API 규격: 학년과 반은 반드시 2자리 숫자여야 함 (예: 01, 02)
-  const formatNum = (n: any) => {
-    const num = (n || "").toString().replace(/[^0-9]/g, '');
-    return num ? num.padStart(2, '0') : "01";
-  };
+  // 레거시 코드 참고: 학년과 반은 사용자가 입력한 값을 그대로 사용 (패딩 없이 시도)
+  const g = grade?.toString().replace(/[^0-9]/g, '') || "1";
+  const c = classNum?.toString().replace(/[^0-9]/g, '') || "1";
 
   const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,
     SD_SCHUL_CODE: schoolCode,
     TI_FROM_YMD: fromDate,
     TI_TO_YMD: toDate,
-    GRADE: formatNum(grade),
-    CLASS_NM: formatNum(classNum)
+    GRADE: g,
+    CLASS_NM: c
   });
 
   if (!data || !data[endpoint]) return [];
@@ -95,7 +93,7 @@ export async function getWeeklyTimetable(
   if (!rows) return [];
   
   const grouped = rows.reduce((acc: any, curr: any) => {
-    const date = curr.ALL_TI_YMD || curr.TI_FROM_YMD;
+    const date = curr.ALL_TI_YMD || curr.TI_FROM_YMD || curr.MLSV_YMD;
     if (!date) return acc;
     if (!acc[date]) acc[date] = [];
     acc[date].push({ perio: curr.PERIO, content: curr.ITRT_CNTNT });

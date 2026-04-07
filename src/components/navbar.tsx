@@ -169,9 +169,9 @@ export function Navbar() {
                   <div className="flex flex-col gap-2 p-4">
                     <div className="bg-muted/30 p-4 rounded-3xl mb-4">
                       <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">나의 정보</p>
-                      <p className="font-black text-sm">{userData?.nickname} 학생</p>
+                      <p className="font-black text-sm">{userData?.nickname || "학생"}님</p>
                       <p className="text-[10px] opacity-60 font-bold">
-                        {userData?.schoolName} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
+                        {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
                       </p>
                     </div>
                     
