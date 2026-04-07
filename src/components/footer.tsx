@@ -6,7 +6,7 @@ import { BookOpen } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="w-full border-t bg-white py-6 mt-auto">
+    <footer className="w-full border-t bg-card py-6 mt-auto">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-2">

@@ -121,7 +121,7 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md border-none shadow-xl bg-white rounded-[2rem] overflow-hidden">
+      <Card className="w-full max-w-md border-none shadow-xl bg-card rounded-[2rem] overflow-hidden">
         <CardHeader className="text-center pb-2">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <UserCircle className="h-10 w-10" />
@@ -229,7 +229,7 @@ export default function SignupPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 p-6 pt-2">
-            <Button className="w-full h-12 font-black bg-primary hover:bg-primary/90 text-white rounded-2xl shadow-md" disabled={isLoading}>
+            <Button className="w-full h-12 font-black bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl shadow-md" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "KST HUB 시작하기"}
             </Button>
             <p className="text-xs font-bold text-muted-foreground">

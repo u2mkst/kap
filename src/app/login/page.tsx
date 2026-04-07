@@ -30,7 +30,6 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // ufes 접두사 확인
     if (!username.toLowerCase().startsWith("ufes")) {
       toast({
         variant: "destructive",
@@ -42,7 +41,6 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
-      // 가상 이메일 생성 (Firebase Auth는 이메일 형식을 요구하므로)
       const fakeEmail = `${username.toLowerCase()}@classhub.edu`
       await signInWithEmailAndPassword(auth, fakeEmail, password)
       toast({
@@ -77,12 +75,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md border-none shadow-xl bg-white">
+      <Card className="w-full max-w-md border-none shadow-xl bg-card">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <BookOpen className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-bold font-headline">KST HUB 로그인</CardTitle>
+          <CardTitle className="text-2xl font-bold font-headline text-foreground">KST HUB 로그인</CardTitle>
           <CardDescription>학원 전용 아이디(ufes)를 사용하세요.</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
@@ -92,7 +90,7 @@ export default function LoginPage() {
               <Input 
                 id="username" 
                 placeholder="ufes1234" 
-                className="focus-visible:ring-primary" 
+                className="focus-visible:ring-primary bg-background" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -103,13 +101,13 @@ export default function LoginPage() {
               <Input 
                 id="password" 
                 type="password" 
-                className="focus-visible:ring-primary" 
+                className="focus-visible:ring-primary bg-background" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-            <Button className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
+            <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "로그인"}
             </Button>
           </CardContent>

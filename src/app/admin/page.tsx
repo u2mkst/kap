@@ -111,7 +111,6 @@ export default function AdminPage() {
   const [bulkFortuneText, setBulkFortuneText] = useState("")
   const [calendarDate, setCalendarDate] = useState<Date | undefined>(new Date())
 
-  // 포인트 설정 상태
   const [pointsConfig, setPointsConfig] = useState({
     dailyAttendance: 100,
     streak7: 1000,
@@ -329,7 +328,7 @@ export default function AdminPage() {
 
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
@@ -411,9 +410,9 @@ export default function AdminPage() {
                     />
                     <Button 
                       size="sm" 
-                      onClick={() => handleSendReply(iq.id)} 
+                      onClick={() => setReplyText({ ...replyText, [iq.id]: replyText[iq.id] || "" }) && handleSendReply(iq.id)} 
                       disabled={isSaving}
-                      className="font-black rounded-2xl px-5 h-[80px] bg-primary hover:bg-primary/90"
+                      className="font-black rounded-2xl px-5 h-[80px] bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                       {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "답변"}
                     </Button>
@@ -434,7 +433,7 @@ export default function AdminPage() {
             <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
               <CardTitle className="text-sm font-black">학생 명단 및 포인트 관리</CardTitle>
               <Select value={selectedTeacherFilter} onValueChange={setSelectedTeacherFilter}>
-                <SelectTrigger className="w-40 h-8 text-[10px] rounded-full"><SelectValue placeholder="교사 필터" /></SelectTrigger>
+                <SelectTrigger className="w-40 h-8 text-[10px] rounded-full bg-background"><SelectValue placeholder="교사 필터" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">전체</SelectItem>
                   {teachers?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
@@ -449,7 +448,7 @@ export default function AdminPage() {
                     <span className="opacity-60 font-bold">{u.schoolName} {u.grade}학년</span>
                   </div>
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="flex items-center gap-2 bg-background/50 p-1.5 rounded-xl border border-primary/10 shadow-sm">
+                    <div className="flex items-center gap-2 bg-card/50 p-1.5 rounded-xl border border-primary/10 shadow-sm">
                       <Coins className="h-3 w-3 text-primary" />
                       <Input 
                         type="number" 
@@ -506,7 +505,7 @@ export default function AdminPage() {
                     type="number" 
                     value={pointsConfig.dailyAttendance} 
                     onChange={(e) => setPointsConfig({...pointsConfig, dailyAttendance: parseInt(e.target.value)})}
-                    className="rounded-xl"
+                    className="rounded-xl bg-background"
                   />
                 </div>
                 <div className="space-y-2">
@@ -515,7 +514,7 @@ export default function AdminPage() {
                     type="number" 
                     value={pointsConfig.streak7} 
                     onChange={(e) => setPointsConfig({...pointsConfig, streak7: parseInt(e.target.value)})}
-                    className="rounded-xl"
+                    className="rounded-xl bg-background"
                   />
                 </div>
                 <div className="space-y-2">
@@ -524,7 +523,7 @@ export default function AdminPage() {
                     type="number" 
                     value={pointsConfig.streak30} 
                     onChange={(e) => setPointsConfig({...pointsConfig, streak30: parseInt(e.target.value)})}
-                    className="rounded-xl"
+                    className="rounded-xl bg-background"
                   />
                 </div>
                 <div className="space-y-2">
@@ -533,11 +532,11 @@ export default function AdminPage() {
                     type="number" 
                     value={pointsConfig.problemDefault} 
                     onChange={(e) => setPointsConfig({...pointsConfig, problemDefault: parseInt(e.target.value)})}
-                    className="rounded-xl"
+                    className="rounded-xl bg-background"
                   />
                 </div>
               </div>
-              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-primary">
+              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-primary text-primary-foreground">
                 포인트 설정 저장
               </Button>
             </CardContent>
@@ -562,9 +561,9 @@ export default function AdminPage() {
                           placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답|지급포인트" 
                           value={bulkProblemText} 
                           onChange={(e) => setBulkProblemText(e.target.value)} 
-                          className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed bg-muted/20" 
+                          className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed bg-muted/20 border-none" 
                         />
-                        <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11">문제 일괄 등록</Button>
+                        <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11 bg-primary text-primary-foreground">문제 일괄 등록</Button>
                       </div>
                       
                       <div className="space-y-2 pt-6 border-t">
@@ -579,7 +578,7 @@ export default function AdminPage() {
                           placeholder="날짜|명언내용|작성자" 
                           value={bulkFortuneText} 
                           onChange={(e) => setBulkFortuneText(e.target.value)} 
-                          className="rounded-2xl min-h-[100px] text-[11px] font-mono leading-relaxed bg-muted/20" 
+                          className="rounded-2xl min-h-[100px] text-[11px] font-mono leading-relaxed bg-muted/20 border-none" 
                         />
                         <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">명언 일괄 등록</Button>
                       </div>
@@ -661,8 +660,8 @@ export default function AdminPage() {
              </CardHeader>
              <CardContent className="p-6 space-y-4">
                 <div className="flex gap-2">
-                  <Input placeholder="선생님 성함" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} className="rounded-2xl" />
-                  <Button onClick={handleAddTeacher} className="rounded-2xl font-black bg-primary">추가</Button>
+                  <Input placeholder="선생님 성함" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} className="rounded-2xl bg-background" />
+                  <Button onClick={handleAddTeacher} className="rounded-2xl font-black bg-primary text-primary-foreground">추가</Button>
                 </div>
                 <div className="grid gap-2">
                   {teachers?.map(t => (
@@ -672,7 +671,7 @@ export default function AdminPage() {
                         <Badge variant="outline" className="text-[9px] h-4">현재 {t.vote}표</Badge>
                       </div>
                       <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                        <div className="flex items-center gap-1 bg-background/50 p-1 rounded-xl border">
+                        <div className="flex items-center gap-1 bg-card/50 p-1 rounded-xl border">
                           <Edit2 className="h-3 w-3 ml-1 text-muted-foreground" />
                           <Input 
                             type="number" 
@@ -703,8 +702,8 @@ export default function AdminPage() {
           <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
             <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">실시간 공지 사항</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-4">
-              <Input value={noticeText} onChange={(e) => setNoticeText(e.target.value)} className="rounded-2xl h-11" placeholder="공지 내용" />
-              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-primary text-white">공지 업데이트</Button>
+              <Input value={noticeText} onChange={(e) => setNoticeText(e.target.value)} className="rounded-2xl h-11 bg-background" placeholder="공지 내용" />
+              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-primary text-primary-foreground">공지 업데이트</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -715,11 +714,11 @@ export default function AdminPage() {
             <CardContent className="p-6 space-y-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-muted-foreground">관리자 인증 코드</Label>
-                <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} className="rounded-2xl h-11" />
+                <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} className="rounded-2xl h-11 bg-background" />
               </div>
               <div className="space-y-2 pt-4 border-t">
                 <Label className="text-xs font-bold text-muted-foreground">카카오 JavaScript 키</Label>
-                <Input type="text" value={kakaoApiKey} onChange={(e) => setKakaoApiKey(e.target.value)} className="rounded-2xl h-11" />
+                <Input type="text" value={kakaoApiKey} onChange={(e) => setKakaoApiKey(e.target.value)} className="rounded-2xl h-11 bg-background" />
               </div>
               <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 font-black bg-destructive text-white">전체 설정 저장</Button>
             </CardContent>

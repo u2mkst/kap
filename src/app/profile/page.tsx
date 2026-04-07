@@ -123,7 +123,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="space-y-6">
-        <Card className="border-none shadow-sm bg-white">
+        <Card className="border-none shadow-sm bg-card">
           <CardHeader><CardTitle className="text-lg flex items-center gap-2"><User className="h-5 w-5" /> 기본 정보</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -135,29 +135,29 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label>닉네임</Label>
-              <Input value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} />
+              <Input value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} className="bg-background" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>성</Label><Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} /></div>
-              <div className="space-y-2"><Label>이름</Label><Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} /></div>
+              <div className="space-y-2"><Label>성</Label><Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} className="bg-background" /></div>
+              <div className="space-y-2"><Label>이름</Label><Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} className="bg-background" /></div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white">
+        <Card className="border-none shadow-sm bg-card">
           <CardHeader><CardTitle className="text-lg flex items-center gap-2"><School className="h-5 w-5" /> 학교 및 선생님</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>담당 선생님</Label>
               <Select value={formData.teacherId} onValueChange={(val) => setFormData({...formData, teacherId: val})}>
-                <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                <SelectTrigger className="bg-background"><SelectValue placeholder="선택" /></SelectTrigger>
                 <SelectContent>{teachers?.map(t => <SelectItem key={t.id} value={t.id}>{t.name} 선생님</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>학교급</Label>
               <Select value={formData.schoolType} onValueChange={(val) => setFormData({...formData, schoolType: val})}>
-                <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                <SelectTrigger className="bg-background"><SelectValue placeholder="선택" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="초등학교">초등학교</SelectItem>
                   <SelectItem value="중학교">중학교</SelectItem>
@@ -168,13 +168,13 @@ export default function ProfilePage() {
             <div className="space-y-2 relative">
               <Label>학교 검색</Label>
               <div className="relative">
-                <Input value={formData.schoolName} onChange={(e) => handleSchoolSearch(e.target.value)} placeholder="학교 이름" />
+                <Input value={formData.schoolName} onChange={(e) => handleSchoolSearch(e.target.value)} placeholder="학교 이름" className="bg-background" />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">{isSearching && <Loader2 className="h-3 w-3 animate-spin" />}</div>
               </div>
               {schoolResults.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-card border rounded-xl shadow-lg max-h-40 overflow-y-auto">
                   {schoolResults.map((s, i) => (
-                    <div key={i} className="p-3 text-xs font-bold hover:bg-muted cursor-pointer" onClick={() => selectSchool(s)}>
+                    <div key={i} className="p-3 text-xs font-bold hover:bg-muted cursor-pointer border-b last:border-none" onClick={() => selectSchool(s)}>
                       {s.SCHUL_NM} ({s.LCTN_SC_NM})
                     </div>
                   ))}
@@ -182,13 +182,13 @@ export default function ProfilePage() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>학년</Label><Input value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} /></div>
-              <div className="space-y-2"><Label>반</Label><Input value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} /></div>
+              <div className="space-y-2"><Label>학년</Label><Input value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} className="bg-background" /></div>
+              <div className="space-y-2"><Label>반</Label><Input value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} className="bg-background" /></div>
             </div>
           </CardContent>
         </Card>
 
-        <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-12 text-lg font-bold">
+        <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-12 text-lg font-bold text-primary-foreground">
           {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "변경 사항 저장"}
         </Button>
       </div>

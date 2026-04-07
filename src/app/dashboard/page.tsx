@@ -235,7 +235,6 @@ export default function DashboardPage() {
 
   const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
 
-  // 시간표 정렬 유틸리티
   const getSortedTable = (timetableStr: string) => {
     if (!timetableStr) return [];
     return timetableStr.split(',')
@@ -250,7 +249,7 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-500">
       <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8 bg-card border-none">
           <DialogHeader>
             <DialogTitle>KST HUB 시작 가이드</DialogTitle>
             <DialogDescription>앱의 주요 기능을 소개합니다.</DialogDescription>
@@ -276,13 +275,13 @@ export default function DashboardPage() {
           <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-primary leading-[1.1] animate-in slide-in-from-left duration-700">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
-          <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-white/50 border-primary/10">
+          <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card/50 border-primary/10">
             {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
           </Badge>
         </div>
-        <Card className="bg-primary text-white p-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform">
-          <div className="p-3.5 bg-white/20 rounded-2xl">
-            <Zap className="h-7 w-7 text-white" />
+        <Card className="bg-primary text-primary-foreground p-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform">
+          <div className="p-3.5 bg-primary-foreground/20 rounded-2xl">
+            <Zap className="h-7 w-7 text-primary-foreground" />
           </div>
           <div>
             <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-0.5">Available Points</p>
@@ -297,7 +296,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-black flex items-center gap-2 text-foreground/80"><School className="h-6 w-6 text-primary" /> 학교 소식</h2>
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full font-bold" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 자세히 보기</Button></DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-0">
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-0 bg-card border-none">
                 <div className="p-6 border-b">
                   <DialogTitle className="text-xl font-black">주간 정보 가이드</DialogTitle>
                   <DialogDescription className="text-xs font-medium">이번 주 우리 학교의 급식과 시간표를 확인하세요.</DialogDescription>
@@ -429,13 +428,13 @@ export default function DashboardPage() {
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-12 w-12 border-muted hover:bg-muted/50"><History className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-[2rem] max-w-[95vw] sm:max-w-sm p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogContent className="rounded-[2rem] max-w-[95vw] sm:max-w-sm p-0 overflow-hidden border-none shadow-2xl bg-card">
                       <div className="p-6 border-b bg-card">
                         <DialogTitle className="text-lg font-black flex items-center gap-2"><History className="h-5 w-5 text-primary" /> 출석 히스토리</DialogTitle>
                         <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
                       </div>
                       <div className="p-2 sm:p-4 flex flex-col items-center bg-muted/10">
-                        <div className="bg-white p-1 sm:p-2 rounded-3xl shadow-sm border w-full flex justify-center overflow-hidden">
+                        <div className="bg-card p-1 sm:p-2 rounded-3xl shadow-sm border w-full flex justify-center overflow-hidden">
                           <Calendar 
                             mode="single" 
                             locale={ko} 
@@ -496,7 +495,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="relative">
                     <Progress value={displayScore} className="h-3 bg-muted rounded-full" />
-                    <div className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                    <div className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-transparent via-background/20 to-transparent animate-shimmer" />
                   </div>
                 </div>
               ) : (
@@ -512,7 +511,7 @@ export default function DashboardPage() {
               {topUsers?.map((u, i) => (
                 <div key={i} className={cn(
                   "flex justify-between items-center p-3.5 rounded-2xl text-xs font-bold transition-all", 
-                  u.id === user?.uid ? "bg-primary text-white shadow-lg scale-[1.02]" : "bg-muted/30 hover:bg-muted/50"
+                  u.id === user?.uid ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]" : "bg-muted/30 hover:bg-muted/50"
                 )}>
                   <div className="flex items-center gap-3">
                     <span className={cn(
@@ -523,7 +522,7 @@ export default function DashboardPage() {
                     )}>{i+1}</span>
                     <span className="tracking-tight">{u.nickname}</span>
                   </div>
-                  <span className={cn("font-black tabular-nums", u.id === user?.uid ? "text-white" : "text-primary")}>{u.points.toLocaleString()} P</span>
+                  <span className={cn("font-black tabular-nums", u.id === user?.uid ? "text-primary-foreground" : "text-primary")}>{u.points.toLocaleString()} P</span>
                 </div>
               ))}
             </CardContent>
