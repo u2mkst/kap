@@ -34,8 +34,7 @@ import {
   Share2,
   Quote,
   CalendarCheck,
-  History,
-  ArrowRight
+  History
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
@@ -52,9 +51,6 @@ export default function DashboardPage() {
   const router = useRouter()
 
   const [todayStr, setTodayStr] = useState<string>("")
-  const [userAnswer, setUserAnswer] = useState("")
-  const [isSolving, setIsSolving] = useState(false)
-  const [isSolved, setIsSolved] = useState(false)
   const [isGeneratingLuck, setIsGeneratingLuck] = useState(false)
   const [displayScore, setDisplayScore] = useState(0)
   const [isCheckingIn, setIsCheckingIn] = useState(false)
@@ -142,12 +138,10 @@ export default function DashboardPage() {
   const fortuneRef = useMemoFirebase(() => todayStr ? doc(db, "daily_fortunes", todayStr) : null, [db, todayStr])
   const personalFortuneRef = useMemoFirebase(() => (db && user && todayStr) ? doc(db, "users", user.uid, "personal_fortunes", todayStr) : null, [db, user, todayStr])
   const attendanceHistoryQuery = useMemoFirebase(() => (db && user) ? query(collection(db, "users", user.uid, "attendance_logs"), orderBy("date", "desc")) : null, [db, user])
-  const problemRef = useMemoFirebase(() => (db && userData?.grade && todayStr) ? doc(db, "daily_problems", `${todayStr}_${userData.grade}`) : null, [db, userData?.grade, todayStr])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: personalFortuneData } = useDoc(personalFortuneRef)
   const { data: attendanceHistory } = useCollection(attendanceHistoryQuery)
-  const { data: problemData } = useDoc(problemRef)
 
   useEffect(() => {
     if (personalFortuneData?.score) {
@@ -161,19 +155,6 @@ export default function DashboardPage() {
       return () => clearInterval(timer);
     }
   }, [personalFortuneData?.score]);
-
-  const handleSolveProblem = async () => {
-    if (!problemData || !userAnswer.trim() || isSolved || !userDocRef) return
-    if (userAnswer.trim() === problemData.answer) {
-      setIsSolving(true)
-      const reward = problemData.rewardPoints || configData?.pointConfig?.problemDefault || 100
-      try {
-        await updateDoc(userDocRef, { points: increment(reward), updatedAt: serverTimestamp() })
-        setIsSolved(true)
-        toast({ title: "정답입니다!", description: `${reward}P 지급!` })
-      } finally { setIsSolving(false) }
-    } else toast({ variant: "destructive", title: "틀렸습니다." })
-  }
 
   const handleGenerateLuckyScore = async () => {
     if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck || !todayStr) return
@@ -233,15 +214,21 @@ export default function DashboardPage() {
 
   if (isUserLoading || isUserDataLoading || !user) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
+            <Sparkles className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
+          </div>
+          <p className="text-sm font-black text-primary/60 animate-pulse">KST HUB 로딩 중...</p>
+        </div>
       </div>
     )
   }
 
   const tutorialSteps = [
     { title: "환영합니다! 👋", description: "KST HUB에 오신 것을 환영해요.", icon: <Sparkles className="h-12 w-12 text-primary" /> },
-    { title: "출석 보상", description: "매일 출석하고 보너스 포인트를 받으세요.", icon: <CalendarCheck className="h-12 w-12 text-primary" /> },
+    { title: "출석 보상", description: "매일 출석하고 보너스 포인트를 받으세요.", icon: <CalendarDays className="h-12 w-12 text-primary" /> },
     { title: "학교 정보", description: "오늘의 급식과 시간표를 한눈에!", icon: <Utensils className="h-12 w-12 text-primary" /> },
     { title: "랭킹 도전", description: "포인트를 모아 1위에 도전하세요.", icon: <Trophy className="h-12 w-12 text-yellow-500" /> }
   ]
@@ -249,7 +236,7 @@ export default function DashboardPage() {
   const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
+    <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-500">
       <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-8">
           <DialogHeader>
@@ -275,12 +262,12 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold">{userData?.nickname}님, 반가워요!</h1>
-          <Badge variant="secondary" className="mt-1">{userData?.schoolName} {userData?.grade}학년</Badge>
+          <Badge variant="secondary" className="mt-1">{userData?.schoolName} {userData?.grade}학년 {userData?.classNum}반</Badge>
         </div>
-        <Card className="bg-primary text-white p-4 rounded-2xl flex items-center gap-4">
+        <Card className="bg-primary text-white p-4 rounded-2xl flex items-center gap-4 shadow-lg">
           <Zap className="h-5 w-5" />
           <div>
-            <p className="text-[10px] opacity-80">보유 포인트</p>
+            <p className="text-[10px] opacity-80 uppercase font-black">Points</p>
             <p className="text-xl font-black">{userData?.points?.toLocaleString()} P</p>
           </div>
         </Card>
@@ -292,43 +279,46 @@ export default function DashboardPage() {
             <h2 className="text-lg font-bold flex items-center gap-2"><School className="h-5 w-5 text-primary" /> 학교 소식</h2>
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 전체 보기</Button></DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-3xl">
                 <DialogHeader>
                   <DialogTitle>주간 정보</DialogTitle>
                   <DialogDescription>이번 주 급식과 시간표입니다.</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-between mb-4">
-                  <Button variant="ghost" onClick={() => setWeekOffset(w => w - 1)}><ChevronLeft /></Button>
-                  <Button variant="ghost" onClick={() => setWeekOffset(w => w + 1)}><ChevronRight /></Button>
+                  <Button variant="ghost" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full"><ChevronLeft /></Button>
+                  <Button variant="ghost" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full"><ChevronRight /></Button>
                 </div>
                 <Tabs defaultValue="meals">
-                  <TabsList className="w-full grid grid-cols-2"><TabsTrigger value="meals">급식</TabsTrigger><TabsTrigger value="timetable">시간표</TabsTrigger></TabsList>
-                  <TabsContent value="meals" className="space-y-4">
+                  <TabsList className="w-full grid grid-cols-2 p-1 bg-muted/50 rounded-2xl">
+                    <TabsTrigger value="meals" className="rounded-xl">급식</TabsTrigger>
+                    <TabsTrigger value="timetable" className="rounded-xl">시간표</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="meals" className="space-y-4 pt-4">
                     {weekDates.map((d, i) => {
                       const dStr = format(d, "yyyyMMdd");
                       const meal = weeklyMeals.find(m => m.date === dStr);
                       return (
                         <div key={i} className="p-4 bg-muted/30 rounded-2xl flex justify-between items-center">
                           <div>
-                            <p className="text-xs font-black">{format(d, "MM/dd (E)", { locale: ko })}</p>
+                            <p className="text-xs font-black text-primary">{format(d, "MM/dd (E)", { locale: ko })}</p>
                             <p className="text-sm font-bold mt-1">{meal?.menu || "정보 없음"}</p>
                           </div>
-                          {meal && <Button variant="ghost" size="icon" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
+                          {meal && <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
                         </div>
                       )
                     })}
                   </TabsContent>
-                  <TabsContent value="timetable" className="space-y-4">
+                  <TabsContent value="timetable" className="space-y-4 pt-4">
                     {weekDates.map((d, i) => {
                       const dStr = format(d, "yyyyMMdd");
                       const table = weeklyTimetable.find(t => t.date === dStr);
                       return (
                         <div key={i} className="p-4 bg-muted/30 rounded-2xl flex justify-between items-center">
                           <div>
-                            <p className="text-xs font-black">{format(d, "MM/dd (E)", { locale: ko })}</p>
-                            <p className="text-xs mt-1">{table?.timetable || "정보 없음"}</p>
+                            <p className="text-xs font-black text-primary">{format(d, "MM/dd (E)", { locale: ko })}</p>
+                            <p className="text-xs mt-1 font-bold">{table?.timetable.split(',').join(' | ') || "정보 없음"}</p>
                           </div>
-                          {table && <Button variant="ghost" size="icon" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
+                          {table && <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
                         </div>
                       )
                     })}
@@ -339,62 +329,76 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="rounded-3xl border-none shadow-sm">
+            <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-card">
               <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-black flex items-center gap-2"><Utensils className="h-4 w-4" /> 오늘 급식</CardTitle>
-                {todayMeal && <Button variant="ghost" size="icon" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Utensils className="h-4 w-4 text-primary" /> 오늘 급식</CardTitle>
+                {todayMeal && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
               </CardHeader>
-              <CardContent className="min-h-[100px]">
-                {isLoadingWeekly ? <Loader2 className="animate-spin mx-auto" /> : todayMeal ? (
+              <CardContent className="min-h-[120px]">
+                {isLoadingWeekly ? (
+                  <div className="flex justify-center items-center h-20"><Loader2 className="animate-spin text-primary" /></div>
+                ) : todayMeal ? (
                   <div className="grid gap-2">
                     {todayMeal.split(',').map((m, i) => (
-                      <div key={i} className="p-3 bg-primary/5 rounded-xl border border-primary/10 text-xs font-bold">{m.trim()}</div>
+                      <div key={i} className="p-3 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-primary">{m.trim()}</div>
                     ))}
                   </div>
-                ) : <p className="text-sm text-center py-4 text-muted-foreground">급식 없음</p>}
+                ) : <p className="text-sm text-center py-8 text-muted-foreground font-bold italic">급식 정보가 없습니다.</p>}
               </CardContent>
             </Card>
-            <Card className="rounded-3xl border-none shadow-sm">
+            <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-card">
               <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4" /> 오늘 시간표</CardTitle>
-                {todayTable && <Button variant="ghost" size="icon" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> 오늘 시간표</CardTitle>
+                {todayTable && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
               </CardHeader>
               <CardContent>
-                {isLoadingWeekly ? <Loader2 className="animate-spin mx-auto" /> : todayTable ? (
+                {isLoadingWeekly ? (
+                  <div className="flex justify-center items-center h-20"><Loader2 className="animate-spin text-primary" /></div>
+                ) : todayTable ? (
                   <div className="space-y-2">
-                    {todayTable.split(',').map((t, i) => (
-                      <div key={i} className="flex gap-4 text-xs font-bold p-2 bg-muted/30 rounded-lg">
-                        <span className="text-primary">{t.split(':')[0]}</span><span>{t.split(':')[1]}</span>
-                      </div>
-                    ))}
+                    {todayTable.split(',').map((t, i) => {
+                      const [perio, content] = t.split(':');
+                      return (
+                        <div key={i} className="flex items-center gap-4 text-xs font-bold p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
+                          <span className="text-primary w-10">{perio}</span>
+                          <span className="text-foreground">{content}</span>
+                        </div>
+                      )
+                    })}
                   </div>
-                ) : <p className="text-sm text-center py-4 text-muted-foreground">시간표 없음</p>}
+                ) : <p className="text-sm text-center py-8 text-muted-foreground font-bold italic">시간표 정보가 없습니다.</p>}
               </CardContent>
             </Card>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="rounded-3xl border-none shadow-sm">
-              <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><CalendarCheck className="h-4 w-4" /> 출석 체크</CardTitle></CardHeader>
+            <Card className="rounded-3xl border-none shadow-sm bg-card">
+              <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><CalendarCheck className="h-4 w-4 text-primary" /> 출석 체크</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-xs font-bold text-muted-foreground">연속 {userData?.attendanceStreak || 0}일</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-muted-foreground">연속 <span className="text-primary font-black">{userData?.attendanceStreak || 0}일째</span> 출석 중</span>
                   {hasCheckedInToday && <CheckCircle2 className="h-5 w-5 text-primary" />}
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleAttendance} disabled={hasCheckedInToday || isCheckingIn} className="flex-grow rounded-full font-black">
-                    {hasCheckedInToday ? "출석 완료" : "오늘의 출석"}
+                  <Button onClick={handleAttendance} disabled={hasCheckedInToday || isCheckingIn} className="flex-grow rounded-2xl font-black h-11">
+                    {hasCheckedInToday ? "출석 완료" : "오늘의 출석 체크"}
                   </Button>
                   <Dialog>
-                    <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-full"><History className="h-4 w-4" /></Button></DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader><DialogTitle>출석 내역</DialogTitle><DialogDescription>지금까지의 출석 기록입니다.</DialogDescription></DialogHeader>
+                    <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-11 w-11"><History className="h-4 w-4" /></Button></DialogTrigger>
+                    <DialogContent className="rounded-3xl">
+                      <DialogHeader>
+                        <DialogTitle>출석 내역</DialogTitle>
+                        <DialogDescription>지금까지의 성실한 기록입니다.</DialogDescription>
+                      </DialogHeader>
                       <Calendar mode="single" locale={ko} components={{
                         DayContent: ({ date }) => {
                           const isAttended = attendanceHistory?.some(l => l.date === format(date, "yyyy-MM-dd"));
-                          return <div className="relative w-full h-full flex items-center justify-center">
-                            <span>{date.getDate()}</span>{isAttended && <div className="absolute bottom-1 h-1 w-1 rounded-full bg-primary" />}
-                          </div>
+                          return (
+                            <div className="relative w-full h-full flex items-center justify-center">
+                              <span>{date.getDate()}</span>
+                              {isAttended && <div className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-primary" />}
+                            </div>
+                          )
                         }
                       }} />
                     </DialogContent>
@@ -402,34 +406,47 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="rounded-3xl border-none shadow-sm">
+            <Card className="rounded-3xl border-none shadow-sm bg-card">
               <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 명언</CardTitle></CardHeader>
-              <CardContent className="text-center">
-                <p className="text-xs italic font-medium">"{fortuneData?.fortuneText || "멋진 하루!"}"</p>
-                {fortuneData?.author && <p className="text-[10px] font-bold mt-2">- {fortuneData.author}</p>}
+              <CardContent className="text-center py-4">
+                <p className="text-xs italic font-bold text-foreground/80">"{fortuneData?.fortuneText || "멋진 하루를 만들어보세요!"}"</p>
+                {fortuneData?.author && <p className="text-[10px] font-black mt-3 text-muted-foreground">- {fortuneData.author}</p>}
               </CardContent>
             </Card>
           </div>
         </div>
 
         <div className="md:col-span-4 space-y-6">
-          <Card className="rounded-3xl border-none shadow-sm">
-            <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-4 w-4 text-green-500" /> 행운 점수</CardTitle></CardHeader>
+          <Card className="rounded-3xl border-none shadow-sm bg-card overflow-hidden">
+            <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-4 w-4 text-green-500" /> 오늘의 행운 점수</CardTitle></CardHeader>
             <CardContent>
               {personalFortuneData ? (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center"><span className="text-2xl font-black">{displayScore}점</span><Badge>{personalFortuneData.score >= 90 ? "최고!" : "좋음!"}</Badge></div>
-                  <Progress value={displayScore} className="h-2" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-2xl font-black text-primary">{displayScore}점</span>
+                    <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 text-primary">
+                      {personalFortuneData.score >= 90 ? "최고의 하루!" : personalFortuneData.score >= 75 ? "좋은 느낌!" : "보통이에요"}
+                    </Badge>
+                  </div>
+                  <Progress value={displayScore} className="h-2 bg-muted" />
                 </div>
-              ) : <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="w-full rounded-full">확인하기</Button>}
+              ) : (
+                <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="w-full rounded-2xl h-11 font-black bg-accent text-accent-foreground hover:bg-accent/90">
+                  {isGeneratingLuck ? <Loader2 className="h-4 w-4 animate-spin" /> : "내 행운 점수 확인하기"}
+                </Button>
+              )}
             </CardContent>
           </Card>
-          <Card className="rounded-3xl border-none shadow-sm">
+          <Card className="rounded-3xl border-none shadow-sm bg-card">
             <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Trophy className="h-4 w-4 text-yellow-500" /> 랭킹 TOP 10</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {topUsers?.map((u, i) => (
-                <div key={i} className={cn("flex justify-between p-2 rounded-xl text-xs", u.id === user?.uid && "bg-primary/10")}>
-                  <span className="font-bold">{i+1}. {u.nickname}</span><span className="font-black text-primary">{u.points.toLocaleString()}P</span>
+                <div key={i} className={cn("flex justify-between items-center p-3 rounded-2xl text-xs font-bold", u.id === user?.uid ? "bg-primary/10 border border-primary/20" : "bg-muted/30")}>
+                  <div className="flex items-center gap-3">
+                    <span className={cn("w-4 text-center", i < 3 ? "text-primary font-black" : "text-muted-foreground")}>{i+1}</span>
+                    <span>{u.nickname}</span>
+                  </div>
+                  <span className="font-black text-primary">{u.points.toLocaleString()} P</span>
                 </div>
               ))}
             </CardContent>

@@ -7,7 +7,6 @@ import {
   Home, 
   Gamepad2, 
   Menu, 
-  X,
   Sprout,
   ShieldCheck,
   LogOut,
@@ -112,7 +111,6 @@ export function Navbar() {
                 size="icon" 
                 className="rounded-full hover:bg-muted mr-1" 
                 onClick={toggleTheme}
-                title="테마 변경"
               >
                 {userData?.theme === 'dark' ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
               </Button>
@@ -160,8 +158,8 @@ export function Navbar() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[280px] p-0 border-none rounded-l-[2.5rem]">
-                  <SheetHeader className="p-6 pb-2">
-                    <SheetTitle className="text-left font-black flex items-center gap-2 text-primary">
+                  <SheetHeader className="p-6 pb-2 text-left">
+                    <SheetTitle className="font-black flex items-center gap-2 text-primary">
                       <div className="h-8 w-8 bg-primary rounded-xl flex items-center justify-center">
                         <BookOpen className="h-4 w-4 text-white" />
                       </div>
@@ -172,7 +170,7 @@ export function Navbar() {
                     <div className="bg-muted/30 p-4 rounded-3xl mb-4">
                       <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">나의 정보</p>
                       <p className="font-black text-sm">{userData?.nickname} 학생</p>
-                      <p className="text-[10px] opacity-60 font-bold">{userData?.schoolName} {userData?.grade}학년</p>
+                      <p className="text-[10px] opacity-60 font-bold">{userData?.schoolName} {userData?.grade}학년 {userData?.classNum}반</p>
                     </div>
                     
                     {navItems.map((item) => (

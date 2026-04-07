@@ -26,6 +26,16 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
   }
 }
 
+/** 급식 메뉴 클리닝 (레거시 로직 반영) */
+function cleanMeal(menu: string) {
+  if (!menu) return "";
+  return menu
+    .replace(/<br\/>/g, ', ')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[0-9.]/g, '')
+    .trim();
+}
+
 /** 학교 정보 검색 */
 export async function searchSchool(schoolName: string) {
   const data = await fetchNeis('schoolInfo', { SCHUL_NM: schoolName });
@@ -46,11 +56,11 @@ export async function getWeeklyMeals(officeCode: string, schoolCode: string, fro
   
   return data.mealServiceDietInfo[1].row.map((r: any) => ({
     date: r.MLSV_YMD,
-    menu: r.DDISH_NM.replace(/\([^)]*\)/g, '').replace(/[0-9.]/g, '').split('<br/>').join(', ')
+    menu: cleanMeal(r.DDISH_NM)
   }));
 }
 
-/** 주간 시간표 가져오기 */
+/** 주간 시간표 가져오기 (패딩 로직 강화) */
 export async function getWeeklyTimetable(
   officeCode: string, 
   schoolCode: string, 
@@ -64,7 +74,8 @@ export async function getWeeklyTimetable(
   if (schoolType.includes('초등')) endpoint = 'elsTimetable';
   else if (schoolType.includes('고등')) endpoint = 'hisTimetable';
   
-  const formatNum = (n: string) => n.toString().padStart(2, '0');
+  // 나이스 API 규격: 학년과 반은 반드시 2자리 숫자여야 함 (예: 01, 02)
+  const formatNum = (n: string) => n.toString().replace(/[^0-9]/g, '').padStart(2, '0');
 
   const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,

@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview 카카오톡 공유 API 헬퍼
+ * @fileOverview 카카오톡 공유 API 헬퍼 (레거시 형식 반영)
  */
 
 declare global {
@@ -12,7 +12,7 @@ declare global {
 export const initKakao = (apiKey?: string) => {
   if (typeof window === 'undefined') return false;
   
-  const finalKey = apiKey || process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY || "1074f182720545c67909372a924b23bb";
+  const finalKey = apiKey || "1074f182720545c67909372a924b23bb";
   
   if (window.Kakao && finalKey) {
     try {
@@ -29,7 +29,7 @@ export const initKakao = (apiKey?: string) => {
 };
 
 /**
- * 오늘의 급식 카카오톡 공유
+ * 오늘의 급식 카카오톡 공유 (레거시 텍스트 형식)
  */
 export const shareMealToKakao = (date: string, schoolName: string, menu: string, apiKey?: string) => {
   if (typeof window === 'undefined') return;
@@ -41,7 +41,7 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
     return;
   }
   
-  const formattedDate = `${parseInt(date.substring(4, 6))}월 ${parseInt(date.substring(6, 8))}일`;
+  const formattedDate = `${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}`;
   const menuList = menu.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
   
   try {
@@ -84,7 +84,7 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
     return;
   }
   
-  const formattedDate = `${parseInt(date.substring(4, 6))}월 ${parseInt(date.substring(6, 8))}일`;
+  const formattedDate = `${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}`;
   const tableList = timetable.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
   
   try {
