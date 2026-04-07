@@ -15,7 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Calendar } from "@/components/ui/calendar"
 import { 
@@ -36,14 +35,13 @@ import {
   Quote,
   CalendarCheck,
   History,
-  BookOpen,
   ArrowRight
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
-import { format, startOfWeek, addDays, isSameDay, addWeeks, subDays } from "date-fns"
+import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
+import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
 import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { initKakao, shareMealToKakao, shareTimetableToKakao } from "@/lib/kakao-share"
@@ -67,7 +65,6 @@ export default function DashboardPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [weekDates, setWeekDates] = useState<Date[]>([])
 
-  // 튜토리얼 관련 상태
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
 
@@ -82,16 +79,11 @@ export default function DashboardPage() {
   const { data: configData } = useDoc(configRef)
 
   useEffect(() => {
-    if (configData?.kakaoApiKey) {
-      initKakao(configData.kakaoApiKey);
-    }
+    if (configData?.kakaoApiKey) initKakao(configData.kakaoApiKey);
   }, [configData])
 
-  // 신규 가입자 튜토리얼 체크
   useEffect(() => {
-    if (userData && userData.hasCompletedTutorial === false) {
-      setShowTutorial(true)
-    }
+    if (userData && userData.hasCompletedTutorial === false) setShowTutorial(true)
   }, [userData])
 
   useEffect(() => {
@@ -102,27 +94,20 @@ export default function DashboardPage() {
   }, [weekOffset])
 
   const fetchWeeklyData = async () => {
-    if (!userData?.schoolName || !userData?.grade || !userData?.classNum || weekDates.length === 0) return;
+    if (!userData?.officeCode || !userData?.schoolCode || weekDates.length === 0) return;
     
     setIsLoadingWeekly(true)
     try {
-      const schoolInfo = await searchSchool(userData.schoolName)
-      if (schoolInfo) {
-        const officeCode = schoolInfo.ATPT_OFCDC_SC_CODE
-        const schoolCode = schoolInfo.SD_SCHUL_CODE
-        const schoolKind = userData.schoolType || schoolInfo.SCHUL_KND_NM
-        
-        const fromDate = format(weekDates[0], "yyyyMMdd")
-        const toDate = format(weekDates[4], "yyyyMMdd")
+      const fromDate = format(weekDates[0], "yyyyMMdd")
+      const toDate = format(weekDates[4], "yyyyMMdd")
 
-        const [meals, table] = await Promise.all([
-          getWeeklyMeals(officeCode, schoolCode, fromDate, toDate),
-          getWeeklyTimetable(officeCode, schoolCode, fromDate, toDate, userData.grade, userData.classNum, schoolKind)
-        ])
-        
-        setWeeklyMeals(meals || [])
-        setWeeklyTimetable(table || [])
-      }
+      const [meals, table] = await Promise.all([
+        getWeeklyMeals(userData.officeCode, userData.schoolCode, fromDate, toDate),
+        getWeeklyTimetable(userData.officeCode, userData.schoolCode, fromDate, toDate, userData.grade, userData.classNum, userData.schoolType)
+      ])
+      
+      setWeeklyMeals(meals || [])
+      setWeeklyTimetable(table || [])
     } catch (error) {
       console.error(error)
     } finally {
@@ -131,24 +116,19 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    const now = new Date()
-    setTodayStr(format(now, "yyyy-MM-dd"))
+    setTodayStr(format(new Date(), "yyyy-MM-dd"))
   }, [])
 
   useEffect(() => {
-    if (userData?.schoolName && weekDates.length > 0) {
-      fetchWeeklyData()
-    }
-  }, [userData?.schoolName, weekDates])
+    if (userData?.officeCode && weekDates.length > 0) fetchWeeklyData()
+  }, [userData?.officeCode, weekDates])
 
   const todayMeal = useMemo(() => {
-    if (!todayStr) return ""
     const today = todayStr.replace(/-/g, "")
     return weeklyMeals.find(m => m.date === today)?.menu || ""
   }, [weeklyMeals, todayStr])
 
   const todayTable = useMemo(() => {
-    if (!todayStr) return ""
     const today = todayStr.replace(/-/g, "")
     return weeklyTimetable.find(t => t.date === today)?.timetable || ""
   }, [weeklyTimetable, todayStr])
@@ -159,97 +139,49 @@ export default function DashboardPage() {
   }, [db, user])
   const { data: topUsers } = useCollection(leaderboardQuery)
 
-  const fortuneRef = useMemoFirebase(() => {
-    if (!db || !todayStr) return null
-    return doc(db, "daily_fortunes", todayStr)
-  }, [db, todayStr])
-
-  const personalFortuneRef = useMemoFirebase(() => {
-    if (!db || !user || !todayStr) return null
-    return doc(db, "users", user.uid, "personal_fortunes", todayStr)
-  }, [db, user, todayStr])
-
-  const attendanceHistoryQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "attendance_logs"), orderBy("date", "desc"))
-  }, [db, user])
-  const { data: attendanceHistory } = useCollection(attendanceHistoryQuery)
-
-  const problemRef = useMemoFirebase(() => {
-    if (!db || !userData?.grade || !todayStr) return null
-    return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
-  }, [db, userData?.grade, todayStr])
+  const fortuneRef = useMemoFirebase(() => todayStr ? doc(db, "daily_fortunes", todayStr) : null, [db, todayStr])
+  const personalFortuneRef = useMemoFirebase(() => (db && user && todayStr) ? doc(db, "users", user.uid, "personal_fortunes", todayStr) : null, [db, user, todayStr])
+  const attendanceHistoryQuery = useMemoFirebase(() => (db && user) ? query(collection(db, "users", user.uid, "attendance_logs"), orderBy("date", "desc")) : null, [db, user])
+  const problemRef = useMemoFirebase(() => (db && userData?.grade && todayStr) ? doc(db, "daily_problems", `${todayStr}_${userData.grade}`) : null, [db, userData?.grade, todayStr])
 
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: personalFortuneData } = useDoc(personalFortuneRef)
+  const { data: attendanceHistory } = useCollection(attendanceHistoryQuery)
   const { data: problemData } = useDoc(problemRef)
 
   useEffect(() => {
     if (personalFortuneData?.score) {
       let start = 0;
       const end = personalFortuneData.score;
-      const duration = 1000;
-      const stepTime = 20;
-      const totalSteps = duration / stepTime;
-      const incrementValue = end / totalSteps;
-      
       const timer = setInterval(() => {
-        start += incrementValue;
-        if (start >= end) {
-          setDisplayScore(end);
-          clearInterval(timer);
-        } else {
-          setDisplayScore(Math.floor(start));
-        }
-      }, stepTime);
-      
+        start += (end / 50);
+        if (start >= end) { setDisplayScore(end); clearInterval(timer); }
+        else { setDisplayScore(Math.floor(start)); }
+      }, 20);
       return () => clearInterval(timer);
-    } else {
-      setDisplayScore(0);
     }
   }, [personalFortuneData?.score]);
 
   const handleSolveProblem = async () => {
     if (!problemData || !userAnswer.trim() || isSolved || !userDocRef) return
-    
     if (userAnswer.trim() === problemData.answer) {
       setIsSolving(true)
       const reward = problemData.rewardPoints || configData?.pointConfig?.problemDefault || 100
       try {
-        await updateDoc(userDocRef, {
-          points: increment(reward),
-          updatedAt: serverTimestamp()
-        })
+        await updateDoc(userDocRef, { points: increment(reward), updatedAt: serverTimestamp() })
         setIsSolved(true)
-        toast({ title: "정답입니다!", description: `${reward}P가 지급되었습니다.` })
-      } catch (error) {
-        console.error(error)
-      } finally {
-        setIsSolving(false)
-      }
-    } else {
-      toast({ variant: "destructive", title: "틀렸습니다." })
-    }
+        toast({ title: "정답입니다!", description: `${reward}P 지급!` })
+      } finally { setIsSolving(false) }
+    } else toast({ variant: "destructive", title: "틀렸습니다." })
   }
 
   const handleGenerateLuckyScore = async () => {
     if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck || !todayStr) return
-    
     setIsGeneratingLuck(true)
     const randomScore = Math.floor(Math.random() * 41) + 60; 
-    
     try {
-      await setDoc(personalFortuneRef, {
-        score: randomScore,
-        date: todayStr,
-        createdAt: serverTimestamp()
-      })
-      toast({ title: "행운 점수 확인 완료!" })
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsGeneratingLuck(false)
-    }
+      await setDoc(personalFortuneRef, { score: randomScore, date: todayStr, createdAt: serverTimestamp() })
+    } finally { setIsGeneratingLuck(false) }
   }
 
   const handleAttendance = async () => {
@@ -262,53 +194,27 @@ export default function DashboardPage() {
     setIsCheckingIn(true)
     try {
       const yesterdayStr = format(subDays(new Date(), 1), "yyyy-MM-dd")
-      let newStreak = 1
-      if (userData.lastAttendanceDate === yesterdayStr) {
-        newStreak = (userData.attendanceStreak || 0) + 1
-      }
+      let newStreak = (userData.lastAttendanceDate === yesterdayStr) ? (userData.attendanceStreak || 0) + 1 : 1
+      const points = configData?.pointConfig?.dailyAttendance || 100
+      let bonus = 0
+      if (newStreak === 7) bonus = configData?.pointConfig?.streak7 || 1000
+      else if (newStreak === 30) bonus = configData?.pointConfig?.streak30 || 5000
 
-      // 포인트 설정 가져오기 (관리자 설정 우선, 없으면 기본값)
-      const dailyPoints = configData?.pointConfig?.dailyAttendance || 100
-      const streak7Bonus = configData?.pointConfig?.streak7 || 1000
-      const streak30Bonus = configData?.pointConfig?.streak30 || 5000
-
-      let bonusPoints = dailyPoints
-      let bonusMsg = `기본 출석 보상 ${dailyPoints}P 지급!`
-
-      if (newStreak === 7) {
-        bonusPoints += streak7Bonus
-        bonusMsg = `7일 연속 출석 보너스! ${dailyPoints + streak7Bonus}P 지급! 🎉`
-      } else if (newStreak === 30) {
-        bonusPoints += streak30Bonus
-        bonusMsg = `30일 연속 출석 보너스! ${dailyPoints + streak30Bonus}P 지급! 🏆`
-      }
-
-      const logRef = doc(db, "users", user.uid, "attendance_logs", todayStr)
-      await setDoc(logRef, { date: todayStr, timestamp: serverTimestamp() })
-
+      await setDoc(doc(db, "users", user.uid, "attendance_logs", todayStr), { date: todayStr, timestamp: serverTimestamp() })
       await updateDoc(userDocRef, {
-        points: increment(bonusPoints),
+        points: increment(points + bonus),
         lastAttendanceDate: todayStr,
         attendanceStreak: newStreak,
         updatedAt: serverTimestamp()
       })
-
-      toast({ title: "출석 체크 완료!", description: bonusMsg })
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setIsCheckingIn(false)
-    }
+      toast({ title: "출석 완료!", description: bonus > 0 ? `보너스 포함 ${points + bonus}P 지급!` : `${points}P 지급!` })
+    } finally { setIsCheckingIn(false) }
   }
 
   const completeTutorial = async () => {
     if (!userDocRef) return
-    await updateDoc(userDocRef, {
-      hasCompletedTutorial: true,
-      updatedAt: serverTimestamp()
-    })
+    await updateDoc(userDocRef, { hasCompletedTutorial: true, updatedAt: serverTimestamp() })
     setShowTutorial(false)
-    toast({ title: "환영합니다!", description: "이제 KST HUB를 마음껏 이용해 보세요." })
   }
 
   const handleShareMeal = (date: string, menu: string) => {
@@ -322,119 +228,60 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login")
-    }
+    if (!isUserLoading && !user) router.push("/login")
   }, [user, isUserLoading, router])
 
   if (isUserLoading || isUserDataLoading || !user) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
-            <BookOpen className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
-          </div>
-          <p className="text-sm font-black text-primary/60 animate-pulse">KST HUB 로딩 중...</p>
-        </div>
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
-  const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
-
   const tutorialSteps = [
-    {
-      title: "환영합니다! 👋",
-      description: "KST HUB에 오신 것을 환영해요. 학원 생활을 더 스마트하게 만들어 줄 핵심 기능들을 알려드릴게요.",
-      icon: <Sparkles className="h-12 w-12 text-primary" />
-    },
-    {
-      title: "출석 체크 & 포인트",
-      description: "매일 출석만 해도 포인트가 쌓여요! 연속 출석하면 엄청난 보너스 포인트도 기다리고 있답니다.",
-      icon: <CalendarCheck className="h-12 w-12 text-primary" />
-    },
-    {
-      title: "학교 생활 정보",
-      description: "오늘의 급식과 시간표를 실시간으로 확인하고 친구들에게 카카오톡으로 공유해 보세요.",
-      icon: <Utensils className="h-12 w-12 text-primary" />
-    },
-    {
-      title: "포인트 랭킹 & 명언",
-      description: "매일 올라오는 퀴즈를 맞히고 랭킹 1위에 도전해 보세요. 오늘의 명언으로 동기부여도 팍팍!",
-      icon: <Trophy className="h-12 w-12 text-yellow-500" />
-    }
+    { title: "환영합니다! 👋", description: "KST HUB에 오신 것을 환영해요.", icon: <Sparkles className="h-12 w-12 text-primary" /> },
+    { title: "출석 보상", description: "매일 출석하고 보너스 포인트를 받으세요.", icon: <CalendarCheck className="h-12 w-12 text-primary" /> },
+    { title: "학교 정보", description: "오늘의 급식과 시간표를 한눈에!", icon: <Utensils className="h-12 w-12 text-primary" /> },
+    { title: "랭킹 도전", description: "포인트를 모아 1위에 도전하세요.", icon: <Trophy className="h-12 w-12 text-yellow-500" /> }
   ]
 
+  const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
+
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-700">
-      {/* 튜토리얼 다이얼로그 */}
+    <div className="container mx-auto px-4 py-6 max-w-6xl">
       <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
-        <DialogContent className="max-w-md rounded-[2.5rem] bg-card border-none p-8">
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black text-primary">KST HUB 가이드</DialogTitle>
-            <DialogDescription className="text-sm font-medium">
-              학원 생활을 200% 즐기는 방법을 알려드려요.
-            </DialogDescription>
+            <DialogTitle>KST HUB 시작 가이드</DialogTitle>
+            <DialogDescription>앱의 주요 기능을 소개합니다.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center text-center space-y-6">
-            <div className="p-4 rounded-[2rem] bg-primary/10 animate-in zoom-in duration-500">
-              {tutorialSteps[tutorialStep].icon}
-            </div>
+            <div className="p-4 rounded-[2rem] bg-primary/10">{tutorialSteps[tutorialStep].icon}</div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-primary">{tutorialSteps[tutorialStep].title}</h2>
-              <p className="text-sm font-bold text-muted-foreground leading-relaxed">
-                {tutorialSteps[tutorialStep].description}
-              </p>
+              <h2 className="text-2xl font-black">{tutorialSteps[tutorialStep].title}</h2>
+              <p className="text-sm font-bold text-muted-foreground">{tutorialSteps[tutorialStep].description}</p>
             </div>
-            <div className="flex gap-2 w-full pt-4">
-              {tutorialStep > 0 && (
-                <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setTutorialStep(prev => prev - 1)}>
-                  이전
-                </Button>
-              )}
-              {tutorialStep < tutorialSteps.length - 1 ? (
-                <Button className="flex-[2] rounded-2xl h-12 font-black bg-primary" onClick={() => setTutorialStep(prev => prev + 1)}>
-                  다음 <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button className="flex-[2] rounded-2xl h-12 font-black bg-primary" onClick={completeTutorial}>
-                  시작하기!
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-1.5 mt-2">
-              {tutorialSteps.map((_, i) => (
-                <div key={i} className={cn("h-1.5 rounded-full transition-all", i === tutorialStep ? "w-6 bg-primary" : "w-1.5 bg-muted")} />
-              ))}
+            <div className="flex gap-2 w-full">
+              {tutorialStep > 0 && <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setTutorialStep(s => s - 1)}>이전</Button>}
+              <Button className="flex-[2] rounded-xl" onClick={() => tutorialStep < 3 ? setTutorialStep(s => s + 1) : completeTutorial()}>
+                {tutorialStep < 3 ? "다음" : "시작하기"}
+              </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-in slide-in-from-top-4 duration-500">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold font-headline tracking-tight text-foreground">반가워요, {userData?.firstName}님!</h1>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px]">
-                {userData?.schoolName} {userData?.grade}학년 {userData?.classNum}반
-              </Badge>
-              <Badge variant="secondary" className="bg-accent/10 text-accent-foreground border-none text-[10px]">
-                Lv.{(Math.floor((userData?.points || 0) / 1000)) + 1}
-              </Badge>
-            </div>
-          </div>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold">{userData?.nickname}님, 반가워요!</h1>
+          <Badge variant="secondary" className="mt-1">{userData?.schoolName} {userData?.grade}학년</Badge>
         </div>
-        <Card className="w-full md:w-auto bg-primary text-primary-foreground border-none shadow-md px-6 py-3 flex items-center justify-between md:justify-start gap-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-full">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <p className="text-[10px] opacity-80 leading-none mb-1">나의 보유 포인트</p>
-              <p className="text-xl font-black">{userData?.points?.toLocaleString() || 0} P</p>
-            </div>
+        <Card className="bg-primary text-white p-4 rounded-2xl flex items-center gap-4">
+          <Zap className="h-5 w-5" />
+          <div>
+            <p className="text-[10px] opacity-80">보유 포인트</p>
+            <p className="text-xl font-black">{userData?.points?.toLocaleString()} P</p>
           </div>
         </Card>
       </div>
@@ -442,97 +289,46 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
-              <School className="h-5 w-5" /> 우리 학교 소식
-            </h2>
+            <h2 className="text-lg font-bold flex items-center gap-2"><School className="h-5 w-5 text-primary" /> 학교 소식</h2>
             <Dialog>
-              <DialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 text-[10px] font-bold rounded-full border-primary/20 hover:bg-primary/5 text-primary"
-                  onClick={fetchWeeklyData}
-                >
-                  <Maximize2 className="h-3 w-3 mr-1" /> 이번 주 전체 보기
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-none">
+              <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 전체 보기</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                  <div className="flex items-center justify-between w-full pr-8">
-                    <DialogTitle className="flex items-center gap-2 text-foreground font-black">
-                      <CalendarDays className="h-5 w-5 text-primary" /> 주간 정보
-                    </DialogTitle>
-                    <DialogDescription className="text-xs font-medium">
-                      일주일의 학교 급식과 시간표 정보를 확인합니다.
-                    </DialogDescription>
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev - 1)}>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev + 1)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                  <DialogTitle>주간 정보</DialogTitle>
+                  <DialogDescription>이번 주 급식과 시간표입니다.</DialogDescription>
                 </DialogHeader>
-                <Tabs defaultValue="meals" className="w-full mt-4">
-                  <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1">
-                    <TabsTrigger value="meals" className="text-xs font-bold">주간 급식</TabsTrigger>
-                    <TabsTrigger value="timetable" className="text-xs font-bold">주간 시간표</TabsTrigger>
-                  </TabsList>
+                <div className="flex justify-between mb-4">
+                  <Button variant="ghost" onClick={() => setWeekOffset(w => w - 1)}><ChevronLeft /></Button>
+                  <Button variant="ghost" onClick={() => setWeekOffset(w => w + 1)}><ChevronRight /></Button>
+                </div>
+                <Tabs defaultValue="meals">
+                  <TabsList className="w-full grid grid-cols-2"><TabsTrigger value="meals">급식</TabsTrigger><TabsTrigger value="timetable">시간표</TabsTrigger></TabsList>
                   <TabsContent value="meals" className="space-y-4">
-                    {weekDates.map((date, idx) => {
-                      const dStr = format(date, "yyyyMMdd")
-                      const meal = weeklyMeals.find(m => m.date === dStr)
+                    {weekDates.map((d, i) => {
+                      const dStr = format(d, "yyyyMMdd");
+                      const meal = weeklyMeals.find(m => m.date === dStr);
                       return (
-                        <div key={idx} className="p-4 rounded-2xl border bg-muted/30">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs font-black text-muted-foreground">{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                            {meal?.menu && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleShareMeal(dStr, meal.menu)}>
-                                <Share2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                        <div key={i} className="p-4 bg-muted/30 rounded-2xl flex justify-between items-center">
+                          <div>
+                            <p className="text-xs font-black">{format(d, "MM/dd (E)", { locale: ko })}</p>
+                            <p className="text-sm font-bold mt-1">{meal?.menu || "정보 없음"}</p>
                           </div>
-                          <div className="flex flex-col gap-2">
-                            {isLoadingWeekly ? (
-                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                            ) : meal?.menu ? (
-                              meal.menu.split(',').map((item, i) => (
-                                <div key={i} className="text-xs font-bold bg-card p-2 rounded-xl border shadow-sm">
-                                  {item.trim()}
-                                </div>
-                              ))
-                            ) : (
-                              <p className="text-xs font-medium text-muted-foreground italic">정보가 없습니다.</p>
-                            )}
-                          </div>
+                          {meal && <Button variant="ghost" size="icon" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
                         </div>
                       )
                     })}
                   </TabsContent>
                   <TabsContent value="timetable" className="space-y-4">
-                    {weekDates.map((date, idx) => {
-                      const dStr = format(date, "yyyyMMdd")
-                      const table = weeklyTimetable.find(t => t.date === dStr)
+                    {weekDates.map((d, i) => {
+                      const dStr = format(d, "yyyyMMdd");
+                      const table = weeklyTimetable.find(t => t.date === dStr);
                       return (
-                        <div key={idx} className="p-4 rounded-2xl border bg-muted/30">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs font-black text-muted-foreground">{format(date, "MM.dd (EEEE)", { locale: ko })}</span>
-                            {table?.timetable && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-accent-foreground" onClick={() => handleShareTimetable(dStr, table.timetable)}>
-                                <Share2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                        <div key={i} className="p-4 bg-muted/30 rounded-2xl flex justify-between items-center">
+                          <div>
+                            <p className="text-xs font-black">{format(d, "MM/dd (E)", { locale: ko })}</p>
+                            <p className="text-xs mt-1">{table?.timetable || "정보 없음"}</p>
                           </div>
-                          <div className="flex flex-col gap-1">
-                            {isLoadingWeekly ? <div className="flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div> : table ? table.timetable.split(',').map((t, i) => (
-                              <div key={i} className="text-xs font-bold flex gap-2">
-                                <span className="text-primary w-10">{t.split(':')[0]}</span>
-                                <span>{t.split(':')[1]}</span>
-                              </div>
-                            )) : "정보가 없습니다."}
-                          </div>
+                          {table && <Button variant="ghost" size="icon" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
                         </div>
                       )
                     })}
@@ -542,212 +338,98 @@ export default function DashboardPage() {
             </Dialog>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
-                  <Utensils className="h-4 w-4 text-foreground" /> 오늘의 급식
-                </CardTitle>
-                {todayMeal && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}>
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card className="rounded-3xl border-none shadow-sm">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Utensils className="h-4 w-4" /> 오늘 급식</CardTitle>
+                {todayMeal && <Button variant="ghost" size="icon" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
               </CardHeader>
-              <CardContent className="min-h-[100px] py-4">
-                {isLoadingWeekly ? (
-                  <div className="flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
-                ) : todayMeal ? (
+              <CardContent className="min-h-[100px]">
+                {isLoadingWeekly ? <Loader2 className="animate-spin mx-auto" /> : todayMeal ? (
                   <div className="grid gap-2">
-                    {todayMeal.split(',').map((item, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
-                        <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                        <span className="text-sm font-bold leading-tight">{item.trim()}</span>
+                    {todayMeal.split(',').map((m, i) => (
+                      <div key={i} className="p-3 bg-primary/5 rounded-xl border border-primary/10 text-xs font-bold">{m.trim()}</div>
+                    ))}
+                  </div>
+                ) : <p className="text-sm text-center py-4 text-muted-foreground">급식 없음</p>}
+              </CardContent>
+            </Card>
+            <Card className="rounded-3xl border-none shadow-sm">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4" /> 오늘 시간표</CardTitle>
+                {todayTable && <Button variant="ghost" size="icon" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
+              </CardHeader>
+              <CardContent>
+                {isLoadingWeekly ? <Loader2 className="animate-spin mx-auto" /> : todayTable ? (
+                  <div className="space-y-2">
+                    {todayTable.split(',').map((t, i) => (
+                      <div key={i} className="flex gap-4 text-xs font-bold p-2 bg-muted/30 rounded-lg">
+                        <span className="text-primary">{t.split(':')[0]}</span><span>{t.split(':')[1]}</span>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm font-bold text-center text-muted-foreground italic py-8">급식 정보가 없습니다.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
-                  <Clock className="h-4 w-4 text-foreground" /> 오늘의 시간표
-                </CardTitle>
-                {todayTable && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}>
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="min-h-[100px] flex flex-col gap-2">
-                {isLoadingWeekly ? <div className="flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div> : (
-                  todayTable ? todayTable.split(',').map((t, i) => (
-                    <div key={i} className="flex gap-4 p-2 bg-muted/30 rounded-xl">
-                      <span className="text-xs font-black text-primary w-10">{t.split(':')[0]}</span>
-                      <span className="text-xs font-bold">{t.split(':')[1]}</span>
-                    </div>
-                  )) : <p className="text-sm font-bold text-center py-4">시간표 정보가 없습니다.</p>
-                )}
+                ) : <p className="text-sm text-center py-4 text-muted-foreground">시간표 없음</p>}
               </CardContent>
             </Card>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden relative">
-              <CardHeader className="p-5">
-                <CardTitle className="text-sm flex items-center gap-2 font-black text-primary">
-                  <CalendarCheck className="h-4 w-4" /> 일일 출석 체크
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-5 pt-0 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-muted-foreground">연속 출석 {userData?.attendanceStreak || 0}일째</p>
-                    <p className="text-[10px] text-muted-foreground/60 italic">7일 달성 시 보너스 {configData?.pointConfig?.streak7 || 1000}P!</p>
-                  </div>
-                  {hasCheckedInToday && <CheckCircle2 className="h-6 w-6 text-primary animate-in zoom-in" />}
+            <Card className="rounded-3xl border-none shadow-sm">
+              <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><CalendarCheck className="h-4 w-4" /> 출석 체크</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-xs font-bold text-muted-foreground">연속 {userData?.attendanceStreak || 0}일</span>
+                  {hasCheckedInToday && <CheckCircle2 className="h-5 w-5 text-primary" />}
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={handleAttendance} 
-                    disabled={hasCheckedInToday || isCheckingIn} 
-                    className={cn("flex-grow rounded-full font-black text-xs h-10 transition-all", hasCheckedInToday && "bg-muted text-muted-foreground")}
-                  >
-                    {isCheckingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : hasCheckedInToday ? "출석 완료" : "오늘의 출석 체크"}
+                  <Button onClick={handleAttendance} disabled={hasCheckedInToday || isCheckingIn} className="flex-grow rounded-full font-black">
+                    {hasCheckedInToday ? "출석 완료" : "오늘의 출석"}
                   </Button>
                   <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-10 w-10 rounded-full shrink-0 border-primary/20 text-primary hover:bg-primary/5">
-                        <History className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-md rounded-[2rem] bg-card border-none">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-primary font-black">
-                          <History className="h-5 w-5" /> 나의 출석 내역
-                        </DialogTitle>
-                        <DialogDescription className="text-xs font-medium">
-                          파란색 점으로 표시된 날짜가 출석한 날입니다.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="flex justify-center py-4">
-                        <Calendar
-                          mode="single"
-                          className="rounded-xl border-none"
-                          locale={ko}
-                          components={{
-                            DayContent: (props) => {
-                              const { date } = props
-                              const dStr = format(date, "yyyy-MM-dd")
-                              const isAttended = attendanceHistory?.some(log => log.date === dStr)
-                              return (
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                  <span>{date.getDate()}</span>
-                                  {isAttended && (
-                                    <div className="absolute bottom-1 h-1 w-1 rounded-full bg-primary" />
-                                  )}
-                                </div>
-                              )
-                            }
-                          }}
-                        />
-                      </div>
+                    <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-full"><History className="h-4 w-4" /></Button></DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>출석 내역</DialogTitle><DialogDescription>지금까지의 출석 기록입니다.</DialogDescription></DialogHeader>
+                      <Calendar mode="single" locale={ko} components={{
+                        DayContent: ({ date }) => {
+                          const isAttended = attendanceHistory?.some(l => l.date === format(date, "yyyy-MM-dd"));
+                          return <div className="relative w-full h-full flex items-center justify-center">
+                            <span>{date.getDate()}</span>{isAttended && <div className="absolute bottom-1 h-1 w-1 rounded-full bg-primary" />}
+                          </div>
+                        }
+                      }} />
                     </DialogContent>
                   </Dialog>
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-              <CardHeader className="p-5">
-                <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
-                  <Quote className="h-4 w-4 text-primary fill-primary/10" /> 오늘의 명언
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-5 pt-0">
-                <div className="text-center space-y-1">
-                  <p className="text-xs italic font-medium leading-relaxed">"{fortuneData?.fortuneText || "멋진 하루 되세요!"}"</p>
-                  {fortuneData?.author && (
-                    <p className="text-[10px] text-muted-foreground font-bold">- {fortuneData.author}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden relative">
-              <CardHeader className="p-5">
-                <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
-                  <Clover className="h-4 w-4 text-green-500" /> 오늘의 나의 행운점수🍀
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-5 pt-0">
-                {personalFortuneData ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-black text-primary">{displayScore}점</span>
-                      <Badge className="bg-primary text-white border-none">
-                        {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : "좋은 하루! 😊"}
-                      </Badge>
-                    </div>
-                    <Progress value={displayScore} className="h-2 bg-muted" />
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="rounded-full bg-primary font-black text-xs px-8">
-                      {isGeneratingLuck ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
-                      행운 점수 확인
-                    </Button>
-                  </div>
-                )}
+            <Card className="rounded-3xl border-none shadow-sm">
+              <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 명언</CardTitle></CardHeader>
+              <CardContent className="text-center">
+                <p className="text-xs italic font-medium">"{fortuneData?.fortuneText || "멋진 하루!"}"</p>
+                {fortuneData?.author && <p className="text-[10px] font-bold mt-2">- {fortuneData.author}</p>}
               </CardContent>
             </Card>
           </div>
         </div>
 
         <div className="md:col-span-4 space-y-6">
-           <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl">
-            <CardHeader className="p-5 border-b bg-muted/10">
-              <CardTitle className="text-md flex items-center gap-2 font-black text-foreground">
-                <Sparkles className="h-4 w-4 text-primary" /> 오늘의 도전 문제
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              {problemData ? (
+          <Card className="rounded-3xl border-none shadow-sm">
+            <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-4 w-4 text-green-500" /> 행운 점수</CardTitle></CardHeader>
+            <CardContent>
+              {personalFortuneData ? (
                 <div className="space-y-4">
-                  <p className="text-xs font-bold leading-relaxed">{problemData.problemText}</p>
-                  <div className="flex gap-2">
-                    <input 
-                      disabled={isSolved}
-                      value={userAnswer}
-                      onChange={(e) => setUserAnswer(e.target.value)}
-                      placeholder="정답" 
-                      className="h-9 w-full px-3 text-xs bg-card border rounded-xl"
-                    />
-                    <Button onClick={handleSolveProblem} disabled={isSolved || isSolving} size="sm" className="font-black text-[10px]">제출</Button>
-                  </div>
+                  <div className="flex justify-between items-center"><span className="text-2xl font-black">{displayScore}점</span><Badge>{personalFortuneData.score >= 90 ? "최고!" : "좋음!"}</Badge></div>
+                  <Progress value={displayScore} className="h-2" />
                 </div>
-              ) : <p className="text-xs text-center py-8">문제가 준비 중입니다.</p>}
+              ) : <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="w-full rounded-full">확인하기</Button>}
             </CardContent>
-
-            <CardHeader className="p-5 border-t border-b bg-muted/10">
-              <CardTitle className="text-md flex items-center gap-2 font-black text-foreground">
-                <Trophy className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 포인트 랭킹
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 p-5">
-              {topUsers?.map((u, index) => (
-                <div key={index} className={cn("flex items-center justify-between p-2 rounded-xl text-[11px]", u.id === user?.uid && "bg-primary/10")}>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 font-black text-muted-foreground">{index + 1}</span>
-                    <span className="font-bold">{u.nickname}</span>
-                  </div>
-                  <span className="font-black text-primary">{u.points.toLocaleString()}P</span>
+          </Card>
+          <Card className="rounded-3xl border-none shadow-sm">
+            <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Trophy className="h-4 w-4 text-yellow-500" /> 랭킹 TOP 10</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {topUsers?.map((u, i) => (
+                <div key={i} className={cn("flex justify-between p-2 rounded-xl text-xs", u.id === user?.uid && "bg-primary/10")}>
+                  <span className="font-bold">{i+1}. {u.nickname}</span><span className="font-black text-primary">{u.points.toLocaleString()}P</span>
                 </div>
               ))}
             </CardContent>

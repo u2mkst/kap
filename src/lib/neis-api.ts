@@ -4,7 +4,7 @@
  */
 
 const BASE_URL = 'https://open.neis.go.kr/hub';
-const API_KEY = process.env.NEXT_PUBLIC_NEIS_API_KEY;
+const API_KEY = process.env.NEXT_PUBLIC_NEIS_API_KEY || '19f78fd07bfb4243a6333e7bf4641bfc';
 
 async function fetchNeis(endpoint: string, params: Record<string, string>) {
   const urlParams = new URLSearchParams({
@@ -30,7 +30,7 @@ async function fetchNeis(endpoint: string, params: Record<string, string>) {
 export async function searchSchool(schoolName: string) {
   const data = await fetchNeis('schoolInfo', { SCHUL_NM: schoolName });
   if (!data?.schoolInfo) return null;
-  return data.schoolInfo[1].row[0];
+  return data.schoolInfo[1].row;
 }
 
 /** 주간 급식 정보 가져오기 */
@@ -50,7 +50,7 @@ export async function getWeeklyMeals(officeCode: string, schoolCode: string, fro
   }));
 }
 
-/** 주간 시간표 가져오기 (월~금 모든 교시 포함) */
+/** 주간 시간표 가져오기 */
 export async function getWeeklyTimetable(
   officeCode: string, 
   schoolCode: string, 
@@ -64,7 +64,6 @@ export async function getWeeklyTimetable(
   if (schoolType.includes('초등')) endpoint = 'elsTimetable';
   else if (schoolType.includes('고등')) endpoint = 'hisTimetable';
   
-  // API 규격에 맞춰 학년/반 정보를 2자리 숫자로 변환 (예: 1 -> 01)
   const formatNum = (n: string) => n.toString().padStart(2, '0');
 
   const data = await fetchNeis(endpoint, {
@@ -81,9 +80,8 @@ export async function getWeeklyTimetable(
   const rows = data[endpoint][1].row;
   if (!rows) return [];
   
-  // 날짜별로 그룹화하여 모든 교시 데이터 수집
   const grouped = rows.reduce((acc: any, curr: any) => {
-    const date = curr.ALL_TI_YMD;
+    const date = curr.ALL_TI_YMD || curr.TI_FROM_YMD;
     if (!date) return acc;
     if (!acc[date]) acc[date] = [];
     acc[date].push({ perio: curr.PERIO, content: curr.ITRT_CNTNT });

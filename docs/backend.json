@@ -14,6 +14,8 @@
         "lastName": { "type": "string" },
         "schoolType": { "type": "string", "enum": ["초등학교", "중학교", "고등학교"], "description": "Type of school for NEIS API integration." },
         "schoolName": { "type": "string" },
+        "officeCode": { "type": "string", "description": "ATPT_OFCDC_SC_CODE for NEIS API" },
+        "schoolCode": { "type": "string", "description": "SD_SCHUL_CODE for NEIS API" },
         "grade": { "type": "string" },
         "classNum": { "type": "string" },
         "teacherId": { "type": "string", "description": "The ID of the assigned teacher." },

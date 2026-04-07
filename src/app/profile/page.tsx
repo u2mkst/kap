@@ -8,34 +8,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { User, School, Save, ChevronLeft, Fingerprint, BadgeCheck, ShieldAlert, Key, Loader2, Eye, EyeOff, Users, GraduationCap, Lock } from "lucide-react"
+import { User, School, ChevronLeft, Fingerprint, BadgeCheck, Loader2, Users, GraduationCap, Search } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
-import { doc, updateDoc, serverTimestamp, setDoc, collection, deleteDoc } from "firebase/firestore"
-import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth"
+import { doc, updateDoc, serverTimestamp, collection } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { errorEmitter } from "@/firebase/error-emitter"
-import { FirestorePermissionError } from "@/firebase/errors"
+import { searchSchool } from "@/lib/neis-api"
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [adminCode, setAdminCode] = useState("")
-  const [showAdminPanel, setShowAdminPanel] = useState(false)
-  const [showCode, setShowCode] = useState(false)
-  const [deletePassword, setDeletePassword] = useState("")
+  
+  const [schoolResults, setSchoolResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -47,24 +33,14 @@ export default function ProfilePage() {
   const teachersRef = useMemoFirebase(() => collection(db, "teachers"), [db])
   const { data: teachers } = useCollection(teachersRef)
 
-  const configRef = useMemoFirebase(() => {
-    if (!user) return null
-    return doc(db, "metadata", "config")
-  }, [user, db])
-  const { data: configData } = useDoc(configRef)
-
-  const adminRef = useMemoFirebase(() => {
-    if (!user) return null
-    return doc(db, "roles_admin", user.uid)
-  }, [user, db])
-  const { data: isAdminDoc } = useDoc(adminRef)
-
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     nickname: "",
     schoolType: "",
     schoolName: "",
+    officeCode: "",
+    schoolCode: "",
     grade: "",
     classNum: "",
     teacherId: ""
@@ -78,6 +54,8 @@ export default function ProfilePage() {
         nickname: userData.nickname || "",
         schoolType: userData.schoolType || "",
         schoolName: userData.schoolName || "",
+        officeCode: userData.officeCode || "",
+        schoolCode: userData.schoolCode || "",
         grade: userData.grade || "",
         classNum: userData.classNum || "",
         teacherId: userData.teacherId || ""
@@ -85,86 +63,39 @@ export default function ProfilePage() {
     }
   }, [userData])
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login")
+  const handleSchoolSearch = async (query: string) => {
+    setFormData({...formData, schoolName: query})
+    if (query.length < 2) {
+      setSchoolResults([])
+      return
     }
-  }, [user, isUserLoading, router])
+    setIsSearching(true)
+    try {
+      const results = await searchSchool(query)
+      setSchoolResults(results || [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const selectSchool = (s: any) => {
+    setFormData({
+      ...formData,
+      schoolName: s.SCHUL_NM,
+      officeCode: s.ATPT_OFCDC_SC_CODE,
+      schoolCode: s.SD_SCHUL_CODE
+    })
+    setSchoolResults([])
+  }
 
   const handleUpdate = () => {
     if (!user || !userDocRef) return
     setIsLoading(true)
-    const updateData = { ...formData, updatedAt: serverTimestamp() }
-    updateDoc(userDocRef, updateData)
+    updateDoc(userDocRef, { ...formData, updatedAt: serverTimestamp() })
       .then(() => toast({ title: "정보 수정 완료" }))
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: userDocRef.path,
-          operation: 'update',
-          requestResourceData: updateData
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
       .finally(() => setIsLoading(false))
-  }
-
-  const handleClaimAdmin = () => {
-    if (!user || !configData) return
-    const secret = configData.adminSecret || "ufes-admin-777"
-    if (adminCode === secret) {
-      setIsLoading(true)
-      const targetAdminRef = doc(db, "roles_admin", user.uid)
-      const claimData = { grantedViaCode: true, grantedAt: serverTimestamp() }
-      setDoc(targetAdminRef, claimData)
-        .then(() => {
-          toast({ title: "관리자 권한 획득!", description: "이제 시스템 관리가 가능합니다." })
-          setAdminCode("")
-          setShowAdminPanel(false)
-        })
-        .finally(() => setIsLoading(false))
-    } else {
-      toast({ variant: "destructive", title: "코드가 일치하지 않습니다." })
-    }
-  }
-
-  const handleDeleteAccount = async () => {
-    if (!user || !userDocRef || !deletePassword) return
-    setIsLoading(true)
-    try {
-      // 1. 재인증 (삭제를 위해서는 최근 로그인이 필요함)
-      const email = user.email
-      if (!email) throw new Error("이메일 정보를 찾을 수 없습니다.")
-      
-      const credential = EmailAuthProvider.credential(email, deletePassword)
-      await reauthenticateWithCredential(user, credential)
-
-      // 2. Firestore 데이터 삭제
-      await deleteDoc(userDocRef)
-      
-      // 3. Auth 계정 삭제
-      await deleteUser(user)
-      
-      toast({ title: "계정 삭제 완료", description: "그동안 이용해주셔서 감사합니다." })
-      router.push("/")
-    } catch (error: any) {
-      console.error(error)
-      let message = "오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-      
-      if (error.code === 'auth/wrong-password') {
-        message = "비밀번호가 일치하지 않습니다."
-      } else if (error.code === 'auth/too-many-requests') {
-        message = "너무 많은 시도가 있었습니다. 잠시 후 다시 시도해 주세요."
-      }
-      
-      toast({ 
-        variant: "destructive", 
-        title: "삭제 실패", 
-        description: message 
-      })
-    } finally {
-      setIsLoading(false)
-      setDeletePassword("")
-    }
   }
 
   if (isUserLoading || isUserDataLoading) {
@@ -187,85 +118,46 @@ export default function ProfilePage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold font-headline">마이페이지</h1>
-          <p className="text-muted-foreground text-sm">개인 정보 및 담당 선생님을 관리합니다.</p>
+          <p className="text-muted-foreground text-sm">개인 정보 및 학교 정보를 관리합니다.</p>
         </div>
       </div>
 
       <div className="space-y-6">
-        <Card className="border-none shadow-sm bg-white dark:bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" /> 기본 정보
-            </CardTitle>
-          </CardHeader>
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><User className="h-5 w-5" /> 기본 정보</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 opacity-70">
-                <Fingerprint className="h-4 w-4" /> 학원 아이디 (변경 불가)
-              </Label>
+              <Label className="flex items-center gap-1.5 opacity-70"><Fingerprint className="h-4 w-4" /> 아이디 (변경 불가)</Label>
               <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg border border-dashed">
                 <span className="font-mono text-sm font-bold text-muted-foreground">{userData?.username}</span>
                 <BadgeCheck className="h-4 w-4 text-primary ml-auto" />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label>라운지 닉네임</Label>
+              <Label>닉네임</Label>
               <Input value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>성</Label>
-                <Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <Label>이름</Label>
-                <Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
-              </div>
+              <div className="space-y-2"><Label>성</Label><Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} /></div>
+              <div className="space-y-2"><Label>이름</Label><Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} /></div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white dark:bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" /> 담당 선생님 관리
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select 
-              value={formData.teacherId} 
-              onValueChange={(val) => setFormData({...formData, teacherId: val})}
-            >
-              <SelectTrigger className="w-full h-11">
-                <SelectValue placeholder="담당 선생님을 선택하세요" />
-              </SelectTrigger>
-              <SelectContent>
-                {teachers?.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name} 선생님</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white dark:bg-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <School className="h-5 w-5 text-primary" /> 학교 정보 설정
-            </CardTitle>
-          </CardHeader>
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><School className="h-5 w-5" /> 학교 및 선생님</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> 학교급</Label>
-              <Select 
-                value={formData.schoolType} 
-                onValueChange={(val) => setFormData({...formData, schoolType: val})}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="학교 종류 선택" />
-                </SelectTrigger>
+              <Label>담당 선생님</Label>
+              <Select value={formData.teacherId} onValueChange={(val) => setFormData({...formData, teacherId: val})}>
+                <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                <SelectContent>{teachers?.map(t => <SelectItem key={t.id} value={t.id}>{t.name} 선생님</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>학교급</Label>
+              <Select value={formData.schoolType} onValueChange={(val) => setFormData({...formData, schoolType: val})}>
+                <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="초등학교">초등학교</SelectItem>
                   <SelectItem value="중학교">중학교</SelectItem>
@@ -273,19 +165,25 @@ export default function ProfilePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>학교 이름</Label>
-              <Input placeholder="예: 서울고등학교" value={formData.schoolName} onChange={(e) => setFormData({...formData, schoolName: e.target.value})} />
+            <div className="space-y-2 relative">
+              <Label>학교 검색</Label>
+              <div className="relative">
+                <Input value={formData.schoolName} onChange={(e) => handleSchoolSearch(e.target.value)} placeholder="학교 이름" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">{isSearching && <Loader2 className="h-3 w-3 animate-spin" />}</div>
+              </div>
+              {schoolResults.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-card border rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                  {schoolResults.map((s, i) => (
+                    <div key={i} className="p-3 text-xs font-bold hover:bg-muted cursor-pointer" onClick={() => selectSchool(s)}>
+                      {s.SCHUL_NM} ({s.LCTN_SC_NM})
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>학년</Label>
-                <Input value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <Label>반</Label>
-                <Input value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} />
-              </div>
+              <div className="space-y-2"><Label>학년</Label><Input value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} /></div>
+              <div className="space-y-2"><Label>반</Label><Input value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} /></div>
             </div>
           </CardContent>
         </Card>
@@ -293,94 +191,6 @@ export default function ProfilePage() {
         <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-12 text-lg font-bold">
           {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "변경 사항 저장"}
         </Button>
-
-        <div className="pt-10 space-y-4">
-          {!isAdminDoc && (
-            <div>
-              {!showAdminPanel ? (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full text-muted-foreground hover:bg-transparent text-[10px]"
-                  onClick={() => setShowAdminPanel(true)}
-                >
-                  권한 획득이 필요하신가요?
-                </Button>
-              ) : (
-                <Card className="border-2 border-dashed border-destructive/20 bg-destructive/5 animate-in fade-in duration-300">
-                  <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                      <ShieldAlert className="h-4 w-4" /> 관리자 코드 인증
-                    </CardTitle>
-                    <Button variant="ghost" size="sm" onClick={() => setShowAdminPanel(false)}>닫기</Button>
-                  </CardHeader>
-                  <CardContent className="flex gap-2">
-                    <div className="relative flex-grow">
-                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                      <Input 
-                        type={showCode ? "text" : "password"}
-                        placeholder="Admin Code" 
-                        value={adminCode}
-                        onChange={(e) => setAdminCode(e.target.value)}
-                        className="pl-8 h-9 text-xs"
-                      />
-                      <button 
-                        onClick={() => setShowCode(!showCode)} 
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        {showCode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                      </button>
-                    </div>
-                    <Button size="sm" variant="destructive" onClick={handleClaimAdmin} disabled={isLoading}>
-                      인증
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-
-          <div className="flex justify-center">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="link" className="text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors">
-                  계정 탈퇴 (서비스 종료)
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="rounded-3xl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>정말 탈퇴하시겠습니까?</AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-4">
-                    <span>탈퇴 시 모든 학습 포인트, 정원 데이터, 문의 내역이 영구적으로 삭제되며 복구할 수 없습니다.</span>
-                    <div className="mt-4 space-y-2 text-left">
-                      <Label className="text-xs font-bold ml-1">본인 확인을 위해 비밀번호를 입력해 주세요.</Label>
-                      <Input 
-                        type="password" 
-                        placeholder="비밀번호 입력" 
-                        value={deletePassword}
-                        onChange={(e) => setDeletePassword(e.target.value)}
-                        className="rounded-xl border-muted-foreground/20"
-                      />
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="rounded-xl" onClick={() => setDeletePassword("")}>취소</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleDeleteAccount();
-                    }} 
-                    disabled={isLoading || !deletePassword}
-                    className="bg-destructive text-white rounded-xl hover:bg-destructive/90"
-                  >
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "계정 삭제 확인"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
       </div>
     </div>
   )
