@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview 카카오톡 공유 API 헬퍼 (사용자 제공 레거시 텍스트 형식 반영)
+ * @fileOverview 카카오톡 공유 API 헬퍼 (사용자 요청 커스텀 포맷 반영)
  */
 
 declare global {
@@ -29,7 +29,7 @@ export const initKakao = (apiKey?: string) => {
 };
 
 /**
- * 오늘의 급식 카카오톡 공유 (사용자 제공 레거시 텍스트 형식)
+ * 오늘의 급식 카카오톡 공유 (커스텀 텍스트 형식)
  */
 export const shareMealToKakao = (date: string, schoolName: string, menu: string, apiKey?: string) => {
   if (typeof window === 'undefined') return;
@@ -41,23 +41,29 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
     return;
   }
   
-  const formattedDate = `${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}`;
-  const menuList = menu.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
+  // 날짜 형식: 20260325 -> 3월 25일
+  const month = parseInt(date.substring(4, 6));
+  const day = parseInt(date.substring(6, 8));
+  const formattedDate = `${month}월 ${day}일`;
+  
+  // 급식 리스트: 앞에 점 없이 나열
+  const menuList = menu.split(',').map(item => item.trim()).filter(Boolean).join('\n');
+  const siteUrl = window.location.origin;
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'text',
-      text: `${schoolName}\n${formattedDate} 급식 🍱\n\n${menuList}`,
+      text: `${schoolName}\n${formattedDate} 급식 🍱\n\n${menuList}\n\n🔗 ${siteUrl}`,
       link: {
-        mobileWebUrl: window.location.origin + '/dashboard',
-        webUrl: window.location.origin + '/dashboard',
+        mobileWebUrl: siteUrl + '/dashboard',
+        webUrl: siteUrl + '/dashboard',
       },
       buttons: [
         {
           title: 'KST HUB에서 보기',
           link: {
-            mobileWebUrl: window.location.origin + '/dashboard',
-            webUrl: window.location.origin + '/dashboard',
+            mobileWebUrl: siteUrl + '/dashboard',
+            webUrl: siteUrl + '/dashboard',
           },
         },
       ],
@@ -68,7 +74,7 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
 };
 
 /**
- * 시간표 카카오톡 공유
+ * 시간표 카카오톡 공유 (커스텀 텍스트 형식)
  */
 export const shareTimetableToKakao = (date: string, schoolName: string, grade: string, classNum: string, timetable: string, apiKey?: string) => {
   if (typeof window === 'undefined') return;
@@ -80,23 +86,36 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
     return;
   }
   
-  const formattedDate = `${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}`;
-  const tableList = timetable.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
+  // 날짜 형식: 20260325 -> 3월 25일
+  const month = parseInt(date.substring(4, 6));
+  const day = parseInt(date.substring(6, 8));
+  const formattedDate = `${month}월 ${day}일`;
+  
+  // 시간표 리스트: "1교시 | 수학" 형식
+  const tableList = timetable.split(',').map(item => {
+    const cleanItem = item.trim();
+    if (cleanItem.includes(':')) {
+      return cleanItem.replace(':', ' | ');
+    }
+    return cleanItem;
+  }).filter(Boolean).join('\n');
+  
+  const siteUrl = window.location.origin;
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'text',
-      text: `${schoolName}\n${formattedDate} 시간표 (${grade}-${classNum})\n\n${tableList}`,
+      text: `${schoolName}\n${formattedDate} 시간표 (${grade}-${classNum})\n\n${tableList}\n\n🔗 ${siteUrl}`,
       link: {
-        mobileWebUrl: window.location.origin + '/dashboard',
-        webUrl: window.location.origin + '/dashboard',
+        mobileWebUrl: siteUrl + '/dashboard',
+        webUrl: siteUrl + '/dashboard',
       },
       buttons: [
         {
           title: 'KST HUB에서 보기',
           link: {
-            mobileWebUrl: window.location.origin + '/dashboard',
-            webUrl: window.location.origin + '/dashboard',
+            mobileWebUrl: siteUrl + '/dashboard',
+            webUrl: siteUrl + '/dashboard',
           },
         },
       ],
