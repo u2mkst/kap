@@ -271,18 +271,22 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div>
-          <h1 className="text-2xl font-bold">{userData?.nickname || "학생"}님, 반가워요!</h1>
-          <Badge variant="secondary" className="mt-1">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-primary leading-tight">
+            {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
+          </h1>
+          <Badge variant="secondary" className="mt-3 px-3 py-1 text-xs font-bold rounded-full">
             {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
           </Badge>
         </div>
-        <Card className="bg-primary text-white p-4 rounded-2xl flex items-center gap-4 shadow-lg">
-          <Zap className="h-5 w-5" />
+        <Card className="bg-primary text-white p-5 rounded-3xl flex items-center gap-4 shadow-xl border-none w-full sm:w-auto">
+          <div className="p-3 bg-white/20 rounded-2xl">
+            <Zap className="h-6 w-6 text-white" />
+          </div>
           <div>
-            <p className="text-[10px] opacity-80 uppercase font-black">Points</p>
-            <p className="text-xl font-black">{userData?.points?.toLocaleString() || 0} P</p>
+            <p className="text-[10px] opacity-80 uppercase font-black tracking-widest">Available Points</p>
+            <p className="text-2xl font-black tabular-nums">{userData?.points?.toLocaleString() || 0} P</p>
           </div>
         </Card>
       </div>
@@ -290,202 +294,234 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold flex items-center gap-2"><School className="h-5 w-5 text-primary" /> 학교 소식</h2>
+            <h2 className="text-xl font-black flex items-center gap-2 text-foreground/80"><School className="h-6 w-6 text-primary" /> 학교 소식</h2>
             <Dialog>
-              <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 전체 보기</Button></DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-3xl">
-                <DialogHeader>
-                  <DialogTitle>주간 정보</DialogTitle>
-                  <DialogDescription>이번 주 급식과 시간표입니다.</DialogDescription>
-                </DialogHeader>
-                <div className="flex justify-between mb-4">
-                  <Button variant="ghost" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full"><ChevronLeft /></Button>
-                  <Button variant="ghost" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full"><ChevronRight /></Button>
+              <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full font-bold" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 자세히 보기</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-0">
+                <div className="p-6 border-b">
+                  <DialogTitle className="text-xl font-black">주간 정보 가이드</DialogTitle>
+                  <DialogDescription className="text-xs font-medium">이번 주 우리 학교의 급식과 시간표를 확인하세요.</DialogDescription>
                 </div>
-                <Tabs defaultValue="meals">
-                  <TabsList className="w-full grid grid-cols-2 p-1 bg-muted/50 rounded-2xl">
-                    <TabsTrigger value="meals" className="rounded-xl">급식</TabsTrigger>
-                    <TabsTrigger value="timetable" className="rounded-xl">시간표</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="meals" className="space-y-4 pt-4">
-                    {weekDates.map((d, i) => {
-                      const dStr = format(d, "yyyyMMdd");
-                      const meal = weeklyMeals.find(m => m.date === dStr);
-                      return (
-                        <div key={i} className="p-4 bg-muted/30 rounded-2xl flex justify-between items-center">
-                          <div className="flex-grow">
-                            <p className="text-xs font-black text-primary">{format(d, "MM/dd (E)", { locale: ko })}</p>
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {meal ? meal.menu.split(',').map((m, idx) => (
-                                <Badge key={idx} variant="outline" className="text-[10px] bg-white/50 border-primary/10">{m.trim()}</Badge>
-                              )) : <span className="text-sm font-bold opacity-40">정보 없음</span>}
+                <div className="p-4 bg-muted/20 flex justify-between items-center gap-4">
+                  <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full h-10 w-10 p-0"><ChevronLeft /></Button>
+                  <span className="text-sm font-black text-primary">{format(weekDates[0], "yyyy.MM.dd")} ~ {format(weekDates[4], "MM.dd")}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full h-10 w-10 p-0"><ChevronRight /></Button>
+                </div>
+                <div className="flex-grow overflow-y-auto p-6 pt-2">
+                  <Tabs defaultValue="meals">
+                    <TabsList className="w-full grid grid-cols-2 p-1 bg-muted/50 rounded-2xl mb-6">
+                      <TabsTrigger value="meals" className="rounded-xl font-black py-2">🍱 주간 급식</TabsTrigger>
+                      <TabsTrigger value="timetable" className="rounded-xl font-black py-2">📚 주간 시간표</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="meals" className="space-y-4">
+                      {weekDates.map((d, i) => {
+                        const dStr = format(d, "yyyyMMdd");
+                        const meal = weeklyMeals.find(m => m.date === dStr);
+                        return (
+                          <div key={i} className="p-5 bg-card border rounded-3xl flex justify-between items-start gap-4 transition-all hover:border-primary/30 group">
+                            <div className="flex-grow">
+                              <p className="text-xs font-black text-primary mb-3 bg-primary/5 w-fit px-3 py-1 rounded-full">{format(d, "MM/dd (E)", { locale: ko })}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {meal ? meal.menu.split(',').map((m, idx) => (
+                                  <div key={idx} className="text-xs font-bold px-3 py-1.5 bg-muted/30 rounded-xl border border-transparent group-hover:border-primary/10 transition-colors">{m.trim()}</div>
+                                )) : <span className="text-sm font-bold opacity-30 italic py-2 px-1">등록된 급식 정보가 없습니다.</span>}
+                              </div>
+                            </div>
+                            {meal && <Button variant="ghost" size="icon" className="rounded-full mt-1 shrink-0" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
+                          </div>
+                        )
+                      })}
+                    </TabsContent>
+                    <TabsContent value="timetable" className="space-y-4">
+                      {weekDates.map((d, i) => {
+                        const dStr = format(d, "yyyyMMdd");
+                        const table = weeklyTimetable.find(t => t.date === dStr);
+                        const sorted = table ? getSortedTable(table.timetable) : [];
+                        return (
+                          <div key={i} className="p-5 bg-card border rounded-3xl transition-all hover:border-primary/30">
+                            <div className="flex justify-between items-center mb-4">
+                              <p className="text-xs font-black text-primary bg-primary/5 px-3 py-1 rounded-full">{format(d, "MM/dd (E)", { locale: ko })}</p>
+                              {table && <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                              {sorted.length > 0 ? sorted.map((t, idx) => {
+                                const [p, c] = t.split(':');
+                                return (
+                                  <div key={idx} className="bg-muted/20 p-2 rounded-2xl border border-transparent flex flex-col items-center gap-1 group-hover:bg-muted/40 transition-colors">
+                                    <span className="text-[9px] font-black text-primary/50">{p}</span>
+                                    <span className="text-xs font-black text-center truncate w-full">{c}</span>
+                                  </div>
+                                )
+                              }) : <p className="col-span-full text-xs text-center py-6 font-bold opacity-30 italic">시간표 정보가 없습니다.</p>}
                             </div>
                           </div>
-                          {meal && <Button variant="ghost" size="icon" className="rounded-full ml-2" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
-                        </div>
-                      )
-                    })}
-                  </TabsContent>
-                  <TabsContent value="timetable" className="space-y-4 pt-4">
-                    {weekDates.map((d, i) => {
-                      const dStr = format(d, "yyyyMMdd");
-                      const table = weeklyTimetable.find(t => t.date === dStr);
-                      const sorted = table ? getSortedTable(table.timetable) : [];
-                      return (
-                        <div key={i} className="p-4 bg-muted/30 rounded-2xl">
-                          <div className="flex justify-between items-center mb-3">
-                            <p className="text-xs font-black text-primary">{format(d, "MM/dd (E)", { locale: ko })}</p>
-                            {table && <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
-                          </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {sorted.length > 0 ? sorted.map((t, idx) => {
-                              const [p, c] = t.split(':');
-                              return (
-                                <div key={idx} className="bg-background/50 p-2 rounded-xl border border-primary/5 flex flex-col items-center">
-                                  <span className="text-[9px] font-black text-primary/60">{p}</span>
-                                  <span className="text-xs font-black truncate w-full text-center">{c}</span>
-                                </div>
-                              )
-                            }) : <p className="col-span-full text-xs text-center py-4 font-bold opacity-40 italic">시간표 정보가 없습니다.</p>}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </TabsContent>
-                </Tabs>
+                        )
+                      })}
+                    </TabsContent>
+                  </Tabs>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-card">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Utensils className="h-4 w-4 text-primary" /> 오늘 급식</CardTitle>
                 {todayMeal && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
               </CardHeader>
-              <CardContent className="min-h-[120px]">
+              <CardContent className="min-h-[140px]">
                 {isLoadingWeekly ? (
-                  <div className="flex justify-center items-center h-20"><Loader2 className="animate-spin text-primary" /></div>
+                  <div className="flex flex-col justify-center items-center h-24 gap-2">
+                    <Loader2 className="animate-spin text-primary h-6 w-6" />
+                    <span className="text-[10px] font-bold text-muted-foreground">정보를 가져오는 중...</span>
+                  </div>
                 ) : todayMeal ? (
                   <div className="grid gap-2">
                     {todayMeal.split(',').map((m, i) => (
-                      <div key={i} className="p-3 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-primary">{m.trim()}</div>
+                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-primary transition-all hover:bg-primary/10">{m.trim()}</div>
                     ))}
                   </div>
-                ) : <p className="text-sm text-center py-8 text-muted-foreground font-bold italic">급식 정보가 없습니다.</p>}
+                ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Utensils className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">급식 정보가 없습니다.</p></div>}
               </CardContent>
             </Card>
-            <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-card">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> 오늘 시간표</CardTitle>
                 {todayTable && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
               </CardHeader>
               <CardContent>
                 {isLoadingWeekly ? (
-                  <div className="flex justify-center items-center h-20"><Loader2 className="animate-spin text-primary" /></div>
+                  <div className="flex flex-col justify-center items-center h-24 gap-2">
+                    <Loader2 className="animate-spin text-primary h-6 w-6" />
+                    <span className="text-[10px] font-bold text-muted-foreground">정보를 가져오는 중...</span>
+                  </div>
                 ) : todayTable ? (
                   <div className="space-y-2">
                     {getSortedTable(todayTable).map((t, i) => {
                       const [perio, content] = t.split(':');
                       return (
                         <div key={i} className="flex items-center gap-4 text-xs font-bold p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
-                          <span className="text-primary w-10">{perio}</span>
-                          <span className="text-foreground">{content}</span>
+                          <span className="text-primary w-10 text-[10px] font-black">{perio}</span>
+                          <span className="text-foreground tracking-tight">{content}</span>
                         </div>
                       )
                     })}
                   </div>
-                ) : <p className="text-sm text-center py-8 text-muted-foreground font-bold italic">시간표 정보가 없습니다.</p>}
+                ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Clock className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">시간표 정보가 없습니다.</p></div>}
               </CardContent>
             </Card>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="rounded-3xl border-none shadow-sm bg-card">
-              <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><CalendarCheck className="h-4 w-4 text-primary" /> 출석 체크</CardTitle></CardHeader>
+            <Card className="rounded-[2rem] border-none shadow-sm bg-card overflow-hidden">
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><CalendarCheck className="h-4 w-4 text-primary" /> 출석 체크</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-muted-foreground">연속 <span className="text-primary font-black">{userData?.attendanceStreak || 0}일째</span> 출석 중</span>
-                  {hasCheckedInToday && <CheckCircle2 className="h-5 w-5 text-primary" />}
+                <div className="flex justify-between items-center bg-muted/30 p-3 rounded-2xl">
+                  <span className="text-xs font-bold text-muted-foreground">연속 <span className="text-primary font-black text-base">{userData?.attendanceStreak || 0}일째</span> 출석 중 🔥</span>
+                  {hasCheckedInToday && <CheckCircle2 className="h-6 w-6 text-primary animate-in zoom-in" />}
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleAttendance} disabled={hasCheckedInToday || isCheckingIn} className="flex-grow rounded-2xl font-black h-11">
-                    {hasCheckedInToday ? "출석 완료" : "오늘의 출석 체크"}
+                  <Button onClick={handleAttendance} disabled={hasCheckedInToday || isCheckingIn} className="flex-grow rounded-2xl font-black h-12 shadow-md">
+                    {hasCheckedInToday ? "오늘 출석 완료 ✨" : "오늘의 출석 체크"}
                   </Button>
                   <Dialog>
-                    <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-11 w-11"><History className="h-4 w-4" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl max-w-sm">
-                      <DialogHeader>
-                        <DialogTitle>출석 내역</DialogTitle>
-                        <DialogDescription>지금까지의 성실한 기록입니다.</DialogDescription>
-                      </DialogHeader>
-                      <div className="p-2 bg-muted/20 rounded-2xl">
-                        <Calendar 
-                          mode="single" 
-                          locale={ko} 
-                          className="mx-auto"
-                          components={{
-                            DayContent: ({ date }) => {
-                              const dStr = format(date, "yyyy-MM-dd");
-                              const isAttended = attendanceHistory?.some(l => l.date === dStr);
-                              return (
-                                <div className="relative w-full h-full flex items-center justify-center p-0.5">
-                                  <span className={cn("text-xs z-10", isAttended && "font-black")}>{date.getDate()}</span>
-                                  {isAttended && (
-                                    <div className="absolute inset-0 m-auto h-7 w-7 rounded-full bg-primary/10 border border-primary/20" />
-                                  )}
-                                </div>
-                              )
-                            }
-                          }} 
-                        />
+                    <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-12 w-12 border-muted hover:bg-muted/50"><History className="h-5 w-5" /></Button></DialogTrigger>
+                    <DialogContent className="rounded-[2rem] max-w-[90vw] sm:max-w-sm p-0 overflow-hidden border-none shadow-2xl">
+                      <div className="p-6 border-b bg-card">
+                        <DialogTitle className="text-lg font-black flex items-center gap-2"><History className="h-5 w-5 text-primary" /> 출석 히스토리</DialogTitle>
+                        <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
+                      </div>
+                      <div className="p-4 flex flex-col items-center bg-muted/10">
+                        <div className="bg-white p-2 rounded-3xl shadow-sm border w-full max-w-full overflow-hidden flex justify-center">
+                          <Calendar 
+                            mode="single" 
+                            locale={ko} 
+                            className="mx-auto"
+                            components={{
+                              DayContent: ({ date }) => {
+                                const dStr = format(date, "yyyy-MM-dd");
+                                const isAttended = attendanceHistory?.some(l => l.date === dStr);
+                                return (
+                                  <div className="relative w-full h-full flex items-center justify-center p-0.5">
+                                    <span className={cn("text-xs z-10", isAttended && "font-black text-primary")}>{date.getDate()}</span>
+                                    {isAttended && (
+                                      <div className="absolute inset-0 m-auto h-7 w-7 rounded-full bg-primary/10 border border-primary/20 animate-in fade-in" />
+                                    )}
+                                  </div>
+                                )
+                              }
+                            }} 
+                          />
+                        </div>
+                        <div className="flex gap-4 mt-4 text-[10px] font-black opacity-60">
+                          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary/20 border border-primary/30" /> 출석 완료</div>
+                        </div>
                       </div>
                     </DialogContent>
                   </Dialog>
                 </div>
               </CardContent>
             </Card>
-            <Card className="rounded-3xl border-none shadow-sm bg-card">
-              <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 명언</CardTitle></CardHeader>
-              <CardContent className="text-center py-4">
-                <p className="text-xs italic font-bold text-foreground/80">"{fortuneData?.fortuneText || "멋진 하루를 만들어보세요!"}"</p>
-                {fortuneData?.author && <p className="text-[10px] font-black mt-3 text-muted-foreground">- {fortuneData.author}</p>}
+            <Card className="rounded-[2rem] border-none shadow-sm bg-card overflow-hidden">
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 오늘의 명언</CardTitle></CardHeader>
+              <CardContent className="text-center py-6 flex flex-col items-center justify-center h-full min-h-[140px] px-6">
+                <div className="relative">
+                  <Quote className="absolute -top-4 -left-4 h-8 w-8 text-primary/5 rotate-180" />
+                  <p className="text-sm italic font-black text-foreground/80 leading-relaxed z-10 relative">"{fortuneData?.fortuneText || "꿈을 향해 한 걸음 더 나아가는 하루 되세요!"}"</p>
+                  <Quote className="absolute -bottom-4 -right-4 h-8 w-8 text-primary/5" />
+                </div>
+                {fortuneData?.author && <p className="text-[10px] font-black mt-5 text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">- {fortuneData.author}</p>}
               </CardContent>
             </Card>
           </div>
         </div>
 
         <div className="md:col-span-4 space-y-6">
-          <Card className="rounded-3xl border-none shadow-sm bg-card overflow-hidden">
-            <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-4 w-4 text-green-500" /> 오늘의 행운 점수</CardTitle></CardHeader>
-            <CardContent>
+          <Card className="rounded-[2rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:-translate-y-1">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-5 w-5 text-green-500" /> 오늘의 행운 점수</CardTitle></CardHeader>
+            <CardContent className="p-6">
               {personalFortuneData ? (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-black text-primary">{displayScore}점</span>
-                    <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 text-primary">
-                      {personalFortuneData.score >= 90 ? "최고의 하루!" : personalFortuneData.score >= 75 ? "좋은 느낌!" : "보통이에요"}
+                <div className="space-y-5">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="text-4xl font-black text-primary tracking-tighter">{displayScore}</span>
+                      <span className="text-sm font-black text-primary/60 ml-1">점</span>
+                    </div>
+                    <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 text-primary text-[10px] font-black py-1 px-3 mb-1">
+                      {personalFortuneData.score >= 90 ? "최고의 하루! ✨" : personalFortuneData.score >= 75 ? "좋은 느낌! 👍" : "보통이에요 🙂"}
                     </Badge>
                   </div>
-                  <Progress value={displayScore} className="h-2 bg-muted" />
+                  <div className="relative">
+                    <Progress value={displayScore} className="h-3 bg-muted rounded-full" />
+                    <div className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                  </div>
                 </div>
               ) : (
-                <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="w-full rounded-2xl h-11 font-black bg-accent text-accent-foreground hover:bg-accent/90">
-                  {isGeneratingLuck ? <Loader2 className="h-4 w-4 animate-spin" /> : "내 행운 점수 확인하기"}
+                <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="w-full rounded-2xl h-12 font-black bg-accent text-accent-foreground hover:bg-accent/90 shadow-md">
+                  {isGeneratingLuck ? <Loader2 className="h-5 w-5 animate-spin" /> : "내 행운 점수 확인하기 🍀"}
                 </Button>
               )}
             </CardContent>
           </Card>
-          <Card className="rounded-3xl border-none shadow-sm bg-card">
-            <CardHeader><CardTitle className="text-sm font-black flex items-center gap-2"><Trophy className="h-4 w-4 text-yellow-500" /> 랭킹 TOP 10</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
+          <Card className="rounded-[2rem] border-none shadow-sm bg-card overflow-hidden">
+            <CardHeader className="border-b bg-muted/10 py-4"><CardTitle className="text-sm font-black flex items-center gap-2"><Trophy className="h-5 w-5 text-yellow-500" /> 랭킹 TOP 10</CardTitle></CardHeader>
+            <CardContent className="p-4 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
               {topUsers?.map((u, i) => (
-                <div key={i} className={cn("flex justify-between items-center p-3 rounded-2xl text-xs font-bold", u.id === user?.uid ? "bg-primary/10 border border-primary/20" : "bg-muted/30")}>
+                <div key={i} className={cn(
+                  "flex justify-between items-center p-3.5 rounded-2xl text-xs font-bold transition-all", 
+                  u.id === user?.uid ? "bg-primary text-white shadow-lg scale-[1.02]" : "bg-muted/30 hover:bg-muted/50"
+                )}>
                   <div className="flex items-center gap-3">
-                    <span className={cn("w-4 text-center", i < 3 ? "text-primary font-black" : "text-muted-foreground")}>{i+1}</span>
-                    <span>{u.nickname}</span>
+                    <span className={cn(
+                      "w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black", 
+                      i === 0 ? "bg-yellow-400 text-yellow-900" : 
+                      i === 1 ? "bg-slate-300 text-slate-700" : 
+                      i === 2 ? "bg-orange-300 text-orange-800" : "bg-muted-foreground/20 text-muted-foreground"
+                    )}>{i+1}</span>
+                    <span className="tracking-tight">{u.nickname}</span>
                   </div>
-                  <span className="font-black text-primary">{u.points.toLocaleString()} P</span>
+                  <span className={cn("font-black tabular-nums", u.id === user?.uid ? "text-white" : "text-primary")}>{u.points.toLocaleString()} P</span>
                 </div>
               ))}
             </CardContent>

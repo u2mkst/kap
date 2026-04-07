@@ -596,7 +596,7 @@ export default function AdminPage() {
                     <CardDescription className="text-[10px]">날짜별로 등록된 문제와 명언을 확인하세요.</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center">
-                    <div className="p-2 bg-muted/30 rounded-3xl">
+                    <div className="p-2 bg-muted/30 rounded-3xl w-full max-w-full overflow-hidden flex justify-center">
                       <Calendar
                         mode="single"
                         selected={calendarDate}
