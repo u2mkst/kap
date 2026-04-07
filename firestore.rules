@@ -10,22 +10,23 @@ service cloud.firestore {
       return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // 유저 정보
+    // 유저 정보 및 하위 컬렉션
     match /users/{userId} {
       allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow list: if isAuthenticated();
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       
+      // 사용자 개인 데이터 (소유자 및 관리자 허용)
       match /personal_fortunes/{date} {
-        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       }
 
       match /attendance_logs/{date} {
-        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       }
 
       match /plants/{plantId} {
-        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       }
     }
 
@@ -53,7 +54,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 오늘의 한마디 (공개 데이터)
+    // 오늘의 명언 (공개 데이터)
     match /daily_fortunes/{date} {
       allow read: if true;
       allow write: if isAdmin();
