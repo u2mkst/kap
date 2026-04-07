@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview 카카오톡 공유 API 헬퍼 (레거시 형식 반영)
+ * @fileOverview 카카오톡 공유 API 헬퍼 (사용자 제공 레거시 텍스트 형식 반영)
  */
 
 declare global {
@@ -29,7 +29,7 @@ export const initKakao = (apiKey?: string) => {
 };
 
 /**
- * 오늘의 급식 카카오톡 공유 (레거시 텍스트 형식)
+ * 오늘의 급식 카카오톡 공유 (사용자 제공 레거시 텍스트 형식)
  */
 export const shareMealToKakao = (date: string, schoolName: string, menu: string, apiKey?: string) => {
   if (typeof window === 'undefined') return;
@@ -46,15 +46,11 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
   
   try {
     window.Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: `${schoolName}\n${formattedDate} 급식 🍱`,
-        description: menuList,
-        imageUrl: '',
-        link: {
-          mobileWebUrl: window.location.origin + '/dashboard',
-          webUrl: window.location.origin + '/dashboard',
-        },
+      objectType: 'text',
+      text: `${schoolName}\n${formattedDate} 급식 🍱\n\n${menuList}`,
+      link: {
+        mobileWebUrl: window.location.origin + '/dashboard',
+        webUrl: window.location.origin + '/dashboard',
       },
       buttons: [
         {
@@ -89,15 +85,11 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
   
   try {
     window.Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: `${schoolName}\n${formattedDate} 시간표 (${grade}-${classNum})`,
-        description: tableList,
-        imageUrl: '',
-        link: {
-          mobileWebUrl: window.location.origin + '/dashboard',
-          webUrl: window.location.origin + '/dashboard',
-        },
+      objectType: 'text',
+      text: `${schoolName}\n${formattedDate} 시간표 (${grade}-${classNum})\n\n${tableList}`,
+      link: {
+        mobileWebUrl: window.location.origin + '/dashboard',
+        webUrl: window.location.origin + '/dashboard',
       },
       buttons: [
         {

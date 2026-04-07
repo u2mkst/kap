@@ -60,7 +60,7 @@ export async function getWeeklyMeals(officeCode: string, schoolCode: string, fro
   }));
 }
 
-/** 주간 시간표 가져오기 (패딩 로직 강화) */
+/** 주간 시간표 가져오기 */
 export async function getWeeklyTimetable(
   officeCode: string, 
   schoolCode: string, 
@@ -71,11 +71,14 @@ export async function getWeeklyTimetable(
   schoolType: string
 ) {
   let endpoint = 'misTimetable'; 
-  if (schoolType.includes('초등')) endpoint = 'elsTimetable';
-  else if (schoolType.includes('고등')) endpoint = 'hisTimetable';
+  if (schoolType?.includes('초등')) endpoint = 'elsTimetable';
+  else if (schoolType?.includes('고등')) endpoint = 'hisTimetable';
   
   // 나이스 API 규격: 학년과 반은 반드시 2자리 숫자여야 함 (예: 01, 02)
-  const formatNum = (n: string) => n.toString().replace(/[^0-9]/g, '').padStart(2, '0');
+  const formatNum = (n: any) => {
+    const num = (n || "").toString().replace(/[^0-9]/g, '');
+    return num ? num.padStart(2, '0') : "01";
+  };
 
   const data = await fetchNeis(endpoint, {
     ATPT_OFCDC_SC_CODE: officeCode,
