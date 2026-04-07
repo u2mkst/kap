@@ -19,6 +19,8 @@
         "teacherId": { "type": "string", "description": "The ID of the assigned teacher." },
         "points": { "type": "number" },
         "theme": { "type": "string", "enum": ["light", "dark"], "default": "light" },
+        "lastAttendanceDate": { "type": "string", "description": "YYYY-MM-DD of the last check-in." },
+        "attendanceStreak": { "type": "number", "default": 0 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

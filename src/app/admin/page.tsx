@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Calendar } from "@/components/ui/calendar"
 import { 
   ShieldAlert, 
   Trash2, 
@@ -23,11 +24,16 @@ import {
   Quote,
   MessageSquare,
   Key,
-  Eraser
+  Eraser,
+  CalendarDays,
+  Copy,
+  Info
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { format, isSameDay } from "date-fns"
+import { ko } from "date-fns/locale"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -80,6 +86,19 @@ export default function AdminPage() {
   }, [db, isActuallyAdmin])
   const { data: adminDocs } = useCollection(adminDocsQuery)
 
+  // 데이터 현황용 쿼리
+  const allProblemsQuery = useMemoFirebase(() => {
+    if (!isActuallyAdmin) return null
+    return collection(db, "daily_problems")
+  }, [db, isActuallyAdmin])
+  const { data: allProblems } = useCollection(allProblemsQuery)
+
+  const allFortunesQuery = useMemoFirebase(() => {
+    if (!isActuallyAdmin) return null
+    return collection(db, "daily_fortunes")
+  }, [db, isActuallyAdmin])
+  const { data: allFortunes } = useCollection(allFortunesQuery)
+
   const adminIds = useMemo(() => adminDocs?.map(d => d.id) || [], [adminDocs])
 
   const [teacherName, setTeacherName] = useState("")
@@ -88,6 +107,7 @@ export default function AdminPage() {
   const [kakaoApiKey, setKakaoApiKey] = useState("")
   const [bulkProblemText, setBulkProblemText] = useState("")
   const [bulkFortuneText, setBulkFortuneText] = useState("")
+  const [calendarDate, setCalendarDate] = useState<Date | undefined>(new Date())
 
   useEffect(() => {
     setIsMounted(true)
@@ -186,19 +206,6 @@ export default function AdminPage() {
     toast({ title: "전체 삭제 완료" })
   }
 
-  const handleUpdatePoints = (userId: string) => {
-    const newPoints = tempPoints[userId]
-    if (newPoints === undefined || isNaN(newPoints)) return
-    
-    setIsSaving(true)
-    updateDocumentNonBlocking(doc(db, "users", userId), {
-      points: newPoints,
-      updatedAt: serverTimestamp()
-    })
-    toast({ title: "포인트 수정 완료" })
-    setIsSaving(false)
-  }
-
   const handleBulkProblems = async () => {
     if (!bulkProblemText.trim()) return
     setIsSaving(true)
@@ -206,6 +213,7 @@ export default function AdminPage() {
     let count = 0
     try {
       for (const line of lines) {
+        if (!line.trim()) continue
         const [date, grade, title, topic, difficulty, problemText, answer, rewardPoints] = line.split("|")
         if (date && grade && title && problemText && answer) {
           const problemId = `${date}_${grade}`
@@ -240,6 +248,7 @@ export default function AdminPage() {
     let count = 0
     try {
       for (const line of lines) {
+        if (!line.trim()) continue
         const parts = line.split("|")
         const date = parts[0]
         const quoteText = parts[1]
@@ -264,6 +273,14 @@ export default function AdminPage() {
     }
   }
 
+  const problemExample = `2024-03-25|1|다항식의 덧셈|수학|중|x^2 + 2x + 1 을 x+1로 나누면?|x+1|150\n2024-03-25|2|삼각함수 기초|수학|상|sin(pi/2)의 값은?|1|200`
+  const fortuneExample = `2024-03-25|천재는 1%의 영감과 99%의 노력으로 이루어진다|토마스 에디슨\n2024-03-26|실패는 성공의 어머니이다|토마스 에디슨`
+
+  const copyExample = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({ title: "예시가 복사되었습니다." })
+  }
+
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
@@ -273,6 +290,14 @@ export default function AdminPage() {
   }
 
   if (!isActuallyAdmin) return null
+
+  // 달력용 날짜 상태 필터링
+  const getDayData = (day: Date) => {
+    const dStr = format(day, "yyyy-MM-dd")
+    const hasProblem = allProblems?.some(p => p.date === dStr)
+    const hasFortune = allFortunes?.some(f => f.date === dStr)
+    return { hasProblem, hasFortune }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-500">
@@ -285,8 +310,8 @@ export default function AdminPage() {
         <TabsList className="grid w-full grid-cols-6 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
           <TabsTrigger value="inquiry" className="rounded-xl font-bold text-xs"><MessageSquare className="h-3 w-3 mr-1" /> 문의</TabsTrigger>
           <TabsTrigger value="users" className="rounded-xl font-bold text-xs">학생</TabsTrigger>
+          <TabsTrigger value="bulk" className="rounded-xl font-bold text-xs">등록/현황</TabsTrigger>
           <TabsTrigger value="vote" className="rounded-xl font-bold text-xs">투표</TabsTrigger>
-          <TabsTrigger value="bulk" className="rounded-xl font-bold text-xs">등록</TabsTrigger>
           <TabsTrigger value="notice" className="rounded-xl font-bold text-xs">공지</TabsTrigger>
           <TabsTrigger value="config" className="rounded-xl font-bold text-xs">설정</TabsTrigger>
         </TabsList>
@@ -384,7 +409,14 @@ export default function AdminPage() {
                         size="icon" 
                         variant="ghost" 
                         className="h-6 w-6 rounded-lg text-primary hover:bg-primary/10"
-                        onClick={() => handleUpdatePoints(u.id)}
+                        onClick={() => {
+                           const newPoints = tempPoints[u.id]
+                           if (newPoints === undefined || isNaN(newPoints)) return
+                           setIsSaving(true)
+                           updateDocumentNonBlocking(doc(db, "users", u.id), { points: newPoints, updatedAt: serverTimestamp() })
+                           toast({ title: "포인트 수정 완료" })
+                           setIsSaving(false)
+                        }}
                         disabled={isSaving || tempPoints[u.id] === undefined}
                       >
                         <Save className="h-3 w-3" />
@@ -406,6 +438,108 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="bulk">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+             <div className="md:col-span-7 space-y-6">
+                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                  <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록</CardTitle></CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <BrainCircuit className="h-4 w-4 text-primary" />
+                            <Label className="text-xs font-bold">일일 문제 일괄 등록</Label>
+                          </div>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => copyExample(problemExample)}><Copy className="h-3 w-3 mr-1" /> 예시 복사</Button>
+                        </div>
+                        <Textarea 
+                          placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답|지급포인트" 
+                          value={bulkProblemText} 
+                          onChange={(e) => setBulkProblemText(e.target.value)} 
+                          className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed bg-muted/20" 
+                        />
+                        <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11">문제 일괄 등록</Button>
+                      </div>
+                      
+                      <div className="space-y-2 pt-6 border-t">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <Quote className="h-4 w-4 text-accent" />
+                            <Label className="text-xs font-bold">오늘의 명언 일괄 등록</Label>
+                          </div>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => copyExample(fortuneExample)}><Copy className="h-3 w-3 mr-1" /> 예시 복사</Button>
+                        </div>
+                        <Textarea 
+                          placeholder="날짜|명언내용|작성자" 
+                          value={bulkFortuneText} 
+                          onChange={(e) => setBulkFortuneText(e.target.value)} 
+                          className="rounded-2xl min-h-[100px] text-[11px] font-mono leading-relaxed bg-muted/20" 
+                        />
+                        <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">명언 일괄 등록</Button>
+                      </div>
+                  </CardContent>
+                </Card>
+             </div>
+             
+             <div className="md:col-span-5 space-y-6">
+                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-black flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 text-primary" /> 데이터 현황 달력
+                    </CardTitle>
+                    <CardDescription className="text-[10px]">날짜별로 등록된 문제와 명언을 확인하세요.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center">
+                    <Calendar
+                      mode="single"
+                      selected={calendarDate}
+                      onSelect={setCalendarDate}
+                      className="rounded-md border-none"
+                      locale={ko}
+                      components={{
+                        DayContent: (props) => {
+                          const { date } = props
+                          const { hasProblem, hasFortune } = getDayData(date)
+                          return (
+                            <div className="relative w-full h-full flex items-center justify-center">
+                              <span>{date.getDate()}</span>
+                              <div className="absolute bottom-1 flex gap-0.5">
+                                {hasProblem && <div className="h-1 w-1 rounded-full bg-primary" />}
+                                {hasFortune && <div className="h-1 w-1 rounded-full bg-accent" />}
+                              </div>
+                            </div>
+                          )
+                        }
+                      }}
+                    />
+                    <div className="flex gap-4 mt-4 text-[10px] font-bold">
+                      <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary" /> 문제 등록됨</div>
+                      <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-accent" /> 명언 등록됨</div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-black flex items-center gap-2">
+                      <Info className="h-3 w-3" /> 일괄 등록 형식 가이드
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-3 bg-muted/30 rounded-2xl">
+                      <p className="text-[10px] font-black mb-1">문제 ( | 로 구분 )</p>
+                      <code className="text-[9px] block text-primary font-mono leading-relaxed">날짜|학년|제목|토픽|난이도|문제|정답|포인트</code>
+                    </div>
+                    <div className="p-3 bg-muted/30 rounded-2xl">
+                      <p className="text-[10px] font-black mb-1">명언 ( | 로 구분 )</p>
+                      <code className="text-[9px] block text-accent font-mono leading-relaxed">날짜|명언내용|작성자</code>
+                    </div>
+                  </CardContent>
+                </Card>
+             </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="vote">
           <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
              <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">선생님 투표 관리</CardTitle></CardHeader>
@@ -424,41 +558,6 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
-                </div>
-             </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="bulk">
-          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-             <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록</CardTitle></CardHeader>
-             <CardContent className="p-6 space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <BrainCircuit className="h-4 w-4 text-primary" />
-                    <Label className="text-xs font-bold text-muted-foreground">일일 문제 일괄 등록</Label>
-                  </div>
-                  <Textarea 
-                    placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답|지급포인트" 
-                    value={bulkProblemText} 
-                    onChange={(e) => setBulkProblemText(e.target.value)} 
-                    className="rounded-2xl min-h-[150px] text-[11px] font-mono leading-relaxed" 
-                  />
-                  <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11">문제 일괄 등록</Button>
-                </div>
-                
-                <div className="space-y-2 pt-6 border-t">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Quote className="h-4 w-4 text-accent" />
-                    <Label className="text-xs font-bold text-muted-foreground">오늘의 명언 일괄 등록</Label>
-                  </div>
-                  <Textarea 
-                    placeholder="날짜|명언내용|작성자" 
-                    value={bulkFortuneText} 
-                    onChange={(e) => setBulkFortuneText(e.target.value)} 
-                    className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed" 
-                  />
-                  <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">명언 일괄 등록</Button>
                 </div>
              </CardContent>
           </Card>

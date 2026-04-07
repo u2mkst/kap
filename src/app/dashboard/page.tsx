@@ -35,14 +35,15 @@ import {
   ChevronRight,
   Clover,
   Share2,
-  Quote
+  Quote,
+  CalendarCheck
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
-import { format, startOfWeek, addDays, isSameDay, addWeeks } from "date-fns"
+import { format, startOfWeek, addDays, isSameDay, addWeeks, subDays } from "date-fns"
 import { ko } from "date-fns/locale"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
@@ -59,6 +60,7 @@ export default function DashboardPage() {
   const [isSolved, setIsSolved] = useState(false)
   const [isGeneratingLuck, setIsGeneratingLuck] = useState(false)
   const [displayScore, setDisplayScore] = useState(0)
+  const [isCheckingIn, setIsCheckingIn] = useState(false)
 
   const [weeklyMeals, setWeeklyMeals] = useState<{date: string, menu: string}[]>([])
   const [weeklyTimetable, setWeeklyTimetable] = useState<{date: string, timetable: string}[]>([])
@@ -233,6 +235,47 @@ export default function DashboardPage() {
     }
   }
 
+  const handleAttendance = async () => {
+    if (!user || !userData || !userDocRef || !todayStr) return
+    if (userData.lastAttendanceDate === todayStr) {
+      toast({ title: "이미 오늘 출석하셨습니다!" })
+      return
+    }
+
+    setIsCheckingIn(true)
+    try {
+      const yesterdayStr = format(subDays(new Date(), 1), "yyyy-MM-dd")
+      let newStreak = 1
+      if (userData.lastAttendanceDate === yesterdayStr) {
+        newStreak = (userData.attendanceStreak || 0) + 1
+      }
+
+      let bonusPoints = 100 // 기본 보상
+      let bonusMsg = "기본 출석 보상 100P 지급!"
+
+      if (newStreak === 7) {
+        bonusPoints += 1000
+        bonusMsg = "7일 연속 출석 보너스! 1,100P 지급! 🎉"
+      } else if (newStreak === 30) {
+        bonusPoints += 5000
+        bonusMsg = "30일 연속 출석 보너스! 5,100P 지급! 🏆"
+      }
+
+      await updateDoc(userDocRef, {
+        points: increment(bonusPoints),
+        lastAttendanceDate: todayStr,
+        attendanceStreak: newStreak,
+        updatedAt: serverTimestamp()
+      })
+
+      toast({ title: "출석 체크 완료!", description: bonusMsg })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsCheckingIn(false)
+    }
+  }
+
   const handleShareMeal = (date: string, menu: string) => {
     if (!userData?.schoolName) return;
     shareMealToKakao(date, userData.schoolName, menu, configData?.kakaoApiKey);
@@ -257,6 +300,8 @@ export default function DashboardPage() {
     )
   }
 
+  const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-in slide-in-from-top-4 duration-500">
@@ -276,18 +321,13 @@ export default function DashboardPage() {
         <Card className="w-full md:w-auto bg-primary text-primary-foreground border-none shadow-md px-6 py-3 flex items-center justify-between md:justify-start gap-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-full">
-              <Sprout className="h-5 w-5 text-white" />
+              <Zap className="h-5 w-5 text-white" />
             </div>
             <div>
               <p className="text-[10px] opacity-80 leading-none mb-1">나의 보유 포인트</p>
               <p className="text-xl font-black">{userData?.points?.toLocaleString() || 0} P</p>
             </div>
           </div>
-          <Link href="/plants">
-            <Button size="sm" variant="secondary" className="font-bold text-xs bg-card text-primary rounded-full px-4 border-none">
-              식물 키우기
-            </Button>
-          </Link>
         </Card>
       </div>
 
@@ -391,7 +431,7 @@ export default function DashboardPage() {
             </Dialog>
           </div>
 
-          <div className="grid gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
             <Card className="border-none shadow-sm bg-card overflow-hidden rounded-3xl">
               <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-2 text-foreground font-black">
@@ -446,14 +486,27 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+             <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden relative">
               <CardHeader className="p-5">
                 <CardTitle className="text-sm flex items-center gap-2 font-black text-primary">
-                  <Sprout className="h-4 w-4" /> 나의 식물 키우기
+                  <CalendarCheck className="h-4 w-4" /> 일일 출석 체크
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-5 pt-0">
-                <Link href="/plants"><Button variant="outline" size="sm" className="w-full rounded-full">정원 가기</Button></Link>
+              <CardContent className="p-5 pt-0 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-muted-foreground">연속 출석 {userData?.attendanceStreak || 0}일째</p>
+                    <p className="text-[10px] text-muted-foreground/60 italic">7일 달성 시 보너스 1,000P!</p>
+                  </div>
+                  {hasCheckedInToday && <CheckCircle2 className="h-6 w-6 text-primary animate-in zoom-in" />}
+                </div>
+                <Button 
+                  onClick={handleAttendance} 
+                  disabled={hasCheckedInToday || isCheckingIn} 
+                  className={cn("w-full rounded-full font-black text-xs h-10 transition-all", hasCheckedInToday && "bg-muted text-muted-foreground")}
+                >
+                  {isCheckingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : hasCheckedInToday ? "출석 완료" : "오늘의 출석 체크"}
+                </Button>
               </CardContent>
             </Card>
 
