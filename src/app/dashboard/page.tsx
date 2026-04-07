@@ -371,6 +371,10 @@ export default function DashboardPage() {
       {/* 튜토리얼 다이얼로그 */}
       <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
         <DialogContent className="max-w-md rounded-[2.5rem] bg-card border-none p-8">
+          <DialogHeader>
+            <DialogTitle className="sr-only">KST HUB 튜토리얼</DialogTitle>
+            <DialogDescription className="sr-only">앱의 주요 기능에 대해 안내해 드립니다.</DialogDescription>
+          </DialogHeader>
           <div className="flex flex-col items-center text-center space-y-6">
             <div className="p-4 rounded-[2rem] bg-primary/10 animate-in zoom-in duration-500">
               {tutorialSteps[tutorialStep].icon}
@@ -456,6 +460,7 @@ export default function DashboardPage() {
                     <DialogTitle className="flex items-center gap-2 text-foreground font-black">
                       <CalendarDays className="h-5 w-5 text-primary" /> 주간 정보
                     </DialogTitle>
+                    <DialogDescription className="sr-only">선택한 주차의 학교 급식 및 시간표 정보를 확인합니다.</DialogDescription>
                     <div className="flex items-center gap-1">
                       <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => setWeekOffset(prev => prev - 1)}>
                         <ChevronLeft className="h-4 w-4" />
