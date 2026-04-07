@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const [isSolving, setIsSolving] = useState(false)
   const [isSolved, setIsSolved] = useState(false)
   const [isGeneratingLuck, setIsGeneratingLuck] = useState(false)
+  const [displayScore, setDisplayScore] = useState(0)
 
   const [weeklyMeals, setWeeklyMeals] = useState<{date: string, menu: string}[]>([])
   const [weeklyTimetable, setWeeklyTimetable] = useState<{date: string, timetable: string}[]>([])
@@ -163,6 +164,31 @@ export default function DashboardPage() {
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: personalFortuneData } = useDoc(personalFortuneRef)
   const { data: problemData } = useDoc(problemRef)
+
+  useEffect(() => {
+    if (personalFortuneData?.score) {
+      let start = 0;
+      const end = personalFortuneData.score;
+      const duration = 1000;
+      const stepTime = 20;
+      const totalSteps = duration / stepTime;
+      const increment = end / totalSteps;
+      
+      const timer = setInterval(() => {
+        start += increment;
+        if (start >= end) {
+          setDisplayScore(end);
+          clearInterval(timer);
+        } else {
+          setDisplayScore(Math.floor(start));
+        }
+      }, stepTime);
+      
+      return () => clearInterval(timer);
+    } else {
+      setDisplayScore(0);
+    }
+  }, [personalFortuneData?.score]);
 
   const handleSolveProblem = async () => {
     if (!problemData || !userAnswer.trim() || isSolved || !userDocRef) return
@@ -380,11 +406,11 @@ export default function DashboardPage() {
                 {isLoadingWeekly ? (
                   <div className="flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
                 ) : todayMeal ? (
-                  <div className="flex flex-col gap-2">
+                  <div className="grid gap-2">
                     {todayMeal.split(',').map((item, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
-                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                        <span className="text-sm font-bold">{item.trim()}</span>
+                      <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
+                        <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                        <span className="text-sm font-bold leading-tight">{item.trim()}</span>
                       </div>
                     ))}
                   </div>
@@ -452,12 +478,12 @@ export default function DashboardPage() {
               {personalFortuneData ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-black text-primary">{personalFortuneData.score}점</span>
+                    <span className="text-2xl font-black text-primary">{displayScore}점</span>
                     <Badge className="bg-primary text-white border-none">
                       {personalFortuneData.score >= 90 ? "최고의 행운! ✨" : "좋은 하루! 😊"}
                     </Badge>
                   </div>
-                  <Progress value={personalFortuneData.score} className="h-2 bg-muted" />
+                  <Progress value={displayScore} className="h-2 bg-muted" />
                 </div>
               ) : (
                 <div className="text-center py-4">
