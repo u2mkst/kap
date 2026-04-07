@@ -273,20 +273,20 @@ export default function DashboardPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-primary leading-tight">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-primary leading-[1.1] animate-in slide-in-from-left duration-700">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
-          <Badge variant="secondary" className="mt-3 px-3 py-1 text-xs font-bold rounded-full">
+          <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-white/50 border-primary/10">
             {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
           </Badge>
         </div>
-        <Card className="bg-primary text-white p-5 rounded-3xl flex items-center gap-4 shadow-xl border-none w-full sm:w-auto">
-          <div className="p-3 bg-white/20 rounded-2xl">
-            <Zap className="h-6 w-6 text-white" />
+        <Card className="bg-primary text-white p-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform">
+          <div className="p-3.5 bg-white/20 rounded-2xl">
+            <Zap className="h-7 w-7 text-white" />
           </div>
           <div>
-            <p className="text-[10px] opacity-80 uppercase font-black tracking-widest">Available Points</p>
-            <p className="text-2xl font-black tabular-nums">{userData?.points?.toLocaleString() || 0} P</p>
+            <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-0.5">Available Points</p>
+            <p className="text-3xl font-black tabular-nums tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
           </div>
         </Card>
       </div>
@@ -304,7 +304,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-4 bg-muted/20 flex justify-between items-center gap-4">
                   <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full h-10 w-10 p-0"><ChevronLeft /></Button>
-                  <span className="text-sm font-black text-primary">{format(weekDates[0], "yyyy.MM.dd")} ~ {format(weekDates[4], "MM.dd")}</span>
+                  <span className="text-sm font-black text-primary">
+                    {weekDates.length > 4 ? `${format(weekDates[0], "yyyy.MM.dd")} ~ ${format(weekDates[4], "MM.dd")}` : "로딩 중..."}
+                  </span>
                   <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full h-10 w-10 p-0"><ChevronRight /></Button>
                 </div>
                 <div className="flex-grow overflow-y-auto p-6 pt-2">
@@ -365,7 +367,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
+            <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Utensils className="h-4 w-4 text-primary" /> 오늘 급식</CardTitle>
                 {todayMeal && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
@@ -385,7 +387,7 @@ export default function DashboardPage() {
                 ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Utensils className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">급식 정보가 없습니다.</p></div>}
               </CardContent>
             </Card>
-            <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
+            <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> 오늘 시간표</CardTitle>
                 {todayTable && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
@@ -414,7 +416,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="rounded-[2rem] border-none shadow-sm bg-card overflow-hidden">
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
               <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><CalendarCheck className="h-4 w-4 text-primary" /> 출석 체크</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center bg-muted/30 p-3 rounded-2xl">
@@ -427,17 +429,17 @@ export default function DashboardPage() {
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-12 w-12 border-muted hover:bg-muted/50"><History className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-[2rem] max-w-[90vw] sm:max-w-sm p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogContent className="rounded-[2rem] max-w-[95vw] sm:max-w-sm p-0 overflow-hidden border-none shadow-2xl">
                       <div className="p-6 border-b bg-card">
                         <DialogTitle className="text-lg font-black flex items-center gap-2"><History className="h-5 w-5 text-primary" /> 출석 히스토리</DialogTitle>
                         <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
                       </div>
-                      <div className="p-4 flex flex-col items-center bg-muted/10">
-                        <div className="bg-white p-2 rounded-3xl shadow-sm border w-full max-w-full overflow-hidden flex justify-center">
+                      <div className="p-2 sm:p-4 flex flex-col items-center bg-muted/10">
+                        <div className="bg-white p-1 sm:p-2 rounded-3xl shadow-sm border w-full flex justify-center overflow-hidden">
                           <Calendar 
                             mode="single" 
                             locale={ko} 
-                            className="mx-auto"
+                            className="scale-90 sm:scale-100"
                             components={{
                               DayContent: ({ date }) => {
                                 const dStr = format(date, "yyyy-MM-dd");
@@ -463,7 +465,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="rounded-[2rem] border-none shadow-sm bg-card overflow-hidden">
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
               <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 오늘의 명언</CardTitle></CardHeader>
               <CardContent className="text-center py-6 flex flex-col items-center justify-center h-full min-h-[140px] px-6">
                 <div className="relative">
@@ -478,7 +480,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="md:col-span-4 space-y-6">
-          <Card className="rounded-[2rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:-translate-y-1">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:-translate-y-1">
             <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-5 w-5 text-green-500" /> 오늘의 행운 점수</CardTitle></CardHeader>
             <CardContent className="p-6">
               {personalFortuneData ? (
@@ -504,7 +506,7 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="rounded-[2rem] border-none shadow-sm bg-card overflow-hidden">
+          <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
             <CardHeader className="border-b bg-muted/10 py-4"><CardTitle className="text-sm font-black flex items-center gap-2"><Trophy className="h-5 w-5 text-yellow-500" /> 랭킹 TOP 10</CardTitle></CardHeader>
             <CardContent className="p-4 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
               {topUsers?.map((u, i) => (
