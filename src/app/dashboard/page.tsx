@@ -34,7 +34,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clover,
-  Share2
+  Share2,
+  Quote
 } from "lucide-react"
 import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
@@ -172,10 +173,10 @@ export default function DashboardPage() {
       const duration = 1000;
       const stepTime = 20;
       const totalSteps = duration / stepTime;
-      const increment = end / totalSteps;
+      const incrementValue = end / totalSteps;
       
       const timer = setInterval(() => {
-        start += increment;
+        start += incrementValue;
         if (start >= end) {
           setDisplayScore(end);
           clearInterval(timer);
@@ -459,11 +460,16 @@ export default function DashboardPage() {
             <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
               <CardHeader className="p-5">
                 <CardTitle className="text-sm flex items-center gap-2 font-black text-foreground">
-                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" /> 오늘의 한마디
+                  <Quote className="h-4 w-4 text-primary fill-primary/10" /> 오늘의 명언
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 pt-0">
-                <p className="text-xs italic text-center font-medium leading-relaxed">"{fortuneData?.fortuneText || "멋진 하루 되세요!"}"</p>
+                <div className="text-center space-y-1">
+                  <p className="text-xs italic font-medium leading-relaxed">"{fortuneData?.fortuneText || "멋진 하루 되세요!"}"</p>
+                  {fortuneData?.author && (
+                    <p className="text-[10px] text-muted-foreground font-bold">- {fortuneData.author}</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -240,17 +240,22 @@ export default function AdminPage() {
     let count = 0
     try {
       for (const line of lines) {
-        const [date, fortuneText] = line.split("|")
-        if (date && fortuneText) {
+        const parts = line.split("|")
+        const date = parts[0]
+        const quoteText = parts[1]
+        const author = parts[2] || "알 수 없음"
+
+        if (date && quoteText) {
           await setDoc(doc(db, "daily_fortunes", date), {
             date,
-            fortuneText,
+            fortuneText: quoteText,
+            author,
             updatedAt: serverTimestamp()
           })
           count++
         }
       }
-      toast({ title: "한마디 일괄 등록 완료", description: `${count}개의 한마디가 등록되었습니다.` })
+      toast({ title: "명언 일괄 등록 완료", description: `${count}개의 명언이 등록되었습니다.` })
       setBulkFortuneText("")
     } catch (e) {
       toast({ variant: "destructive", title: "등록 실패" })
@@ -445,15 +450,15 @@ export default function AdminPage() {
                 <div className="space-y-2 pt-6 border-t">
                   <div className="flex items-center gap-2 mb-1">
                     <Quote className="h-4 w-4 text-accent" />
-                    <Label className="text-xs font-bold text-muted-foreground">오늘의 한마디 일괄 등록</Label>
+                    <Label className="text-xs font-bold text-muted-foreground">오늘의 명언 일괄 등록</Label>
                   </div>
                   <Textarea 
-                    placeholder="날짜|한마디내용" 
+                    placeholder="날짜|명언내용|작성자" 
                     value={bulkFortuneText} 
                     onChange={(e) => setBulkFortuneText(e.target.value)} 
                     className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed" 
                   />
-                  <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">한마디 일괄 등록</Button>
+                  <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">명언 일괄 등록</Button>
                 </div>
              </CardContent>
           </Card>
