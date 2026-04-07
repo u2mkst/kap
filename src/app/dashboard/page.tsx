@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -34,7 +33,8 @@ import {
   Share2,
   Quote,
   CalendarCheck,
-  History
+  History,
+  BookOpen
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
@@ -214,13 +214,25 @@ export default function DashboardPage() {
 
   if (isUserLoading || isUserDataLoading || !user) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
-            <Sparkles className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+        <div className="flex flex-col items-center gap-8 relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
+            <div className="relative h-24 w-24 rounded-[2rem] bg-card border border-primary/10 flex items-center justify-center shadow-2xl animate-float animate-glow">
+              <BookOpen className="h-12 w-12 text-primary animate-pulse-gentle" />
+            </div>
           </div>
-          <p className="text-sm font-black text-primary/60 animate-pulse">KST HUB 로딩 중...</p>
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
+              KST HUB Loading...
+            </h2>
+            <div className="flex gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
+              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
+              <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -272,10 +284,10 @@ export default function DashboardPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-primary leading-[1.1] animate-in slide-in-from-left duration-700">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-primary leading-tight animate-in slide-in-from-left duration-700">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
-          <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card/50 border-primary/10">
+          <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
             {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
           </Badge>
         </div>
@@ -344,13 +356,13 @@ export default function DashboardPage() {
                               <p className="text-xs font-black text-primary bg-primary/5 px-3 py-1 rounded-full">{format(d, "MM/dd (E)", { locale: ko })}</p>
                               {table && <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                            <div className="space-y-2">
                               {sorted.length > 0 ? sorted.map((t, idx) => {
                                 const [p, c] = t.split(':');
                                 return (
-                                  <div key={idx} className="bg-muted/20 p-2 rounded-2xl border border-transparent flex flex-col items-center gap-1 group-hover:bg-muted/40 transition-colors">
-                                    <span className="text-[9px] font-black text-primary/50">{p}</span>
-                                    <span className="text-xs font-black text-center truncate w-full">{c}</span>
+                                  <div key={idx} className="flex items-center gap-4 text-xs font-bold p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
+                                    <span className="text-primary w-10 text-[10px] font-black">{p}</span>
+                                    <span className="text-foreground tracking-tight">{c}</span>
                                   </div>
                                 )
                               }) : <p className="col-span-full text-xs text-center py-6 font-bold opacity-30 italic">시간표 정보가 없습니다.</p>}
@@ -433,8 +445,8 @@ export default function DashboardPage() {
                         <DialogTitle className="text-lg font-black flex items-center gap-2"><History className="h-5 w-5 text-primary" /> 출석 히스토리</DialogTitle>
                         <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
                       </div>
-                      <div className="p-2 sm:p-4 flex flex-col items-center bg-muted/10">
-                        <div className="bg-card p-1 sm:p-2 rounded-3xl shadow-sm border w-full flex justify-center overflow-hidden">
+                      <div className="p-2 sm:p-4 flex flex-col items-center bg-card">
+                        <div className="bg-card p-1 sm:p-2 rounded-3xl shadow-sm border w-full flex justify-center overflow-hidden max-w-full">
                           <Calendar 
                             mode="single" 
                             locale={ko} 

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -28,7 +27,8 @@ import {
   Info,
   RefreshCw,
   Edit2,
-  Settings2
+  Settings2,
+  BookOpen
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc } from "firebase/firestore"
@@ -328,13 +328,25 @@ export default function AdminPage() {
 
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
-            <ShieldAlert className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+        <div className="flex flex-col items-center gap-8 relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
+            <div className="relative h-24 w-24 rounded-[2rem] bg-card border border-primary/10 flex items-center justify-center shadow-2xl animate-float animate-glow">
+              <BookOpen className="h-12 w-12 text-primary animate-pulse-gentle" />
+            </div>
           </div>
-          <p className="text-sm font-black text-primary/60 animate-pulse">관리자 로딩 중...</p>
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
+              Admin Accessing...
+            </h2>
+            <div className="flex gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
+              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
+              <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -595,7 +607,7 @@ export default function AdminPage() {
                     <CardDescription className="text-[10px]">날짜별로 등록된 문제와 명언을 확인하세요.</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center">
-                    <div className="p-1 sm:p-2 bg-muted/30 rounded-3xl w-full max-w-full overflow-hidden flex justify-center">
+                    <div className="p-1 sm:p-2 bg-card rounded-3xl w-full max-w-full overflow-hidden flex justify-center">
                       <Calendar
                         mode="single"
                         selected={calendarDate}
