@@ -26,6 +26,16 @@
       },
       "required": ["id", "username", "nickname", "points", "schoolType"]
     },
+    "AttendanceLog": {
+      "title": "AttendanceLog",
+      "type": "object",
+      "description": "Log of a single day check-in.",
+      "properties": {
+        "date": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date"]
+    },
     "UserFortune": {
       "title": "UserFortune",
       "type": "object",
@@ -122,6 +132,10 @@
     "/users/{userId}/personal_fortunes/{date}": {
       "schema": { "$ref": "#/backend/entities/UserFortune" },
       "description": "User's individual daily luck records."
+    },
+    "/users/{userId}/attendance_logs/{date}": {
+      "schema": { "$ref": "#/backend/entities/AttendanceLog" },
+      "description": "User's daily attendance logs."
     },
     "/users/{userId}/plants/{plantId}": {
       "schema": { "$ref": "#/backend/entities/Plant" },

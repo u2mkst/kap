@@ -14,21 +14,19 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog"
+import { Calendar } from "@/components/ui/calendar"
 import { 
   Trophy, 
   Utensils, 
   Zap, 
-  ExternalLink,
-  Sprout,
-  Star,
+  Sprout, 
   Sparkles,
   Clock,
   School,
-  Medal,
   CheckCircle2,
   Loader2,
-  GraduationCap,
   Maximize2,
   CalendarDays,
   ChevronLeft,
@@ -36,16 +34,15 @@ import {
   Clover,
   Share2,
   Quote,
-  CalendarCheck
+  CalendarCheck,
+  History
 } from "lucide-react"
-import Link from "next/link"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
-import { format, startOfWeek, addDays, isSameDay, addWeeks, subDays } from "date-fns"
+import { format, startOfWeek, addDays, isSameDay, addWeeks, subDays, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
-import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { initKakao, shareMealToKakao, shareTimetableToKakao } from "@/lib/kakao-share"
 
@@ -147,7 +144,7 @@ export default function DashboardPage() {
     if (!user) return null
     return query(collection(db, "users"), orderBy("points", "desc"), limit(10))
   }, [db, user])
-  const { data: topUsers, isLoading: isLeaderboardLoading } = useCollection(leaderboardQuery)
+  const { data: topUsers } = useCollection(leaderboardQuery)
 
   const fortuneRef = useMemoFirebase(() => {
     if (!db || !todayStr) return null
@@ -158,6 +155,12 @@ export default function DashboardPage() {
     if (!db || !user || !todayStr) return null
     return doc(db, "users", user.uid, "personal_fortunes", todayStr)
   }, [db, user, todayStr])
+
+  const attendanceHistoryQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return collection(db, "users", user.uid, "attendance_logs")
+  }, [db, user])
+  const { data: attendanceHistory } = useCollection(attendanceHistoryQuery)
 
   const problemRef = useMemoFirebase(() => {
     if (!db || !userData?.grade || !todayStr) return null
@@ -250,7 +253,7 @@ export default function DashboardPage() {
         newStreak = (userData.attendanceStreak || 0) + 1
       }
 
-      let bonusPoints = 100 // 기본 보상
+      let bonusPoints = 100 
       let bonusMsg = "기본 출석 보상 100P 지급!"
 
       if (newStreak === 7) {
@@ -260,6 +263,9 @@ export default function DashboardPage() {
         bonusPoints += 5000
         bonusMsg = "30일 연속 출석 보너스! 5,100P 지급! 🏆"
       }
+
+      const logRef = doc(db, "users", user.uid, "attendance_logs", todayStr)
+      await setDoc(logRef, { date: todayStr, timestamp: serverTimestamp() })
 
       await updateDoc(userDocRef, {
         points: increment(bonusPoints),
@@ -500,13 +506,54 @@ export default function DashboardPage() {
                   </div>
                   {hasCheckedInToday && <CheckCircle2 className="h-6 w-6 text-primary animate-in zoom-in" />}
                 </div>
-                <Button 
-                  onClick={handleAttendance} 
-                  disabled={hasCheckedInToday || isCheckingIn} 
-                  className={cn("w-full rounded-full font-black text-xs h-10 transition-all", hasCheckedInToday && "bg-muted text-muted-foreground")}
-                >
-                  {isCheckingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : hasCheckedInToday ? "출석 완료" : "오늘의 출석 체크"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleAttendance} 
+                    disabled={hasCheckedInToday || isCheckingIn} 
+                    className={cn("flex-grow rounded-full font-black text-xs h-10 transition-all", hasCheckedInToday && "bg-muted text-muted-foreground")}
+                  >
+                    {isCheckingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : hasCheckedInToday ? "출석 완료" : "오늘의 출석 체크"}
+                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-10 w-10 rounded-full shrink-0 border-primary/20 text-primary hover:bg-primary/5">
+                        <History className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md rounded-[2rem] bg-card border-none">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-primary font-black">
+                          <History className="h-5 w-5" /> 나의 출석 내역
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                          파란색 점으로 표시된 날짜가 출석한 날입니다.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex justify-center py-4">
+                        <Calendar
+                          mode="single"
+                          className="rounded-xl border-none"
+                          locale={ko}
+                          components={{
+                            DayContent: (props) => {
+                              const { date } = props
+                              const dStr = format(date, "yyyy-MM-dd")
+                              const isAttended = attendanceHistory?.some(log => log.date === dStr)
+                              return (
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                  <span>{date.getDate()}</span>
+                                  {isAttended && (
+                                    <div className="absolute bottom-1 h-1 w-1 rounded-full bg-primary" />
+                                  )}
+                                </div>
+                              )
+                            }
+                          }}
+                        />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardContent>
             </Card>
 

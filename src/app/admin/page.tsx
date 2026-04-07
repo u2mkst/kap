@@ -20,19 +20,19 @@ import {
   BrainCircuit, 
   Coins,
   Save,
-  FileText,
   Quote,
   MessageSquare,
-  Key,
   Eraser,
   CalendarDays,
   Copy,
-  Info
+  Info,
+  RefreshCw,
+  Edit2
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
-import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { format, isSameDay } from "date-fns"
+import { format } from "date-fns"
 import { ko } from "date-fns/locale"
 
 export default function AdminPage() {
@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [selectedTeacherFilter, setSelectedTeacherFilter] = useState("all")
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
   const [tempPoints, setTempPoints] = useState<{ [key: string]: number }>({})
+  const [tempVotes, setTempVotes] = useState<{ [key: string]: number }>({})
 
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
@@ -86,7 +87,6 @@ export default function AdminPage() {
   }, [db, isActuallyAdmin])
   const { data: adminDocs } = useCollection(adminDocsQuery)
 
-  // 데이터 현황용 쿼리
   const allProblemsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
     return collection(db, "daily_problems")
@@ -145,6 +145,33 @@ export default function AdminPage() {
     if (!confirm("삭제하시겠습니까?")) return
     deleteDocumentNonBlocking(doc(db, "teachers", id))
     toast({ title: "삭제 완료" })
+  }
+
+  const handleResetAllVotes = async () => {
+    if (!teachers || teachers.length === 0) return
+    if (!confirm("정말 모든 투표 결과를 0으로 초기화하시겠습니까?")) return
+    
+    setIsSaving(true)
+    try {
+      const promises = teachers.map(t => 
+        updateDoc(doc(db, "teachers", t.id), { vote: 0, updatedAt: serverTimestamp() })
+      )
+      await Promise.all(promises)
+      toast({ title: "투표 결과 초기화 완료" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "초기화 실패" })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleUpdateVoteCount = (teacherId: string) => {
+    const newVote = tempVotes[teacherId]
+    if (newVote === undefined || isNaN(newVote)) return
+    setIsSaving(true)
+    updateDocumentNonBlocking(doc(db, "teachers", teacherId), { vote: newVote, updatedAt: serverTimestamp() })
+    toast({ title: "투표수 수정 완료" })
+    setIsSaving(false)
   }
 
   const handleUpdateConfig = () => {
@@ -291,7 +318,6 @@ export default function AdminPage() {
 
   if (!isActuallyAdmin) return null
 
-  // 달력용 날짜 상태 필터링
   const getDayData = (day: Date) => {
     const dStr = format(day, "yyyy-MM-dd")
     const hasProblem = allProblems?.some(p => p.date === dStr)
@@ -542,7 +568,15 @@ export default function AdminPage() {
 
         <TabsContent value="vote">
           <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-             <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">선생님 투표 관리</CardTitle></CardHeader>
+             <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+               <div>
+                 <CardTitle className="text-sm font-black">선생님 투표 관리</CardTitle>
+                 <CardDescription className="text-[10px]">투표수 수정 및 결과 초기화가 가능합니다.</CardDescription>
+               </div>
+               <Button variant="destructive" size="sm" onClick={handleResetAllVotes} disabled={isSaving} className="rounded-full font-black text-[10px] h-8">
+                 <RefreshCw className="h-3 w-3 mr-1" /> 결과 초기화
+               </Button>
+             </CardHeader>
              <CardContent className="p-6 space-y-4">
                 <div className="flex gap-2">
                   <Input placeholder="선생님 성함" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} className="rounded-2xl" />
@@ -550,10 +584,30 @@ export default function AdminPage() {
                 </div>
                 <div className="grid gap-2">
                   {teachers?.map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl">
-                      <span className="font-black text-sm">{t.name}</span>
-                      <div className="flex items-center gap-4">
-                        <span className="font-black text-primary">{t.vote}표</span>
+                    <div key={t.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-muted/30 rounded-2xl gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-sm">{t.name}</span>
+                        <Badge variant="outline" className="text-[9px] h-4">현재 {t.vote}표</Badge>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                        <div className="flex items-center gap-1 bg-background/50 p-1 rounded-xl border">
+                          <Edit2 className="h-3 w-3 ml-1 text-muted-foreground" />
+                          <Input 
+                            type="number" 
+                            defaultValue={t.vote} 
+                            onChange={(e) => setTempVotes({ ...tempVotes, [t.id]: parseInt(e.target.value) })}
+                            className="w-16 h-7 text-[10px] border-none bg-transparent font-black text-right p-0 focus-visible:ring-0" 
+                          />
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-6 w-6 rounded-lg text-primary"
+                            onClick={() => handleUpdateVoteCount(t.id)}
+                            disabled={isSaving || tempVotes[t.id] === undefined}
+                          >
+                            <Save className="h-3 w-3" />
+                          </Button>
+                        </div>
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteTeacher(t.id)} className="h-8 w-8 text-destructive rounded-full hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
