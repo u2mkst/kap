@@ -35,6 +35,7 @@ import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit
 import { toast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { ko } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -329,7 +330,13 @@ export default function AdminPage() {
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
+            <ShieldAlert className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
+          </div>
+          <p className="text-sm font-black text-primary/60 animate-pulse">관리자 로딩 중...</p>
+        </div>
       </div>
     )
   }
@@ -589,28 +596,30 @@ export default function AdminPage() {
                     <CardDescription className="text-[10px]">날짜별로 등록된 문제와 명언을 확인하세요.</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center">
-                    <Calendar
-                      mode="single"
-                      selected={calendarDate}
-                      onSelect={setCalendarDate}
-                      className="rounded-md border-none"
-                      locale={ko}
-                      components={{
-                        DayContent: (props) => {
-                          const { date } = props
-                          const { hasProblem, hasFortune } = getDayData(date)
-                          return (
-                            <div className="relative w-full h-full flex items-center justify-center">
-                              <span>{date.getDate()}</span>
-                              <div className="absolute bottom-1 flex gap-0.5">
-                                {hasProblem && <div className="h-1 w-1 rounded-full bg-primary" />}
-                                {hasFortune && <div className="h-1 w-1 rounded-full bg-accent" />}
+                    <div className="p-2 bg-muted/30 rounded-3xl">
+                      <Calendar
+                        mode="single"
+                        selected={calendarDate}
+                        onSelect={setCalendarDate}
+                        className="rounded-md border-none"
+                        locale={ko}
+                        components={{
+                          DayContent: (props) => {
+                            const { date } = props
+                            const { hasProblem, hasFortune } = getDayData(date)
+                            return (
+                              <div className="relative w-full h-full flex flex-col items-center justify-center p-0.5">
+                                <span className="text-xs z-10">{date.getDate()}</span>
+                                <div className="absolute bottom-1.5 flex gap-0.5">
+                                  {hasProblem && <div className="h-1 w-1 rounded-full bg-primary" />}
+                                  {hasFortune && <div className="h-1 w-1 rounded-full bg-accent" />}
+                                </div>
                               </div>
-                            </div>
-                          )
-                        }
-                      }}
-                    />
+                            )
+                          }
+                        }}
+                      />
+                    </div>
                     <div className="flex gap-4 mt-4 text-[10px] font-bold">
                       <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary" /> 문제 등록됨</div>
                       <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-accent" /> 명언 등록됨</div>

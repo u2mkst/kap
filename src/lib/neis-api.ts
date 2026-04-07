@@ -74,7 +74,7 @@ export async function getWeeklyTimetable(
   if (schoolType?.includes('초등')) endpoint = 'elsTimetable';
   else if (schoolType?.includes('고등')) endpoint = 'hisTimetable';
   
-  // 레거시 코드 참고: 학년과 반은 사용자가 입력한 값을 그대로 사용 (패딩 없이 시도)
+  // 학년과 반 정보는 입력된 값 그대로 사용 (패딩 없이)
   const g = grade?.toString().replace(/[^0-9]/g, '') || "1";
   const c = classNum?.toString().replace(/[^0-9]/g, '') || "1";
 

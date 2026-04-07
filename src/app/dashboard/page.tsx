@@ -235,6 +235,18 @@ export default function DashboardPage() {
 
   const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
 
+  // 시간표 정렬 유틸리티
+  const getSortedTable = (timetableStr: string) => {
+    if (!timetableStr) return [];
+    return timetableStr.split(',')
+      .map(t => t.trim())
+      .sort((a, b) => {
+        const pA = parseInt(a.split('교시')[0]) || 0;
+        const pB = parseInt(b.split('교시')[0]) || 0;
+        return pA - pB;
+      });
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-500">
       <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
@@ -301,11 +313,15 @@ export default function DashboardPage() {
                       const meal = weeklyMeals.find(m => m.date === dStr);
                       return (
                         <div key={i} className="p-4 bg-muted/30 rounded-2xl flex justify-between items-center">
-                          <div>
+                          <div className="flex-grow">
                             <p className="text-xs font-black text-primary">{format(d, "MM/dd (E)", { locale: ko })}</p>
-                            <p className="text-sm font-bold mt-1">{meal?.menu || "정보 없음"}</p>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {meal ? meal.menu.split(',').map((m, idx) => (
+                                <Badge key={idx} variant="outline" className="text-[10px] bg-white/50 border-primary/10">{m.trim()}</Badge>
+                              )) : <span className="text-sm font-bold opacity-40">정보 없음</span>}
+                            </div>
                           </div>
-                          {meal && <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
+                          {meal && <Button variant="ghost" size="icon" className="rounded-full ml-2" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
                         </div>
                       )
                     })}
@@ -314,13 +330,24 @@ export default function DashboardPage() {
                     {weekDates.map((d, i) => {
                       const dStr = format(d, "yyyyMMdd");
                       const table = weeklyTimetable.find(t => t.date === dStr);
+                      const sorted = table ? getSortedTable(table.timetable) : [];
                       return (
-                        <div key={i} className="p-4 bg-muted/30 rounded-2xl flex justify-between items-center">
-                          <div>
+                        <div key={i} className="p-4 bg-muted/30 rounded-2xl">
+                          <div className="flex justify-between items-center mb-3">
                             <p className="text-xs font-black text-primary">{format(d, "MM/dd (E)", { locale: ko })}</p>
-                            <p className="text-xs mt-1 font-bold">{table?.timetable.split(',').join(' | ') || "정보 없음"}</p>
+                            {table && <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
                           </div>
-                          {table && <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {sorted.length > 0 ? sorted.map((t, idx) => {
+                              const [p, c] = t.split(':');
+                              return (
+                                <div key={idx} className="bg-background/50 p-2 rounded-xl border border-primary/5 flex flex-col items-center">
+                                  <span className="text-[9px] font-black text-primary/60">{p}</span>
+                                  <span className="text-xs font-black truncate w-full text-center">{c}</span>
+                                </div>
+                              )
+                            }) : <p className="col-span-full text-xs text-center py-4 font-bold opacity-40 italic">시간표 정보가 없습니다.</p>}
+                          </div>
                         </div>
                       )
                     })}
@@ -358,7 +385,7 @@ export default function DashboardPage() {
                   <div className="flex justify-center items-center h-20"><Loader2 className="animate-spin text-primary" /></div>
                 ) : todayTable ? (
                   <div className="space-y-2">
-                    {todayTable.split(',').map((t, i) => {
+                    {getSortedTable(todayTable).map((t, i) => {
                       const [perio, content] = t.split(':');
                       return (
                         <div key={i} className="flex items-center gap-4 text-xs font-bold p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
@@ -387,22 +414,32 @@ export default function DashboardPage() {
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-11 w-11"><History className="h-4 w-4" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-3xl">
+                    <DialogContent className="rounded-3xl max-w-sm">
                       <DialogHeader>
                         <DialogTitle>출석 내역</DialogTitle>
                         <DialogDescription>지금까지의 성실한 기록입니다.</DialogDescription>
                       </DialogHeader>
-                      <Calendar mode="single" locale={ko} components={{
-                        DayContent: ({ date }) => {
-                          const isAttended = attendanceHistory?.some(l => l.date === format(date, "yyyy-MM-dd"));
-                          return (
-                            <div className="relative w-full h-full flex items-center justify-center">
-                              <span>{date.getDate()}</span>
-                              {isAttended && <div className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-primary" />}
-                            </div>
-                          )
-                        }
-                      }} />
+                      <div className="p-2 bg-muted/20 rounded-2xl">
+                        <Calendar 
+                          mode="single" 
+                          locale={ko} 
+                          className="mx-auto"
+                          components={{
+                            DayContent: ({ date }) => {
+                              const dStr = format(date, "yyyy-MM-dd");
+                              const isAttended = attendanceHistory?.some(l => l.date === dStr);
+                              return (
+                                <div className="relative w-full h-full flex items-center justify-center p-0.5">
+                                  <span className={cn("text-xs z-10", isAttended && "font-black")}>{date.getDate()}</span>
+                                  {isAttended && (
+                                    <div className="absolute inset-0 m-auto h-7 w-7 rounded-full bg-primary/10 border border-primary/20" />
+                                  )}
+                                </div>
+                              )
+                            }
+                          }} 
+                        />
+                      </div>
                     </DialogContent>
                   </Dialog>
                 </div>
