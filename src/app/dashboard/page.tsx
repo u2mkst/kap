@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -315,9 +316,19 @@ export default function DashboardPage() {
                               </Button>
                             )}
                           </div>
-                          <p className="text-xs font-medium leading-relaxed">
-                            {isLoadingWeekly ? "로딩 중..." : meal?.menu || "정보가 없습니다."}
-                          </p>
+                          <div className="flex flex-col gap-2">
+                            {isLoadingWeekly ? (
+                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                            ) : meal?.menu ? (
+                              meal.menu.split(',').map((item, i) => (
+                                <div key={i} className="text-xs font-bold bg-card p-2 rounded-xl border shadow-sm">
+                                  {item.trim()}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs font-medium text-muted-foreground italic">정보가 없습니다.</p>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -337,7 +348,7 @@ export default function DashboardPage() {
                             )}
                           </div>
                           <div className="flex flex-col gap-1">
-                            {isLoadingWeekly ? "로딩 중..." : table ? table.timetable.split(',').map((t, i) => (
+                            {isLoadingWeekly ? <div className="flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div> : table ? table.timetable.split(',').map((t, i) => (
                               <div key={i} className="text-xs font-bold flex gap-2">
                                 <span className="text-primary w-10">{t.split(':')[0]}</span>
                                 <span>{t.split(':')[1]}</span>
@@ -365,9 +376,20 @@ export default function DashboardPage() {
                   </Button>
                 )}
               </CardHeader>
-              <CardContent className="min-h-[100px] flex items-center justify-center">
-                {isLoadingWeekly ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                  <p className="text-sm font-bold text-center leading-relaxed">{todayMeal || "급식 정보가 없습니다."}</p>
+              <CardContent className="min-h-[100px] py-4">
+                {isLoadingWeekly ? (
+                  <div className="flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                ) : todayMeal ? (
+                  <div className="flex flex-col gap-2">
+                    {todayMeal.split(',').map((item, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        <span className="text-sm font-bold">{item.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm font-bold text-center text-muted-foreground italic py-8">급식 정보가 없습니다.</p>
                 )}
               </CardContent>
             </Card>

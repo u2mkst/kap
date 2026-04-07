@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview 카카오톡 공유 API 헬퍼
  */
@@ -36,20 +37,22 @@ export const shareMealToKakao = (date: string, schoolName: string, menu: string,
   initKakao(apiKey);
   
   if (!window.Kakao?.Share) {
-    alert("공유 기능을 준비 중입니다. 잠시 후 다시 시도해 주세요.");
+    alert("공유 기능을 준비 중입니다. 잠시 후 다시 시도해 주세요. (관리자 설정에서 API 키가 정확한지 확인해 주세요)");
     return;
   }
   
   const formattedDate = `${parseInt(date.substring(4, 6))}월 ${parseInt(date.substring(6, 8))}일`;
+  // 줄바꿈으로 메뉴를 나열하여 가독성 높임
   const menuList = menu.split(',').map(item => `• ${item.trim()}`).filter(Boolean).join('\n');
   
   try {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
+        // 제목에 모든 정보를 통합하여 말줄임표 현상을 최소화함
         title: `[${schoolName}] ${formattedDate} 급식\n${menuList}`,
-        description: '', // 설명 영역을 비워 제목이 더 많이 노출되도록 함
-        imageUrl: '', // 이미지 제거
+        description: '', 
+        imageUrl: '', // 사진 제거
         link: {
           mobileWebUrl: window.location.origin + '/dashboard',
           webUrl: window.location.origin + '/dashboard',
