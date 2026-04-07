@@ -21,7 +21,6 @@ import {
   Trophy, 
   Utensils, 
   Zap, 
-  Sprout, 
   Sparkles,
   Clock,
   School,
@@ -41,7 +40,7 @@ import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool, getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
-import { format, startOfWeek, addDays, isSameDay, addWeeks, subDays, parseISO } from "date-fns"
+import { format, startOfWeek, addDays, isSameDay, addWeeks, subDays } from "date-fns"
 import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { initKakao, shareMealToKakao, shareTimetableToKakao } from "@/lib/kakao-share"
@@ -158,7 +157,7 @@ export default function DashboardPage() {
 
   const attendanceHistoryQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return collection(db, "users", user.uid, "attendance_logs")
+    return query(collection(db, "users", user.uid, "attendance_logs"), orderBy("date", "desc"))
   }, [db, user])
   const { data: attendanceHistory } = useCollection(attendanceHistoryQuery)
 
