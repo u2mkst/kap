@@ -27,7 +27,8 @@ import {
   Copy,
   Info,
   RefreshCw,
-  Edit2
+  Edit2,
+  Settings2
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc } from "firebase/firestore"
@@ -109,12 +110,28 @@ export default function AdminPage() {
   const [bulkFortuneText, setBulkFortuneText] = useState("")
   const [calendarDate, setCalendarDate] = useState<Date | undefined>(new Date())
 
+  // 포인트 설정 상태
+  const [pointsConfig, setPointsConfig] = useState({
+    dailyAttendance: 100,
+    streak7: 1000,
+    streak30: 5000,
+    problemDefault: 100
+  })
+
   useEffect(() => {
     setIsMounted(true)
     if (configData) {
       setNoticeText(configData.notice || "")
       setAdminSecretCode(configData.adminSecret || "ufes-admin-777")
       setKakaoApiKey(configData.kakaoApiKey || "")
+      if (configData.pointConfig) {
+        setPointsConfig({
+          dailyAttendance: configData.pointConfig.dailyAttendance || 100,
+          streak7: configData.pointConfig.streak7 || 1000,
+          streak30: configData.pointConfig.streak30 || 5000,
+          problemDefault: configData.pointConfig.problemDefault || 100
+        })
+      }
     }
   }, [configData])
 
@@ -180,7 +197,8 @@ export default function AdminPage() {
     setDoc(configRef, { 
       notice: noticeText, 
       adminSecret: adminSecretCode,
-      kakaoApiKey: kakaoApiKey 
+      kakaoApiKey: kakaoApiKey,
+      pointConfig: pointsConfig
     }, { merge: true })
       .then(() => toast({ title: "저장 완료" }))
       .finally(() => setIsSaving(false))
@@ -333,9 +351,10 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="inquiry">
-        <TabsList className="grid w-full grid-cols-6 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
+        <TabsList className="grid w-full grid-cols-7 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
           <TabsTrigger value="inquiry" className="rounded-xl font-bold text-xs"><MessageSquare className="h-3 w-3 mr-1" /> 문의</TabsTrigger>
           <TabsTrigger value="users" className="rounded-xl font-bold text-xs">학생</TabsTrigger>
+          <TabsTrigger value="points" className="rounded-xl font-bold text-xs"><Coins className="h-3 w-3 mr-1" /> 포인트</TabsTrigger>
           <TabsTrigger value="bulk" className="rounded-xl font-bold text-xs">등록/현황</TabsTrigger>
           <TabsTrigger value="vote" className="rounded-xl font-bold text-xs">투표</TabsTrigger>
           <TabsTrigger value="notice" className="rounded-xl font-bold text-xs">공지</TabsTrigger>
@@ -460,6 +479,60 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="points">
+          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+            <CardHeader className="border-b pb-4">
+              <CardTitle className="text-sm font-black flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-primary" /> 시스템 포인트 지급액 설정
+              </CardTitle>
+              <CardDescription className="text-xs">학생들이 활동 시 지급되는 포인트 양을 조절합니다.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">일일 출석 기본 포인트</Label>
+                  <Input 
+                    type="number" 
+                    value={pointsConfig.dailyAttendance} 
+                    onChange={(e) => setPointsConfig({...pointsConfig, dailyAttendance: parseInt(e.target.value)})}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">7일 연속 출석 보너스</Label>
+                  <Input 
+                    type="number" 
+                    value={pointsConfig.streak7} 
+                    onChange={(e) => setPointsConfig({...pointsConfig, streak7: parseInt(e.target.value)})}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">30일 연속 출석 보너스</Label>
+                  <Input 
+                    type="number" 
+                    value={pointsConfig.streak30} 
+                    onChange={(e) => setPointsConfig({...pointsConfig, streak30: parseInt(e.target.value)})}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">일일 문제 기본 보상 (개별 설정 없을 때)</Label>
+                  <Input 
+                    type="number" 
+                    value={pointsConfig.problemDefault} 
+                    onChange={(e) => setPointsConfig({...pointsConfig, problemDefault: parseInt(e.target.value)})}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-primary">
+                포인트 설정 저장
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

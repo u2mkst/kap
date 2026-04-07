@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import { Calendar } from "@/components/ui/calendar"
 import { 
@@ -35,7 +36,8 @@ import {
   Quote,
   CalendarCheck,
   History,
-  BookOpen
+  BookOpen,
+  ArrowRight
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
@@ -65,6 +67,10 @@ export default function DashboardPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [weekDates, setWeekDates] = useState<Date[]>([])
 
+  // 튜토리얼 관련 상태
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(0)
+
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "users", user.uid)
@@ -80,6 +86,13 @@ export default function DashboardPage() {
       initKakao(configData.kakaoApiKey);
     }
   }, [configData])
+
+  // 신규 가입자 튜토리얼 체크
+  useEffect(() => {
+    if (userData && userData.hasCompletedTutorial === false) {
+      setShowTutorial(true)
+    }
+  }, [userData])
 
   useEffect(() => {
     const targetDate = addWeeks(new Date(), weekOffset)
@@ -201,13 +214,14 @@ export default function DashboardPage() {
     
     if (userAnswer.trim() === problemData.answer) {
       setIsSolving(true)
+      const reward = problemData.rewardPoints || configData?.pointConfig?.problemDefault || 100
       try {
         await updateDoc(userDocRef, {
-          points: increment(problemData.rewardPoints || 100),
+          points: increment(reward),
           updatedAt: serverTimestamp()
         })
         setIsSolved(true)
-        toast({ title: "정답입니다!" })
+        toast({ title: "정답입니다!", description: `${reward}P가 지급되었습니다.` })
       } catch (error) {
         console.error(error)
       } finally {
@@ -253,15 +267,20 @@ export default function DashboardPage() {
         newStreak = (userData.attendanceStreak || 0) + 1
       }
 
-      let bonusPoints = 100 
-      let bonusMsg = "기본 출석 보상 100P 지급!"
+      // 포인트 설정 가져오기 (관리자 설정 우선, 없으면 기본값)
+      const dailyPoints = configData?.pointConfig?.dailyAttendance || 100
+      const streak7Bonus = configData?.pointConfig?.streak7 || 1000
+      const streak30Bonus = configData?.pointConfig?.streak30 || 5000
+
+      let bonusPoints = dailyPoints
+      let bonusMsg = `기본 출석 보상 ${dailyPoints}P 지급!`
 
       if (newStreak === 7) {
-        bonusPoints += 1000
-        bonusMsg = "7일 연속 출석 보너스! 1,100P 지급! 🎉"
+        bonusPoints += streak7Bonus
+        bonusMsg = `7일 연속 출석 보너스! ${dailyPoints + streak7Bonus}P 지급! 🎉`
       } else if (newStreak === 30) {
-        bonusPoints += 5000
-        bonusMsg = "30일 연속 출석 보너스! 5,100P 지급! 🏆"
+        bonusPoints += streak30Bonus
+        bonusMsg = `30일 연속 출석 보너스! ${dailyPoints + streak30Bonus}P 지급! 🏆`
       }
 
       const logRef = doc(db, "users", user.uid, "attendance_logs", todayStr)
@@ -280,6 +299,16 @@ export default function DashboardPage() {
     } finally {
       setIsCheckingIn(false)
     }
+  }
+
+  const completeTutorial = async () => {
+    if (!userDocRef) return
+    await updateDoc(userDocRef, {
+      hasCompletedTutorial: true,
+      updatedAt: serverTimestamp()
+    })
+    setShowTutorial(false)
+    toast({ title: "환영합니다!", description: "이제 KST HUB를 마음껏 이용해 보세요." })
   }
 
   const handleShareMeal = (date: string, menu: string) => {
@@ -314,8 +343,69 @@ export default function DashboardPage() {
 
   const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
 
+  const tutorialSteps = [
+    {
+      title: "환영합니다! 👋",
+      description: "KST HUB에 오신 것을 환영해요. 학원 생활을 더 스마트하게 만들어 줄 핵심 기능들을 알려드릴게요.",
+      icon: <Sparkles className="h-12 w-12 text-primary" />
+    },
+    {
+      title: "출석 체크 & 포인트",
+      description: "매일 출석만 해도 포인트가 쌓여요! 연속 출석하면 엄청난 보너스 포인트도 기다리고 있답니다.",
+      icon: <CalendarCheck className="h-12 w-12 text-primary" />
+    },
+    {
+      title: "학교 생활 정보",
+      description: "오늘의 급식과 시간표를 실시간으로 확인하고 친구들에게 카카오톡으로 공유해 보세요.",
+      icon: <Utensils className="h-12 w-12 text-primary" />
+    },
+    {
+      title: "포인트 랭킹 & 명언",
+      description: "매일 올라오는 퀴즈를 맞히고 랭킹 1위에 도전해 보세요. 오늘의 명언으로 동기부여도 팍팍!",
+      icon: <Trophy className="h-12 w-12 text-yellow-500" />
+    }
+  ]
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-700">
+      {/* 튜토리얼 다이얼로그 */}
+      <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
+        <DialogContent className="max-w-md rounded-[2.5rem] bg-card border-none p-8">
+          <div className="flex flex-col items-center text-center space-y-6">
+            <div className="p-4 rounded-[2rem] bg-primary/10 animate-in zoom-in duration-500">
+              {tutorialSteps[tutorialStep].icon}
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-primary">{tutorialSteps[tutorialStep].title}</h2>
+              <p className="text-sm font-bold text-muted-foreground leading-relaxed">
+                {tutorialSteps[tutorialStep].description}
+              </p>
+            </div>
+            <div className="flex gap-2 w-full pt-4">
+              {tutorialStep > 0 && (
+                <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setTutorialStep(prev => prev - 1)}>
+                  이전
+                </Button>
+              )}
+              {tutorialStep < tutorialSteps.length - 1 ? (
+                <Button className="flex-[2] rounded-2xl h-12 font-black bg-primary" onClick={() => setTutorialStep(prev => prev + 1)}>
+                  다음 <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button className="flex-[2] rounded-2xl h-12 font-black bg-primary" onClick={completeTutorial}>
+                  시작하기!
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-1.5 mt-2">
+              {tutorialSteps.map((_, i) => (
+                <div key={i} className={cn("h-1.5 rounded-full transition-all", i === tutorialStep ? "w-6 bg-primary" : "w-1.5 bg-muted")} />
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-in slide-in-from-top-4 duration-500">
         <div className="flex items-center gap-3">
           <div>
@@ -508,7 +598,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-muted-foreground">연속 출석 {userData?.attendanceStreak || 0}일째</p>
-                    <p className="text-[10px] text-muted-foreground/60 italic">7일 달성 시 보너스 1,000P!</p>
+                    <p className="text-[10px] text-muted-foreground/60 italic">7일 달성 시 보너스 {configData?.pointConfig?.streak7 || 1000}P!</p>
                   </div>
                   {hasCheckedInToday && <CheckCircle2 className="h-6 w-6 text-primary animate-in zoom-in" />}
                 </div>

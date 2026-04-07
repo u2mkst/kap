@@ -102,6 +102,7 @@ export default function SignupPage() {
         classNum,
         teacherId,
         points: 1000,
+        hasCompletedTutorial: false, // 신규 유저 튜토리얼 대상
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })

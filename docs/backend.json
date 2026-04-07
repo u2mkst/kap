@@ -21,6 +21,7 @@
         "theme": { "type": "string", "enum": ["light", "dark"], "default": "light" },
         "lastAttendanceDate": { "type": "string", "description": "YYYY-MM-DD of the last check-in." },
         "attendanceStreak": { "type": "number", "default": 0 },
+        "hasCompletedTutorial": { "type": "boolean", "default": false },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -117,7 +118,16 @@
       "properties": {
         "notice": { "type": "string" },
         "adminSecret": { "type": "string", "description": "Secret code to claim admin role." },
-        "kakaoApiKey": { "type": "string", "description": "JavaScript key for Kakao Share API." }
+        "kakaoApiKey": { "type": "string", "description": "JavaScript key for Kakao Share API." },
+        "pointConfig": {
+          "type": "object",
+          "properties": {
+            "dailyAttendance": { "type": "number", "default": 100 },
+            "streak7": { "type": "number", "default": 1000 },
+            "streak30": { "type": "number", "default": 5000 },
+            "problemDefault": { "type": "number", "default": 100 }
+          }
+        }
       }
     }
   },
