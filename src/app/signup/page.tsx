@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BookOpen, School, Loader2, UserCircle, Users, GraduationCap, Lock, Search } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { BookOpen, School, Loader2, UserCircle, Users, GraduationCap, Lock, Search, ShieldCheck } from "lucide-react"
 import { useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore"
@@ -29,6 +30,7 @@ export default function SignupPage() {
   const [grade, setGrade] = useState("")
   const [classNum, setClassNum] = useState("")
   const [teacherId, setTeacherId] = useState("")
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
   const [schoolSearchQuery, setSchoolSearchQuery] = useState("")
@@ -82,6 +84,11 @@ export default function SignupPage() {
 
     if (!schoolCode) {
       toast({ variant: "destructive", title: "학교 선택 필수", description: "검색을 통해 학교를 선택해 주세요." })
+      return
+    }
+
+    if (!agreedToPrivacy) {
+      toast({ variant: "destructive", title: "동의 필요", description: "개인정보 수집 및 이용에 동의해주세요." })
       return
     }
 
@@ -225,6 +232,21 @@ export default function SignupPage() {
                     <Input placeholder="3" value={classNum} onChange={(e) => setClassNum(e.target.value)} required className="rounded-xl h-10 bg-muted/20 border-none" />
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t flex items-center gap-3 bg-muted/10 p-3 rounded-2xl">
+              <Checkbox 
+                id="privacy" 
+                checked={agreedToPrivacy} 
+                onCheckedChange={(checked) => setAgreedToPrivacy(!!checked)}
+                className="border-primary/30 data-[state=checked]:bg-primary"
+              />
+              <div className="grid gap-1 leading-none">
+                <Label htmlFor="privacy" className="text-[11px] font-black cursor-pointer flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3 text-primary" /> [필수] 개인정보 수집 및 이용 동의
+                </Label>
+                <p className="text-[9px] text-muted-foreground font-medium">원활한 서비스 이용을 위해 필수적인 항목입니다.</p>
               </div>
             </div>
           </CardContent>
