@@ -284,8 +284,8 @@ export default function DashboardPage() {
       </Dialog>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
-        <div>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-primary leading-tight animate-in slide-in-from-left duration-700">
+        <div className="animate-in slide-in-from-left duration-700">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter text-primary leading-tight">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
           <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
@@ -443,13 +443,13 @@ export default function DashboardPage() {
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-12 w-12 border-muted hover:bg-muted/50"><History className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-[2.5rem] max-w-[95vw] sm:max-w-md p-0 overflow-hidden border-none shadow-2xl bg-card">
+                    <DialogContent className="rounded-[2.5rem] max-w-fit p-0 overflow-hidden border-none shadow-2xl bg-card mx-4">
                       <div className="p-6 border-b bg-card">
                         <DialogTitle className="text-lg font-black flex items-center gap-2 text-primary"><History className="h-5 w-5" /> 출석 히스토리</DialogTitle>
                         <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
                       </div>
-                      <div className="p-4 flex flex-col items-center bg-card">
-                        <div className="bg-card rounded-3xl border w-full flex justify-center overflow-hidden">
+                      <div className="p-2 flex flex-col items-center bg-card">
+                        <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[340px]">
                           <Calendar 
                             mode="single" 
                             locale={ko} 
@@ -472,7 +472,7 @@ export default function DashboardPage() {
                             }} 
                           />
                         </div>
-                        <div className="flex gap-4 mt-4 text-[10px] font-black opacity-60">
+                        <div className="flex gap-4 mt-4 mb-4 text-[10px] font-black opacity-60">
                           <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary/20 border border-primary/30" /> 출석 완료</div>
                         </div>
                       </div>
