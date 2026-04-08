@@ -304,13 +304,13 @@ export default function DashboardPage() {
           </div>
         </div>
         <Link href="/plants" className="w-full sm:w-auto block">
-          <Card className="bg-primary text-primary-foreground p-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform cursor-pointer">
-            <div className="p-3.5 bg-primary-foreground/20 rounded-2xl">
-              <Zap className="h-7 w-7 text-primary-foreground" />
+          <Card className="bg-primary text-primary-foreground p-4 px-6 rounded-[2rem] flex items-center gap-4 shadow-xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform cursor-pointer">
+            <div className="p-2.5 bg-primary-foreground/20 rounded-xl">
+              <Zap className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-0.5">보유 포인트</p>
-              <p className="text-3xl font-black tabular-nums tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest mb-0.5">보유 포인트</p>
+              <p className="text-xl font-black tabular-nums tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
             </div>
           </Card>
         </Link>
