@@ -36,10 +36,11 @@ import {
   Quote,
   CalendarCheck,
   History,
-  BookOpen
+  BookOpen,
+  Users
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
-import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc } from "firebase/firestore"
+import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
@@ -72,6 +73,13 @@ export default function DashboardPage() {
   }, [user, db])
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
+
+  // 우리 학교 학생 수 쿼리
+  const schoolUsersQuery = useMemoFirebase(() => {
+    if (!userData?.schoolCode) return null
+    return query(collection(db, "users"), where("schoolCode", "==", userData.schoolCode))
+  }, [db, userData?.schoolCode])
+  const { data: schoolUsers } = useCollection(schoolUsersQuery)
 
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
@@ -289,9 +297,14 @@ export default function DashboardPage() {
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight text-primary">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
-          <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
-            {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
-          </Badge>
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Badge variant="secondary" className="px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
+              {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
+            </Badge>
+            <Badge variant="outline" className="px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-primary/5 text-primary border-primary/20 flex items-center gap-1.5">
+              <Users className="h-3 w-3" /> 우리 학교 학생: {schoolUsers?.length || 0}명
+            </Badge>
+          </div>
         </div>
         <Link href="/plants" className="w-full sm:w-auto block">
           <Card className="bg-primary text-primary-foreground p-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform cursor-pointer">
