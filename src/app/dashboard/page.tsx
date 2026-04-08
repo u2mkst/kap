@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -291,15 +292,17 @@ export default function DashboardPage() {
             {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
           </Badge>
         </div>
-        <Card className="bg-primary text-primary-foreground p-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform">
-          <div className="p-3.5 bg-primary-foreground/20 rounded-2xl">
-            <Zap className="h-7 w-7 text-primary-foreground" />
-          </div>
-          <div>
-            <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-0.5">Available Points</p>
-            <p className="text-3xl font-black tabular-nums tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
-          </div>
-        </Card>
+        <Link href="/plants" className="w-full sm:w-auto block">
+          <Card className="bg-primary text-primary-foreground p-6 rounded-[2.5rem] flex items-center gap-5 shadow-2xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform cursor-pointer">
+            <div className="p-3.5 bg-primary-foreground/20 rounded-2xl">
+              <Zap className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-0.5">Available Points</p>
+              <p className="text-3xl font-black tabular-nums tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
+            </div>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-12">
