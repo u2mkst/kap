@@ -607,21 +607,20 @@ export default function AdminPage() {
                     <CardDescription className="text-[10px]">날짜별로 등록된 문제와 명언을 확인하세요.</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center">
-                    <div className="p-1 sm:p-2 bg-card rounded-3xl w-full max-w-full overflow-hidden flex justify-center">
+                    <div className="bg-card rounded-3xl border w-full flex justify-center overflow-hidden">
                       <Calendar
                         mode="single"
                         selected={calendarDate}
                         onSelect={setCalendarDate}
-                        className="rounded-md border-none scale-90 sm:scale-100"
+                        className="w-full"
                         locale={ko}
                         components={{
-                          DayContent: (props) => {
-                            const { date } = props
+                          DayContent: ({ date }) => {
                             const { hasProblem, hasFortune } = getDayData(date)
                             return (
-                              <div className="relative w-full h-full flex flex-col items-center justify-center p-0.5">
-                                <span className="text-xs z-10">{date.getDate()}</span>
-                                <div className="absolute bottom-1.5 flex gap-0.5">
+                              <div className="relative w-full h-full flex items-center justify-center">
+                                <span className="text-[11px] z-10 font-bold">{date.getDate()}</span>
+                                <div className="absolute bottom-1 flex gap-0.5">
                                   {hasProblem && <div className="h-1 w-1 rounded-full bg-primary" />}
                                   {hasFortune && <div className="h-1 w-1 rounded-full bg-accent" />}
                                 </div>

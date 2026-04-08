@@ -311,7 +311,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-black flex items-center gap-2 text-foreground/80"><School className="h-6 w-6 text-primary" /> 학교 소식</h2>
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full font-bold" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 자세히 보기</Button></DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-0 bg-card border-none">
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-0 bg-card border-none shadow-2xl">
                 <div className="p-6 border-b">
                   <DialogTitle className="text-xl font-black">주간 정보 가이드</DialogTitle>
                   <DialogDescription className="text-xs font-medium">이번 주 우리 학교의 급식과 시간표를 확인하세요.</DialogDescription>
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                 <div className="p-4 bg-muted/20 flex justify-between items-center gap-4">
                   <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full h-10 w-10 p-0"><ChevronLeft /></Button>
                   <span className="text-sm font-black text-primary">
-                    {weekDates.length > 4 ? `${format(weekDates[0], "yyyy.MM.dd")} ~ ${format(weekDates[4], "MM.dd")}` : "로딩 중..."}
+                    {weekDates.length >= 5 ? `${format(weekDates[0], "yyyy.MM.dd")} ~ ${format(weekDates[4], "MM.dd")}` : "로딩 중..."}
                   </span>
                   <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full h-10 w-10 p-0"><ChevronRight /></Button>
                 </div>
@@ -443,26 +443,28 @@ export default function DashboardPage() {
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-12 w-12 border-muted hover:bg-muted/50"><History className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-[2rem] max-w-[95vw] sm:max-w-sm p-0 overflow-hidden border-none shadow-2xl bg-card">
+                    <DialogContent className="rounded-[2.5rem] max-w-[95vw] sm:max-w-md p-0 overflow-hidden border-none shadow-2xl bg-card">
                       <div className="p-6 border-b bg-card">
-                        <DialogTitle className="text-lg font-black flex items-center gap-2"><History className="h-5 w-5 text-primary" /> 출석 히스토리</DialogTitle>
+                        <DialogTitle className="text-lg font-black flex items-center gap-2 text-primary"><History className="h-5 w-5" /> 출석 히스토리</DialogTitle>
                         <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
                       </div>
-                      <div className="p-2 sm:p-4 flex flex-col items-center bg-card">
-                        <div className="bg-card p-1 sm:p-2 rounded-3xl shadow-sm border w-full flex justify-center overflow-hidden max-w-full">
+                      <div className="p-4 flex flex-col items-center bg-card">
+                        <div className="bg-card rounded-3xl border w-full flex justify-center overflow-hidden">
                           <Calendar 
                             mode="single" 
                             locale={ko} 
-                            className="scale-90 sm:scale-100"
+                            className="w-full"
                             components={{
                               DayContent: ({ date }) => {
                                 const dStr = format(date, "yyyy-MM-dd");
                                 const isAttended = attendanceHistory?.some(l => l.date === dStr);
                                 return (
-                                  <div className="relative w-full h-full flex items-center justify-center p-0.5">
-                                    <span className={cn("text-xs z-10", isAttended && "font-black text-primary")}>{date.getDate()}</span>
+                                  <div className="relative w-full h-full flex items-center justify-center">
+                                    <span className={cn("text-[11px] z-10 transition-colors", isAttended && "text-primary font-black")}>
+                                      {date.getDate()}
+                                    </span>
                                     {isAttended && (
-                                      <div className="absolute inset-0 m-auto h-7 w-7 rounded-full bg-primary/10 border border-primary/20 animate-in fade-in" />
+                                      <div className="absolute inset-0 m-auto h-6 w-6 rounded-full bg-primary/10 border border-primary/20 animate-in fade-in" />
                                     )}
                                   </div>
                                 )
