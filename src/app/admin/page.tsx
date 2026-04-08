@@ -121,7 +121,7 @@ export default function AdminPage() {
 
   const allFortunesQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    return collection(db, "daily_fortunes")
+    return query(collection(db, "daily_fortunes"))
   }, [db, isActuallyAdmin])
   const { data: allFortunes } = useCollection(allFortunesQuery)
 
@@ -140,6 +140,15 @@ export default function AdminPage() {
     streak30: 5000,
     problemDefault: 100
   })
+
+  // 날짜별 데이터 필터링을 위한 useMemo - 오류 방지를 위해 상단으로 이동
+  const problemsOnSelectedDate = useMemo(() => {
+    return allProblems?.filter(p => p.date === selectedDate) || []
+  }, [allProblems, selectedDate])
+
+  const fortuneOnSelectedDate = useMemo(() => {
+    return allFortunes?.find(f => f.date === selectedDate)
+  }, [allFortunes, selectedDate])
 
   useEffect(() => {
     setIsMounted(true)
@@ -408,12 +417,11 @@ export default function AdminPage() {
     }
   }
 
-  const problemExample = `2024-03-25|1|다항식의 덧셈|수학|중|x^2 + 2x + 1 을 x+1로 나누면?|x+1|150\n2024-03-25|2|삼각함수 기초|수학|상|sin(pi/2)의 값은?|1|200`
-  const fortuneExample = `2024-03-25|천재는 1%의 영감과 99%의 노력으로 이루어진다|토마스 에디슨\n2024-03-26|실패는 성공의 어머니이다|토마스 에디슨`
-
-  const copyExample = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({ title: "예시가 복사되었습니다." })
+  const getDayData = (day: Date) => {
+    const dStr = format(day, "yyyy-MM-dd")
+    const hasProblem = allProblems?.some(p => p.date === dStr)
+    const hasFortune = allFortunes?.some(f => f.date === dStr)
+    return { hasProblem, hasFortune }
   }
 
   if (isUserLoading || isAdminLoading || !isMounted) {
@@ -444,20 +452,13 @@ export default function AdminPage() {
 
   if (!isActuallyAdmin) return null
 
-  const getDayData = (day: Date) => {
-    const dStr = format(day, "yyyy-MM-dd")
-    const hasProblem = allProblems?.some(p => p.date === dStr)
-    const hasFortune = allFortunes?.some(f => f.date === dStr)
-    return { hasProblem, hasFortune }
+  const problemExample = `2024-03-25|1|다항식의 덧셈|수학|중|x^2 + 2x + 1 을 x+1로 나누면?|x+1|150\n2024-03-25|2|삼각함수 기초|수학|상|sin(pi/2)의 값은?|1|200`
+  const fortuneExample = `2024-03-25|천재는 1%의 영감과 99%의 노력으로 이루어진다|토마스 에디슨\n2024-03-26|실패는 성공의 어머니이다|토마스 에디슨`
+
+  const copyExample = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({ title: "예시가 복사되었습니다." })
   }
-
-  const problemsOnSelectedDate = useMemo(() => {
-    return allProblems?.filter(p => p.date === selectedDate) || []
-  }, [allProblems, selectedDate])
-
-  const fortuneOnSelectedDate = useMemo(() => {
-    return allFortunes?.find(f => f.date === selectedDate)
-  }, [allFortunes, selectedDate])
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-500">
