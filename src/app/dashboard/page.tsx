@@ -408,7 +408,7 @@ export default function DashboardPage() {
                 ) : todayMeal ? (
                   <div className="grid gap-2">
                     {todayMeal.split(',').map((m, i) => (
-                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-black transition-all hover:bg-primary/10">{m.trim()}</div>
+                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-black dark:text-white transition-all hover:bg-primary/10">{m.trim()}</div>
                     ))}
                   </div>
                 ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Utensils className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">급식 정보가 없습니다.</p></div>}
