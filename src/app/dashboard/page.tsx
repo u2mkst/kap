@@ -493,25 +493,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
-
-          <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-card mt-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-black flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-primary" /> 학원 공식 일정
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="relative w-full overflow-hidden" style={{ paddingTop: '75%' }}>
-                <iframe 
-                  src="https://calendar.google.com/calendar/embed?src=yhwings21%40gmail.com&ctz=Asia%2FSeoul" 
-                  style={{ border: 0 }} 
-                  className="absolute top-0 left-0 w-full h-full"
-                  frameBorder="0" 
-                  scrolling="no"
-                ></iframe>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="md:col-span-4 space-y-6">
