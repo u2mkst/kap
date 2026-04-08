@@ -285,7 +285,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div className="animate-in slide-in-from-left duration-700">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-accent">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-accent">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
           <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
@@ -395,7 +395,7 @@ export default function DashboardPage() {
                 ) : todayMeal ? (
                   <div className="grid gap-2">
                     {todayMeal.split(',').map((m, i) => (
-                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-primary transition-all hover:bg-primary/10">{m.trim()}</div>
+                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-foreground transition-all hover:bg-primary/10">{m.trim()}</div>
                     ))}
                   </div>
                 ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Utensils className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">급식 정보가 없습니다.</p></div>}
