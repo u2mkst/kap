@@ -50,7 +50,7 @@ import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
 import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { initKakao, shareMealToKakao, shareTimetableToKakao } from "@/lib/kakao-share"
+import { initKakao, shareMealToKakao, shareTimetableToKakao, shareFortuneToKakao } from "@/lib/kakao-share"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -74,7 +74,6 @@ export default function DashboardPage() {
   // 오늘의 문제 관련 상태
   const [userAnswer, setUserAnswer] = useState("")
   const [isSolving, setIsSolving] = useState(false)
-  const [isProblemSolved, setIsProblemSolved] = useState(false)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -154,6 +153,14 @@ export default function DashboardPage() {
   }, [db, todayStr, userData?.grade])
   const { data: problemData } = useDoc(dailyProblemRef)
 
+  // 문제 풀이 여부 쿼리
+  const solvedProblemRef = useMemoFirebase(() => {
+    if (!user || !todayStr) return null
+    return doc(db, "users", user.uid, "solved_problems", todayStr)
+  }, [db, user, todayStr])
+  const { data: solvedData } = useDoc(solvedProblemRef)
+  const isProblemSolved = !!solvedData
+
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
     return query(collection(db, "users"), orderBy("points", "desc"), limit(10))
@@ -218,17 +225,29 @@ export default function DashboardPage() {
   }
 
   const handleSolveProblem = async () => {
-    if (!problemData || !userAnswer.trim() || !userDocRef) return
-    setIsSolving(true)
+    if (!problemData || !userAnswer.trim() || !userDocRef || !solvedProblemRef) return
+    if (isProblemSolved) {
+      toast({ title: "이미 오늘 문제를 맞히셨습니다!" })
+      return
+    }
     
+    setIsSolving(true)
     try {
       if (userAnswer.trim() === problemData.answer) {
         const reward = problemData.rewardPoints || configData?.pointConfig?.problemDefault || 100
+        
+        // 정답 기록 저장
+        await setDoc(solvedProblemRef, {
+          solved: true,
+          solvedAt: serverTimestamp()
+        })
+
+        // 포인트 지급
         await updateDoc(userDocRef, {
           points: increment(reward),
           updatedAt: serverTimestamp()
         })
-        setIsProblemSolved(true)
+        
         toast({ title: "정답입니다! 🎉", description: `${reward}P가 지급되었습니다.` })
       } else {
         toast({ variant: "destructive", title: "아쉬워요, 틀렸습니다. 😢", description: "다시 한 번 생각해보세요!" })
@@ -252,6 +271,11 @@ export default function DashboardPage() {
   const handleShareTimetable = (date: string, timetable: string) => {
     if (!userData?.schoolName || !userData?.grade || !userData?.classNum) return;
     shareTimetableToKakao(date, userData.schoolName, userData.grade, userData.classNum, timetable, configData?.kakaoApiKey);
+  };
+
+  const handleShareFortune = () => {
+    if (!personalFortuneData?.score || !userData?.nickname) return;
+    shareFortuneToKakao(personalFortuneData.score, userData.nickname, configData?.kakaoApiKey);
   };
 
   useEffect(() => {
@@ -478,7 +502,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* 오늘의 도전 문제 섹션 (이동됨) */}
+          {/* 오늘의 도전 문제 섹션 */}
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:shadow-2xl">
             <CardHeader className="pb-3 bg-primary/5 flex flex-row items-center justify-between border-b border-primary/10">
               <div className="flex items-center gap-3">
@@ -513,8 +537,8 @@ export default function DashboardPage() {
                   {isProblemSolved ? (
                     <div className="bg-primary/10 p-6 rounded-3xl flex flex-col items-center gap-2 animate-in zoom-in duration-500 border border-primary/20">
                       <PartyPopper className="h-10 w-10 text-primary" />
-                      <p className="text-base font-black text-primary">정답입니다! 훌륭해요 ✨</p>
-                      <p className="text-[10px] font-bold text-primary/60">내일의 새로운 문제에 도전하세요!</p>
+                      <p className="text-base font-black text-primary">오늘의 문제 해결! 🎉</p>
+                      <p className="text-[10px] font-bold text-primary/60">내일 새로운 문제로 만나요 ✨</p>
                     </div>
                   ) : (
                     <div className="flex gap-2">
@@ -598,7 +622,14 @@ export default function DashboardPage() {
 
         <div className="md:col-span-4 space-y-6">
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:-translate-y-1">
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-5 w-5 text-green-500" /> 오늘의 행운 점수</CardTitle></CardHeader>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-5 w-5 text-green-500" /> 오늘의 행운 점수</CardTitle>
+              {personalFortuneData && (
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleShareFortune}>
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              )}
+            </CardHeader>
             <CardContent className="p-6">
               {personalFortuneData ? (
                 <div className="space-y-5">

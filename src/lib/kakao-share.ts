@@ -126,3 +126,46 @@ export const shareTimetableToKakao = (date: string, schoolName: string, grade: s
     console.error("Kakao Share Error:", e);
   }
 };
+
+/**
+ * 오늘의 행운 점수 카카오톡 공유
+ */
+export const shareFortuneToKakao = (score: number, nickname: string, apiKey?: string) => {
+  if (typeof window === 'undefined') return;
+  
+  initKakao(apiKey);
+  
+  if (!window.Kakao?.Share) {
+    alert("카카오톡 SDK를 로드할 수 없습니다.");
+    return;
+  }
+  
+  const siteUrl = window.location.origin;
+  const kstLink = "https://tr.ee/ksthub";
+  
+  let comment = "오늘 기분이 아주 좋아요! 👍";
+  if (score >= 90) comment = "역대급 행운이에요! 오늘은 뭘 해도 되는 날! ✨";
+  else if (score >= 75) comment = "운이 아주 좋네요! 행복한 하루 예약! 🙂";
+  
+  try {
+    window.Kakao.Share.sendDefault({
+      objectType: 'text',
+      text: `${nickname}님의 오늘의 행운 점수 🍀\n\n🎉 ${score}점!\n\n${comment}\n\n🔗 ${kstLink}`,
+      link: {
+        mobileWebUrl: siteUrl + '/dashboard',
+        webUrl: siteUrl + '/dashboard',
+      },
+      buttons: [
+        {
+          title: '나도 점수 확인하기',
+          link: {
+            mobileWebUrl: siteUrl + '/dashboard',
+            webUrl: siteUrl + '/dashboard',
+          },
+        },
+      ],
+    });
+  } catch (e) {
+    console.error("Kakao Share Error:", e);
+  }
+};

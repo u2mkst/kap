@@ -145,6 +145,10 @@
       "schema": { "$ref": "#/backend/entities/UserFortune" },
       "description": "User's individual daily luck records."
     },
+    "/users/{userId}/solved_problems/{date}": {
+      "schema": { "type": "object", "properties": { "solved": { "type": "boolean" }, "solvedAt": { "type": "string", "format": "date-time" } } },
+      "description": "Daily problem completion records per user."
+    },
     "/users/{userId}/attendance_logs/{date}": {
       "schema": { "$ref": "#/backend/entities/AttendanceLog" },
       "description": "User's daily attendance logs."
