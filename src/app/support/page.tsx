@@ -87,8 +87,26 @@ export default function SupportPage() {
 
   if (isUserLoading) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="animate-spin h-8 w-8 text-primary" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+        <div className="flex flex-col items-center gap-8 relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
+            <div className="relative h-24 w-24 rounded-[2rem] bg-card border border-primary/10 flex items-center justify-center shadow-2xl animate-float animate-glow">
+              <MessageSquare className="h-12 w-12 text-primary animate-pulse-gentle" />
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
+              고객센터 연결 중...
+            </h2>
+            <div className="flex gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
+              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
+              <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { User, School, ChevronLeft, Fingerprint, BadgeCheck, Loader2, Users, GraduationCap, Search, AlertTriangle } from "lucide-react"
+import { User, School, ChevronLeft, Fingerprint, BadgeCheck, Loader2, Users, GraduationCap, Search, AlertTriangle, BookOpen } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, serverTimestamp, collection, deleteDoc } from "firebase/firestore"
 import { deleteUser } from "firebase/auth"
@@ -143,13 +143,25 @@ export default function ProfilePage() {
 
   if (isUserLoading || isUserDataLoading) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 animate-pulse" />
-            <User className="absolute inset-0 m-auto h-8 w-8 text-primary animate-bounce-slow" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+        <div className="flex flex-col items-center gap-8 relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
+            <div className="relative h-24 w-24 rounded-[2rem] bg-card border border-primary/10 flex items-center justify-center shadow-2xl animate-float animate-glow">
+              <User className="h-12 w-12 text-primary animate-pulse-gentle" />
+            </div>
           </div>
-          <p className="text-sm font-black text-primary/60 animate-pulse">로딩 중...</p>
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
+              회원 정보 로딩 중...
+            </h2>
+            <div className="flex gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
+              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
+              <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -208,7 +220,7 @@ export default function ProfilePage() {
             <CardTitle className="text-lg font-black flex items-center gap-2">
               <School className="h-5 w-5 text-primary" /> 학교 및 선생님
             </CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-bold ml-1">담당 선생님</Label>

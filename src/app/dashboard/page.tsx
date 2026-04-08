@@ -74,7 +74,6 @@ export default function DashboardPage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // 우리 학교 학생 수 쿼리
   const schoolUsersQuery = useMemoFirebase(() => {
     if (!userData?.schoolCode) return null
     return query(collection(db, "users"), where("schoolCode", "==", userData.schoolCode))
