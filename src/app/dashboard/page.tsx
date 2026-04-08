@@ -50,7 +50,7 @@ import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
 import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { initKakao, shareMealToKakao, shareTimetableToKakao, shareFortuneToKakao } from "@/lib/kakao-share"
+import { initKakao, shareMealToKakao, shareTimetableToKakao, shareFortuneToKakao, shareQuoteToKakao } from "@/lib/kakao-share"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -276,6 +276,11 @@ export default function DashboardPage() {
   const handleShareFortune = () => {
     if (!personalFortuneData?.score || !userData?.nickname) return;
     shareFortuneToKakao(personalFortuneData.score, userData.nickname, configData?.kakaoApiKey);
+  };
+
+  const handleShareQuote = () => {
+    if (!fortuneData?.fortuneText) return;
+    shareQuoteToKakao(fortuneData.fortuneText, fortuneData.author || "알 수 없음", configData?.kakaoApiKey);
   };
 
   useEffect(() => {
@@ -607,7 +612,14 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 오늘의 명언</CardTitle></CardHeader>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 오늘의 명언</CardTitle>
+                {fortuneData && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleShareQuote}>
+                    <Share2 className="h-4 w-4 text-foreground" />
+                  </Button>
+                )}
+              </CardHeader>
               <CardContent className="text-center py-6 flex flex-col items-center justify-center h-full min-h-[140px] px-6">
                 <div className="relative">
                   <Quote className="absolute -top-4 -left-4 h-8 w-8 text-primary/5 rotate-180" />

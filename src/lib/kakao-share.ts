@@ -169,3 +169,42 @@ export const shareFortuneToKakao = (score: number, nickname: string, apiKey?: st
     console.error("Kakao Share Error:", e);
   }
 };
+
+/**
+ * 오늘의 명언 카카오톡 공유
+ */
+export const shareQuoteToKakao = (quote: string, author: string, apiKey?: string) => {
+  if (typeof window === 'undefined') return;
+  
+  initKakao(apiKey);
+  
+  if (!window.Kakao?.Share) {
+    alert("카카오톡 SDK를 로드할 수 없습니다.");
+    return;
+  }
+  
+  const siteUrl = window.location.origin;
+  const kstLink = "https://tr.ee/ksthub";
+  
+  try {
+    window.Kakao.Share.sendDefault({
+      objectType: 'text',
+      text: `오늘의 명언 📜\n\n"${quote}"\n\n- ${author || '알 수 없음'}\n\n🔗 ${kstLink}`,
+      link: {
+        mobileWebUrl: siteUrl + '/dashboard',
+        webUrl: siteUrl + '/dashboard',
+      },
+      buttons: [
+        {
+          title: 'KST HUB에서 보기',
+          link: {
+            mobileWebUrl: siteUrl + '/dashboard',
+            webUrl: siteUrl + '/dashboard',
+          },
+        },
+      ],
+    });
+  } catch (e) {
+    console.error("Kakao Share Error:", e);
+  }
+};
