@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -220,7 +219,7 @@ export default function ProfilePage() {
             <CardTitle className="text-lg font-black flex items-center gap-2">
               <School className="h-5 w-5 text-primary" /> 학교 및 선생님
             </CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-bold ml-1">담당 선생님</Label>
