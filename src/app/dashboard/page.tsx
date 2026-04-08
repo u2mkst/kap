@@ -285,7 +285,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div className="animate-in slide-in-from-left duration-700">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter text-primary leading-tight">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-accent">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
           <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
@@ -493,6 +493,25 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-card mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-black flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" /> 학원 공식 일정
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="relative w-full overflow-hidden" style={{ paddingTop: '75%' }}>
+                <iframe 
+                  src="https://calendar.google.com/calendar/embed?src=yhwings21%40gmail.com&ctz=Asia%2FSeoul" 
+                  style={{ border: 0 }} 
+                  className="absolute top-0 left-0 w-full h-full"
+                  frameBorder="0" 
+                  scrolling="no"
+                ></iframe>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="md:col-span-4 space-y-6">
