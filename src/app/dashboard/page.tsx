@@ -301,9 +301,6 @@ export default function DashboardPage() {
             <Badge variant="secondary" className="px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
               {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
             </Badge>
-            <Badge variant="outline" className="px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-primary/5 text-primary border-primary/20 flex items-center gap-1.5">
-              <Users className="h-3 w-3" /> 우리 학교 학생: {schoolUsers?.length || 0}명
-            </Badge>
           </div>
         </div>
         <Link href="/plants" className="w-full sm:w-auto block">
@@ -548,6 +545,13 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="mt-12 flex flex-col items-center gap-2 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <Badge variant="outline" className="px-6 py-2.5 text-xs font-black rounded-full shadow-sm bg-primary/5 text-primary border-primary/20 flex items-center gap-2">
+          <Users className="h-4 w-4" /> 우리 학교 학생: {schoolUsers?.length || 0}명
+        </Badge>
+        <p className="text-[10px] font-bold text-muted-foreground opacity-50">KST HUB와 함께 성장하는 친구들</p>
       </div>
     </div>
   )
