@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -233,7 +232,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
+            <h2 className="text-xl font-black tracking-tighter animate-shimmer-text">
               KST HUB 로딩 중...
             </h2>
             <div className="flex gap-1.5">

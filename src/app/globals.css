@@ -76,16 +76,12 @@
     animation: glow 2s ease-in-out infinite alternate;
   }
   .animate-shimmer-text {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.5) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer-text 2s infinite;
+    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 50%, hsl(var(--primary)) 100%);
+    background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer-text 3s linear infinite;
   }
 }
 
@@ -99,6 +95,6 @@
 }
 
 @keyframes shimmer-text {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
