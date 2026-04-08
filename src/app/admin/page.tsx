@@ -31,10 +31,11 @@ import {
   Settings2,
   BookOpen,
   PlusCircle,
-  CalendarPlus
+  CalendarPlus,
+  ArrowRight
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
-import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { format, addDays } from "date-fns"
 import { ko } from "date-fns/locale"
@@ -50,6 +51,7 @@ export default function AdminPage() {
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
   const [tempPoints, setTempPoints] = useState<{ [key: string]: number }>({})
   const [tempVotes, setTempVotes] = useState<{ [key: string]: number }>({})
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"))
 
   // 단일 문제 등록 상태
   const [singleProblem, setSingleProblem] = useState({
@@ -61,6 +63,13 @@ export default function AdminPage() {
     problemText: "",
     answer: "",
     rewardPoints: 100
+  })
+
+  // 단일 명언 등록 상태
+  const [singleFortune, setSingleFortune] = useState({
+    date: format(new Date(), "yyyy-MM-dd"),
+    fortuneText: "",
+    author: ""
   })
 
   const adminRef = useMemoFirebase(() => {
@@ -325,12 +334,45 @@ export default function AdminPage() {
     }
   }
 
+  const handleSingleFortuneSave = async () => {
+    const { date, fortuneText, author } = singleFortune
+    if (!date || !fortuneText) {
+      toast({ variant: "destructive", title: "날짜와 명언 내용을 입력해주세요." })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      await setDoc(doc(db, "daily_fortunes", date), {
+        date,
+        fortuneText,
+        author: author || "알 수 없음",
+        updatedAt: serverTimestamp()
+      })
+      toast({ title: "명언 등록 완료!" })
+      setSingleFortune({ ...singleFortune, fortuneText: "", author: "" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "등록 실패" })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const setNextDayForProblem = () => {
     if (!allProblems || allProblems.length === 0) return;
     const sortedDates = [...allProblems].map(p => p.date).sort();
     const lastDateStr = sortedDates[sortedDates.length - 1];
     const nextDate = addDays(new Date(lastDateStr), 1);
     setSingleProblem({ ...singleProblem, date: format(nextDate, "yyyy-MM-dd") });
+    toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
+  }
+
+  const setNextDayForFortune = () => {
+    if (!allFortunes || allFortunes.length === 0) return;
+    const sortedDates = [...allFortunes].map(f => f.date).sort();
+    const lastDateStr = sortedDates[sortedDates.length - 1];
+    const nextDate = addDays(new Date(lastDateStr), 1);
+    setSingleFortune({ ...singleFortune, date: format(nextDate, "yyyy-MM-dd") });
     toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
   }
 
@@ -408,6 +450,14 @@ export default function AdminPage() {
     const hasFortune = allFortunes?.some(f => f.date === dStr)
     return { hasProblem, hasFortune }
   }
+
+  const problemsOnSelectedDate = useMemo(() => {
+    return allProblems?.filter(p => p.date === selectedDate) || []
+  }, [allProblems, selectedDate])
+
+  const fortuneOnSelectedDate = useMemo(() => {
+    return allFortunes?.find(f => f.date === selectedDate)
+  }, [allFortunes, selectedDate])
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl animate-in fade-in duration-500">
@@ -698,6 +748,51 @@ export default function AdminPage() {
                 </Card>
 
                 <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-sm font-black flex items-center gap-2">
+                      <Quote className="h-4 w-4 text-accent" /> 오늘의 명언 직접 등록
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold">대상 날짜</Label>
+                      <div className="flex gap-1">
+                        <Input 
+                          type="date" 
+                          value={singleFortune.date} 
+                          onChange={(e) => setSingleFortune({...singleFortune, date: e.target.value})} 
+                          className="rounded-xl h-9 text-xs"
+                        />
+                        <Button variant="outline" size="icon" onClick={setNextDayForFortune} className="h-9 w-9 shrink-0 rounded-xl" title="마지막 등록일 다음 날로 설정">
+                          <CalendarPlus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold">명언 내용</Label>
+                      <Textarea 
+                        placeholder="오늘의 명언 내용을 입력하세요..." 
+                        value={singleFortune.fortuneText} 
+                        onChange={(e) => setSingleFortune({...singleFortune, fortuneText: e.target.value})} 
+                        className="rounded-xl min-h-[80px] text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold">작성자 (선택사항)</Label>
+                      <Input 
+                        placeholder="예: 알버트 아인슈타인" 
+                        value={singleFortune.author} 
+                        onChange={(e) => setSingleFortune({...singleFortune, author: e.target.value})} 
+                        className="rounded-xl h-9 text-xs"
+                      />
+                    </div>
+                    <Button onClick={handleSingleFortuneSave} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-accent text-white">
+                      명언 등록하기
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
                   <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록 (Bulk)</CardTitle></CardHeader>
                   <CardContent className="p-6 space-y-6">
                       <div className="space-y-2">
@@ -743,11 +838,15 @@ export default function AdminPage() {
                     <CardTitle className="text-sm font-black flex items-center gap-2">
                       <CalendarDays className="h-4 w-4 text-primary" /> 데이터 현황 달력
                     </CardTitle>
-                    <CardDescription className="text-[10px]">날짜별로 등록된 문제와 명언을 확인하세요.</CardDescription>
+                    <CardDescription className="text-[10px]">날짜 클릭 시 해당 날짜의 등록 정보를 확인합니다.</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center">
                     <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[320px]">
                       <Calendar
+                        onDateClick={(d) => {
+                          const dStr = format(d, "yyyy-MM-dd")
+                          setSelectedDate(dStr)
+                        }}
                         renderDay={(date) => {
                           const { hasProblem, hasFortune } = getDayData(date)
                           return (
@@ -762,6 +861,47 @@ export default function AdminPage() {
                     <div className="flex gap-4 mt-4 text-[10px] font-bold">
                       <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary" /> 문제 등록됨</div>
                       <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#67C4DA]" /> 명언 등록됨</div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* 선택한 날짜의 데이터 상세 뷰 */}
+                <Card className="border-none shadow-md bg-card rounded-3xl overflow-hidden animate-in fade-in zoom-in duration-300">
+                  <CardHeader className="bg-muted/30 pb-3">
+                    <CardTitle className="text-sm font-black flex items-center gap-2">
+                      <ArrowRight className="h-4 w-4 text-primary" /> {selectedDate} 현황
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black opacity-50 uppercase tracking-widest">등록된 문제 ({problemsOnSelectedDate.length})</Label>
+                      {problemsOnSelectedDate.length > 0 ? (
+                        <div className="grid gap-2">
+                          {problemsOnSelectedDate.map(p => (
+                            <div key={p.id} className="p-3 bg-muted/20 rounded-xl border border-border/50">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="text-[9px] h-4">{p.grade}학년</Badge>
+                                <span className="text-[11px] font-black truncate">{p.title}</span>
+                              </div>
+                              <p className="text-[10px] opacity-70 line-clamp-1">{p.problemText}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] font-bold opacity-30 italic py-2 text-center">등록된 문제가 없습니다.</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t">
+                      <Label className="text-[10px] font-black opacity-50 uppercase tracking-widest">등록된 명언</Label>
+                      {fortuneOnSelectedDate ? (
+                        <div className="p-3 bg-accent/5 rounded-xl border border-accent/20">
+                          <p className="text-[11px] font-bold italic leading-relaxed">"{fortuneOnSelectedDate.fortuneText}"</p>
+                          <p className="text-[9px] font-black text-accent mt-1 text-right">- {fortuneOnSelectedDate.author}</p>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] font-bold opacity-30 italic py-2 text-center">등록된 명언이 없습니다.</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

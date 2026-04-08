@@ -354,71 +354,6 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
-          {/* 오늘의 도전 문제 섹션 (복구됨) */}
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:shadow-2xl">
-            <CardHeader className="pb-3 bg-primary/5 flex flex-row items-center justify-between border-b border-primary/10">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl">
-                  <BrainCircuit className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base font-black">오늘의 도전 문제</CardTitle>
-                  <CardDescription className="text-[10px] font-bold">포인트를 획득할 기회!</CardDescription>
-                </div>
-              </div>
-              {problemData && (
-                <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/10 text-primary font-black px-3 py-1">
-                  {problemData.rewardPoints || 100}P 지급
-                </Badge>
-              )}
-            </CardHeader>
-            <CardContent className="pt-6">
-              {problemData ? (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Badge className="bg-accent text-accent-foreground font-black text-[10px] h-5 rounded-full">{problemData.topic}</Badge>
-                      <Badge variant="outline" className="font-black text-[10px] h-5 rounded-full border-primary/30">난이도: {problemData.difficulty}</Badge>
-                    </div>
-                    <h3 className="text-lg font-black leading-tight text-foreground">{problemData.title}</h3>
-                    <p className="text-sm font-bold text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/20 p-5 rounded-3xl border border-muted/30">
-                      {problemData.problemText}
-                    </p>
-                  </div>
-
-                  {isProblemSolved ? (
-                    <div className="bg-primary/10 p-6 rounded-3xl flex flex-col items-center gap-2 animate-in zoom-in duration-500 border border-primary/20">
-                      <PartyPopper className="h-10 w-10 text-primary" />
-                      <p className="text-base font-black text-primary">정답입니다! 훌륭해요 ✨</p>
-                      <p className="text-[10px] font-bold text-primary/60">내일의 새로운 문제에 도전하세요!</p>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="정답을 입력하세요" 
-                        value={userAnswer} 
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
-                        className="rounded-2xl h-12 bg-muted/30 border-none px-5 font-bold focus-visible:ring-primary"
-                      />
-                      <Button onClick={handleSolveProblem} disabled={isSolving || !userAnswer.trim()} className="h-12 rounded-2xl px-6 font-black bg-primary text-white shadow-md">
-                        {isSolving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Send className="h-4 w-4 mr-2" /> 제출</>}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-30 text-center">
-                  <BrainCircuit className="h-12 w-12" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-black italic">오늘 등록된 문제가 없습니다.</p>
-                    <p className="text-[10px] font-bold">선생님이 준비 중이에요!</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-black flex items-center gap-2 text-foreground/80"><School className="h-6 w-6 text-primary" /> 학교 소식</h2>
             <Dialog>
@@ -542,6 +477,71 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* 오늘의 도전 문제 섹션 (이동됨) */}
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:shadow-2xl">
+            <CardHeader className="pb-3 bg-primary/5 flex flex-row items-center justify-between border-b border-primary/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl">
+                  <BrainCircuit className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-black">오늘의 도전 문제</CardTitle>
+                  <CardDescription className="text-[10px] font-bold">포인트를 획득할 기회!</CardDescription>
+                </div>
+              </div>
+              {problemData && (
+                <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/10 text-primary font-black px-3 py-1">
+                  {problemData.rewardPoints || 100}P 지급
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent className="pt-6">
+              {problemData ? (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Badge className="bg-accent text-accent-foreground font-black text-[10px] h-5 rounded-full">{problemData.topic}</Badge>
+                      <Badge variant="outline" className="font-black text-[10px] h-5 rounded-full border-primary/30">난이도: {problemData.difficulty}</Badge>
+                    </div>
+                    <h3 className="text-lg font-black leading-tight text-foreground">{problemData.title}</h3>
+                    <p className="text-sm font-bold text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/20 p-5 rounded-3xl border border-muted/30">
+                      {problemData.problemText}
+                    </p>
+                  </div>
+
+                  {isProblemSolved ? (
+                    <div className="bg-primary/10 p-6 rounded-3xl flex flex-col items-center gap-2 animate-in zoom-in duration-500 border border-primary/20">
+                      <PartyPopper className="h-10 w-10 text-primary" />
+                      <p className="text-base font-black text-primary">정답입니다! 훌륭해요 ✨</p>
+                      <p className="text-[10px] font-bold text-primary/60">내일의 새로운 문제에 도전하세요!</p>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="정답을 입력하세요" 
+                        value={userAnswer} 
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
+                        className="rounded-2xl h-12 bg-muted/30 border-none px-5 font-bold focus-visible:ring-primary"
+                      />
+                      <Button onClick={handleSolveProblem} disabled={isSolving || !userAnswer.trim()} className="h-12 rounded-2xl px-6 font-black bg-primary text-white shadow-md">
+                        {isSolving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Send className="h-4 w-4 mr-2" /> 제출</>}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-30 text-center">
+                  <BrainCircuit className="h-12 w-12" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-black italic">오늘 등록된 문제가 없습니다.</p>
+                    <p className="text-[10px] font-bold">선생님이 준비 중이에요!</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">

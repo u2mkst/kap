@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils"
 export interface CalendarProps {
   className?: string
   renderDay?: (date: Date) => React.ReactNode
+  onDateClick?: (date: Date) => void
 }
 
-export function Calendar({ className, renderDay }: CalendarProps) {
+export function Calendar({ className, renderDay, onDateClick }: CalendarProps) {
   const [viewDate, setViewDate] = React.useState(new Date())
   const [isMounted, setIsMounted] = React.useState(false)
 
@@ -77,6 +78,7 @@ export function Calendar({ className, renderDay }: CalendarProps) {
           return (
             <div 
               key={dateNum} 
+              onClick={() => onDateClick?.(currentIterationDate)}
               className="relative p-[12px] text-[14px] cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center min-h-[48px]"
             >
               <span className={cn(
