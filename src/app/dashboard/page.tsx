@@ -226,7 +226,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-col items-center gap-2">
             <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
-              KST HUB Loading...
+              KST HUB 로딩 중...
             </h2>
             <div className="flex gap-1.5">
               <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
@@ -298,7 +298,7 @@ export default function DashboardPage() {
               <Zap className="h-7 w-7 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-0.5">Available Points</p>
+              <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-0.5">보유 포인트</p>
               <p className="text-3xl font-black tabular-nums tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
             </div>
           </Card>
