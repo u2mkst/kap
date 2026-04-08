@@ -29,12 +29,14 @@ import {
   RefreshCw,
   Edit2,
   Settings2,
-  BookOpen
+  BookOpen,
+  PlusCircle,
+  CalendarPlus
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { format } from "date-fns"
+import { format, addDays } from "date-fns"
 import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
@@ -48,6 +50,18 @@ export default function AdminPage() {
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
   const [tempPoints, setTempPoints] = useState<{ [key: string]: number }>({})
   const [tempVotes, setTempVotes] = useState<{ [key: string]: number }>({})
+
+  // 단일 문제 등록 상태
+  const [singleProblem, setSingleProblem] = useState({
+    date: format(new Date(), "yyyy-MM-dd"),
+    grade: "1",
+    title: "",
+    topic: "수학",
+    difficulty: "중",
+    problemText: "",
+    answer: "",
+    rewardPoints: 100
+  })
 
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
@@ -92,7 +106,7 @@ export default function AdminPage() {
 
   const allProblemsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    return collection(db, "daily_problems")
+    return query(collection(db, "daily_problems"), orderBy("date", "desc"))
   }, [db, isActuallyAdmin])
   const { data: allProblems } = useCollection(allProblemsQuery)
 
@@ -284,6 +298,40 @@ export default function AdminPage() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleSingleProblemSave = async () => {
+    const { date, grade, title, problemText, answer } = singleProblem
+    if (!date || !grade || !title || !problemText || !answer) {
+      toast({ variant: "destructive", title: "모든 칸을 채워주세요." })
+      return
+    }
+
+    setIsSaving(true)
+    const problemId = `${date}_${grade}`
+    try {
+      await setDoc(doc(db, "daily_problems", problemId), {
+        ...singleProblem,
+        id: problemId,
+        rewardPoints: Number(singleProblem.rewardPoints),
+        updatedAt: serverTimestamp()
+      })
+      toast({ title: "문제 등록 완료!" })
+      setSingleProblem({ ...singleProblem, title: "", problemText: "", answer: "" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "등록 실패" })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const setNextDayForProblem = () => {
+    if (!allProblems || allProblems.length === 0) return;
+    const sortedDates = [...allProblems].map(p => p.date).sort();
+    const lastDateStr = sortedDates[sortedDates.length - 1];
+    const nextDate = addDays(new Date(lastDateStr), 1);
+    setSingleProblem({ ...singleProblem, date: format(nextDate, "yyyy-MM-dd") });
+    toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
   }
 
   const handleBulkFortunes = async () => {
@@ -559,7 +607,98 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
              <div className="md:col-span-7 space-y-6">
                 <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-                  <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록</CardTitle></CardHeader>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-sm font-black flex items-center gap-2">
+                      <PlusCircle className="h-4 w-4 text-primary" /> 오늘의 문제 직접 등록
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold">대상 날짜</Label>
+                        <div className="flex gap-1">
+                          <Input 
+                            type="date" 
+                            value={singleProblem.date} 
+                            onChange={(e) => setSingleProblem({...singleProblem, date: e.target.value})} 
+                            className="rounded-xl h-9 text-xs"
+                          />
+                          <Button variant="outline" size="icon" onClick={setNextDayForProblem} className="h-9 w-9 shrink-0 rounded-xl" title="마지막 등록일 다음 날로 설정">
+                            <CalendarPlus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold">대상 학년</Label>
+                        <Select value={singleProblem.grade} onValueChange={(v) => setSingleProblem({...singleProblem, grade: v})}>
+                          <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1학년</SelectItem>
+                            <SelectItem value="2">2학년</SelectItem>
+                            <SelectItem value="3">3학년</SelectItem>
+                            <SelectItem value="4">4학년</SelectItem>
+                            <SelectItem value="5">5학년</SelectItem>
+                            <SelectItem value="6">6학년</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold">문제 제목</Label>
+                      <Input 
+                        placeholder="예: 다항식의 연산 기초" 
+                        value={singleProblem.title} 
+                        onChange={(e) => setSingleProblem({...singleProblem, title: e.target.value})} 
+                        className="rounded-xl h-9 text-xs"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold">토픽</Label>
+                        <Input value={singleProblem.topic} onChange={(e) => setSingleProblem({...singleProblem, topic: e.target.value})} className="rounded-xl h-9 text-xs" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold">난이도</Label>
+                        <Select value={singleProblem.difficulty} onValueChange={(v) => setSingleProblem({...singleProblem, difficulty: v})}>
+                          <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="하">하</SelectItem>
+                            <SelectItem value="중">중</SelectItem>
+                            <SelectItem value="상">상</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold">보상 포인트</Label>
+                        <Input type="number" value={singleProblem.rewardPoints} onChange={(e) => setSingleProblem({...singleProblem, rewardPoints: parseInt(e.target.value)})} className="rounded-xl h-9 text-xs" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold">문제 내용</Label>
+                      <Textarea 
+                        placeholder="문제 본문을 입력하세요..." 
+                        value={singleProblem.problemText} 
+                        onChange={(e) => setSingleProblem({...singleProblem, problemText: e.target.value})} 
+                        className="rounded-xl min-h-[80px] text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold">정답</Label>
+                      <Input 
+                        placeholder="정답 입력" 
+                        value={singleProblem.answer} 
+                        onChange={(e) => setSingleProblem({...singleProblem, answer: e.target.value})} 
+                        className="rounded-xl h-9 text-xs"
+                      />
+                    </div>
+                    <Button onClick={handleSingleProblemSave} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-primary text-white">
+                      문제 등록하기
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                  <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록 (Bulk)</CardTitle></CardHeader>
                   <CardContent className="p-6 space-y-6">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between mb-1">

@@ -1,13 +1,15 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -36,7 +38,10 @@ import {
   CalendarCheck,
   History,
   BookOpen,
-  Users
+  Users,
+  BrainCircuit,
+  Send,
+  PartyPopper
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc, where } from "firebase/firestore"
@@ -65,6 +70,11 @@ export default function DashboardPage() {
 
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
+
+  // 오늘의 문제 관련 상태
+  const [userAnswer, setUserAnswer] = useState("")
+  const [isSolving, setIsSolving] = useState(false)
+  const [isProblemSolved, setIsProblemSolved] = useState(false)
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
@@ -137,6 +147,13 @@ export default function DashboardPage() {
     return weeklyTimetable.find(t => t.date === today)?.timetable || ""
   }, [weeklyTimetable, todayStr])
 
+  // 오늘의 문제 쿼리
+  const dailyProblemRef = useMemoFirebase(() => {
+    if (!todayStr || !userData?.grade) return null
+    return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
+  }, [db, todayStr, userData?.grade])
+  const { data: problemData } = useDoc(dailyProblemRef)
+
   const leaderboardQuery = useMemoFirebase(() => {
     if (!user) return null
     return query(collection(db, "users"), orderBy("points", "desc"), limit(10))
@@ -198,6 +215,27 @@ export default function DashboardPage() {
       })
       toast({ title: "출석 완료!", description: bonus > 0 ? `보너스 포함 ${points + bonus}P 지급!` : `${points}P 지급!` })
     } finally { setIsCheckingIn(false) }
+  }
+
+  const handleSolveProblem = async () => {
+    if (!problemData || !userAnswer.trim() || !userDocRef) return
+    setIsSolving(true)
+    
+    try {
+      if (userAnswer.trim() === problemData.answer) {
+        const reward = problemData.rewardPoints || configData?.pointConfig?.problemDefault || 100
+        await updateDoc(userDocRef, {
+          points: increment(reward),
+          updatedAt: serverTimestamp()
+        })
+        setIsProblemSolved(true)
+        toast({ title: "정답입니다! 🎉", description: `${reward}P가 지급되었습니다.` })
+      } else {
+        toast({ variant: "destructive", title: "아쉬워요, 틀렸습니다. 😢", description: "다시 한 번 생각해보세요!" })
+      }
+    } finally {
+      setIsSolving(false)
+    }
   }
 
   const completeTutorial = async () => {
@@ -292,7 +330,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div className="animate-in slide-in-from-left duration-700">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight text-primary">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter leading-tight text-primary">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
           <div className="flex flex-wrap gap-2 mt-4">
@@ -316,6 +354,71 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
+          {/* 오늘의 도전 문제 섹션 (복구됨) */}
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:shadow-2xl">
+            <CardHeader className="pb-3 bg-primary/5 flex flex-row items-center justify-between border-b border-primary/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl">
+                  <BrainCircuit className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-black">오늘의 도전 문제</CardTitle>
+                  <CardDescription className="text-[10px] font-bold">포인트를 획득할 기회!</CardDescription>
+                </div>
+              </div>
+              {problemData && (
+                <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/10 text-primary font-black px-3 py-1">
+                  {problemData.rewardPoints || 100}P 지급
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent className="pt-6">
+              {problemData ? (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Badge className="bg-accent text-accent-foreground font-black text-[10px] h-5 rounded-full">{problemData.topic}</Badge>
+                      <Badge variant="outline" className="font-black text-[10px] h-5 rounded-full border-primary/30">난이도: {problemData.difficulty}</Badge>
+                    </div>
+                    <h3 className="text-lg font-black leading-tight text-foreground">{problemData.title}</h3>
+                    <p className="text-sm font-bold text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/20 p-5 rounded-3xl border border-muted/30">
+                      {problemData.problemText}
+                    </p>
+                  </div>
+
+                  {isProblemSolved ? (
+                    <div className="bg-primary/10 p-6 rounded-3xl flex flex-col items-center gap-2 animate-in zoom-in duration-500 border border-primary/20">
+                      <PartyPopper className="h-10 w-10 text-primary" />
+                      <p className="text-base font-black text-primary">정답입니다! 훌륭해요 ✨</p>
+                      <p className="text-[10px] font-bold text-primary/60">내일의 새로운 문제에 도전하세요!</p>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="정답을 입력하세요" 
+                        value={userAnswer} 
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
+                        className="rounded-2xl h-12 bg-muted/30 border-none px-5 font-bold focus-visible:ring-primary"
+                      />
+                      <Button onClick={handleSolveProblem} disabled={isSolving || !userAnswer.trim()} className="h-12 rounded-2xl px-6 font-black bg-primary text-white shadow-md">
+                        {isSolving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Send className="h-4 w-4 mr-2" /> 제출</>}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-30 text-center">
+                  <BrainCircuit className="h-12 w-12" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-black italic">오늘 등록된 문제가 없습니다.</p>
+                    <p className="text-[10px] font-bold">선생님이 준비 중이에요!</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-black flex items-center gap-2 text-foreground/80"><School className="h-6 w-6 text-primary" /> 학교 소식</h2>
             <Dialog>
