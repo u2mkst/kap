@@ -1,76 +1,99 @@
+
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
-
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
+export interface CalendarProps {
+  className?: string
+  renderDay?: (date: Date) => React.ReactNode
+}
 
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
+export function Calendar({ className, renderDay }: CalendarProps) {
+  const [viewDate, setViewDate] = React.useState(new Date())
+  const [isMounted, setIsMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+
+  const firstDayOfMonth = new Date(year, month, 1).getDay()
+  const lastDateOfMonth = new Date(year, month + 1, 0).getDate()
+
+  const prevMonth = () => {
+    setViewDate(new Date(year, month - 1, 1))
+  }
+
+  const nextMonth = () => {
+    setViewDate(new Date(year, month + 1, 1))
+  }
+
+  if (!isMounted) return <div className="w-[320px] h-[350px] bg-card animate-pulse rounded-xl" />
+
+  const today = new Date()
+  const isToday = (d: number) => {
+    return (
+      d === today.getDate() &&
+      month === today.getMonth() &&
+      year === today.getFullYear()
+    )
+  }
+
+  const days = ["일", "월", "화", "수", "목", "금", "토"]
+
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col space-y-4",
-        month: "space-y-4 w-full",
-        caption: "flex justify-center pt-1 relative items-center mb-4",
-        caption_label: "text-sm font-black text-primary",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 rounded-full border-primary/20"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "grid grid-cols-7 w-full",
-        head_cell:
-          "text-muted-foreground rounded-md font-black text-[10px] uppercase text-center py-2",
-        row: "grid grid-cols-7 w-full mt-2",
-        cell: cn(
-          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 aspect-square flex items-center justify-center",
-          props.mode === "range"
-            ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has(>.day-selected)]:rounded-l-md last:[&:has(>.day-selected)]:rounded-r-md"
-            : "[&:has(>.day-selected)]:rounded-md"
-        ),
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-full w-full p-0 font-bold aria-selected:opacity-100 rounded-xl hover:bg-primary/10 transition-all text-xs flex items-center justify-center"
-        ),
-        day_range_start: "day-range-start",
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground shadow-lg scale-90",
-        day_today: "bg-accent/20 text-accent-foreground border border-accent/30",
-        day_outside:
-          "day-outside text-muted-foreground opacity-30 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        IconLeft: ({ ...props }) => (
-          <ChevronLeft className="h-4 w-4" />
-        ),
-        IconRight: ({ ...props }) => (
-          <ChevronRight className="h-4 w-4" />
-        ),
-      }}
-      {...props}
-    />
+    <div className={cn("calendar w-full max-w-[320px] bg-card rounded-[12px] shadow-[0_5px_20px_rgba(0,0,0,0.1)] overflow-hidden border border-border", className)}>
+      {/* Header */}
+      <div className="header flex justify-between items-center p-[15px] bg-[#4a69bd] text-white">
+        <button onClick={prevMonth} className="bg-none border-none text-white text-[18px] cursor-pointer hover:opacity-70 transition-opacity">◀</button>
+        <div className="monthYear font-bold text-[16px]">{year}년 {month + 1}월</div>
+        <button onClick={nextMonth} className="bg-none border-none text-white text-[18px] cursor-pointer hover:opacity-70 transition-opacity">▶</button>
+      </div>
+
+      {/* Days Labels */}
+      <div className="days grid grid-cols-7 text-center">
+        {days.map((day) => (
+          <div key={day} className="p-[10px] font-bold bg-[#f1f2f6] dark:bg-muted text-[12px] text-foreground/70">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Dates Grid */}
+      <div className="dates grid grid-cols-7 text-center">
+        {/* Empty slots for the first week */}
+        {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+          <div key={`empty-${i}`} className="p-[12px]" />
+        ))}
+        
+        {/* Date slots */}
+        {Array.from({ length: lastDateOfMonth }).map((_, i) => {
+          const dateNum = i + 1
+          const currentIterationDate = new Date(year, month, dateNum)
+          
+          return (
+            <div 
+              key={dateNum} 
+              className="relative p-[12px] text-[14px] cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center min-h-[48px]"
+            >
+              <span className={cn(
+                "z-10 w-8 h-8 flex items-center justify-center transition-all",
+                isToday(dateNum) ? "bg-[#4a69bd] text-white rounded-full font-bold" : "text-foreground font-medium"
+              )}>
+                {dateNum}
+              </span>
+              {renderDay && (
+                <div className="absolute bottom-1 w-full flex justify-center">
+                  {renderDay(currentIterationDate)}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
-Calendar.displayName = "Calendar"
-
-export { Calendar }

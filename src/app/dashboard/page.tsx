@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -285,7 +286,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div className="animate-in slide-in-from-left duration-700">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary to-accent">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight text-primary">
             {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
           </h1>
           <Badge variant="secondary" className="mt-4 px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
@@ -316,13 +317,15 @@ export default function DashboardPage() {
                   <DialogTitle className="text-xl font-black">주간 정보 가이드</DialogTitle>
                   <DialogDescription className="text-xs font-medium">이번 주 우리 학교의 급식과 시간표를 확인하세요.</DialogDescription>
                 </div>
-                <div className="p-4 bg-muted/20 flex justify-between items-center gap-4">
-                  <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full h-10 w-10 p-0"><ChevronLeft /></Button>
-                  <span className="text-sm font-black text-primary">
-                    {weekDates.length >= 5 ? `${format(weekDates[0], "yyyy.MM.dd")} ~ ${format(weekDates[4], "MM.dd")}` : "로딩 중..."}
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full h-10 w-10 p-0"><ChevronRight /></Button>
-                </div>
+                {weekDates.length >= 5 && (
+                  <div className="p-4 bg-muted/20 flex justify-between items-center gap-4">
+                    <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full h-10 w-10 p-0"><ChevronLeft /></Button>
+                    <span className="text-sm font-black text-primary">
+                      {format(weekDates[0], "yyyy.MM.dd")} ~ {format(weekDates[4], "MM.dd")}
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full h-10 w-10 p-0"><ChevronRight /></Button>
+                  </div>
+                )}
                 <div className="flex-grow overflow-y-auto p-6 pt-2">
                   <Tabs defaultValue="meals">
                     <TabsList className="w-full grid grid-cols-2 p-1 bg-muted/50 rounded-2xl mb-6">
@@ -395,7 +398,7 @@ export default function DashboardPage() {
                 ) : todayMeal ? (
                   <div className="grid gap-2">
                     {todayMeal.split(',').map((m, i) => (
-                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-foreground transition-all hover:bg-primary/10">{m.trim()}</div>
+                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-black transition-all hover:bg-primary/10">{m.trim()}</div>
                     ))}
                   </div>
                 ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Utensils className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">급식 정보가 없습니다.</p></div>}
@@ -449,31 +452,18 @@ export default function DashboardPage() {
                         <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
                       </div>
                       <div className="p-2 flex flex-col items-center bg-card">
-                        <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[340px]">
+                        <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[320px]">
                           <Calendar 
-                            mode="single" 
-                            locale={ko} 
-                            className="w-full"
-                            components={{
-                              DayContent: ({ date }) => {
-                                const dStr = format(date, "yyyy-MM-dd");
-                                const isAttended = attendanceHistory?.some(l => l.date === dStr);
-                                return (
-                                  <div className="relative w-full h-full flex items-center justify-center">
-                                    <span className={cn("text-[11px] z-10 transition-colors", isAttended && "text-primary font-black")}>
-                                      {date.getDate()}
-                                    </span>
-                                    {isAttended && (
-                                      <div className="absolute inset-0 m-auto h-6 w-6 rounded-full bg-primary/10 border border-primary/20 animate-in fade-in" />
-                                    )}
-                                  </div>
-                                )
-                              }
+                            renderDay={(date) => {
+                              const dStr = format(date, "yyyy-MM-dd");
+                              const isAttended = attendanceHistory?.some(l => l.date === dStr);
+                              if (isAttended) return <div className="h-1 w-1 rounded-full bg-primary" />;
+                              return null;
                             }} 
                           />
                         </div>
                         <div className="flex gap-4 mt-4 mb-4 text-[10px] font-black opacity-60">
-                          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary/20 border border-primary/30" /> 출석 완료</div>
+                          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary" /> 출석 완료</div>
                         </div>
                       </div>
                     </DialogContent>

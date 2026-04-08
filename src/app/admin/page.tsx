@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -109,7 +110,6 @@ export default function AdminPage() {
   const [kakaoApiKey, setKakaoApiKey] = useState("")
   const [bulkProblemText, setBulkProblemText] = useState("")
   const [bulkFortuneText, setBulkFortuneText] = useState("")
-  const [calendarDate, setCalendarDate] = useState<Date | undefined>(new Date())
 
   const [pointsConfig, setPointsConfig] = useState({
     dailyAttendance: 100,
@@ -607,32 +607,22 @@ export default function AdminPage() {
                     <CardDescription className="text-[10px]">날짜별로 등록된 문제와 명언을 확인하세요.</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center">
-                    <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[340px]">
+                    <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[320px]">
                       <Calendar
-                        mode="single"
-                        selected={calendarDate}
-                        onSelect={setCalendarDate}
-                        className="w-full"
-                        locale={ko}
-                        components={{
-                          DayContent: ({ date }) => {
-                            const { hasProblem, hasFortune } = getDayData(date)
-                            return (
-                              <div className="relative w-full h-full flex items-center justify-center">
-                                <span className="text-[11px] z-10 font-bold">{date.getDate()}</span>
-                                <div className="absolute bottom-1 flex gap-0.5">
-                                  {hasProblem && <div className="h-1 w-1 rounded-full bg-primary" />}
-                                  {hasFortune && <div className="h-1 w-1 rounded-full bg-accent" />}
-                                </div>
-                              </div>
-                            )
-                          }
+                        renderDay={(date) => {
+                          const { hasProblem, hasFortune } = getDayData(date)
+                          return (
+                            <div className="flex gap-0.5 justify-center mt-1">
+                              {hasProblem && <div className="h-1 w-1 rounded-full bg-primary" />}
+                              {hasFortune && <div className="h-1 w-1 rounded-full bg-[#67C4DA]" />}
+                            </div>
+                          )
                         }}
                       />
                     </div>
                     <div className="flex gap-4 mt-4 text-[10px] font-bold">
                       <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary" /> 문제 등록됨</div>
-                      <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-accent" /> 명언 등록됨</div>
+                      <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#67C4DA]" /> 명언 등록됨</div>
                     </div>
                   </CardContent>
                 </Card>
