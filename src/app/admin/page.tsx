@@ -85,6 +85,7 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
   
+  // 관리자 권한이 명확히 로드되고 존재할 때만 true
   const isActuallyAdmin = useMemo(() => {
     return !!isAdminDoc && !isAdminLoading;
   }, [isAdminDoc, isAdminLoading]);
@@ -95,6 +96,7 @@ export default function AdminPage() {
   }, [db])
   const { data: configData } = useDoc(configRef)
 
+  // 모든 관리자 전용 쿼리는 isActuallyAdmin이 true일 때만 실행되도록 보호
   const teachersQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))

@@ -46,11 +46,13 @@ service cloud.firestore {
       allow write: if isUserAdmin();
     }
 
-    // 관리자 권한 확인
+    // 관리자 권한 확인 및 획득
     match /roles_admin/{adminId} {
       allow get: if isAuthenticated() && (request.auth.uid == adminId || isUserAdmin());
       allow list: if isUserAdmin();
-      allow write: if isUserAdmin();
+      // 사용자가 직접 관리자 권한을 '클레임'할 수 있도록 생성을 허용
+      allow create: if isAuthenticated() && request.auth.uid == adminId;
+      allow update, delete: if isUserAdmin();
     }
     
     // 일일 문제
@@ -68,8 +70,8 @@ service cloud.firestore {
     // 문의 시스템
     match /inquiries/{inquiryId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow list: if isUserAdmin();
-      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // 관리자는 전체 목록을 볼 수 있고, 학생은 자신의 것만 볼 수 있음
+      allow list: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow get: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow update, delete: if isUserAdmin();
     }
@@ -77,8 +79,8 @@ service cloud.firestore {
     // 명언 추천 시스템
     match /quote_suggestions/{suggestionId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow list: if isUserAdmin();
-      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // 관리자는 전체 목록을 볼 수 있고, 학생은 자신의 것만 볼 수 있음
+      allow list: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow get: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow update, delete: if isUserAdmin();
     }
