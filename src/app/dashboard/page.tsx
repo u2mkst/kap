@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -390,6 +391,9 @@ export default function DashboardPage() {
       {/* 공지 팝업 다이얼로그 */}
       <Dialog open={showNotice} onOpenChange={setShowNotice}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-card">
+          <DialogHeader className="sr-only">
+            <DialogTitle>KST HUB 공지사항</DialogTitle>
+          </DialogHeader>
           <div className="bg-primary/10 p-6 flex flex-col items-center gap-3">
             <div className="p-3 bg-primary rounded-2xl shadow-lg">
               <BellRing className="h-8 w-8 text-white animate-bounce" />
@@ -440,10 +444,10 @@ export default function DashboardPage() {
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full font-bold" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 자세히 보기</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-0 bg-card border-none shadow-2xl">
-                <div className="p-6 border-b">
+                <DialogHeader className="p-6 border-b">
                   <DialogTitle className="text-xl font-black">주간 정보 가이드</DialogTitle>
                   <DialogDescription className="text-xs font-medium">이번 주 우리 학교의 급식과 시간표를 확인하세요.</DialogDescription>
-                </div>
+                </DialogHeader>
                 {weekDates.length >= 5 && (
                   <div className="p-4 bg-muted/20 flex justify-between items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full h-10 w-10 p-0"><ChevronLeft /></Button>
@@ -639,10 +643,10 @@ export default function DashboardPage() {
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-12 w-12 border-muted hover:bg-muted/50"><History className="h-5 w-5" /></Button></DialogTrigger>
                     <DialogContent className="rounded-[2.5rem] max-w-fit p-0 overflow-hidden border-none shadow-2xl bg-card mx-4">
-                      <div className="p-6 border-b bg-card">
+                      <DialogHeader className="p-6 border-b bg-card">
                         <DialogTitle className="text-lg font-black flex items-center gap-2 text-primary"><History className="h-5 w-5" /> 출석 히스토리</DialogTitle>
                         <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
-                      </div>
+                      </DialogHeader>
                       <div className="p-2 flex flex-col items-center bg-card">
                         <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[320px]">
                           <Calendar 
