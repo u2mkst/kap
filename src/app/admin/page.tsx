@@ -83,9 +83,10 @@ export default function AdminPage() {
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
   
   const isActuallyAdmin = useMemo(() => {
-    return !!isAdminDoc && !isAdminLoading;
+    return isAdminDoc !== null && !isAdminLoading;
   }, [isAdminDoc, isAdminLoading]);
 
+  // Hook 규칙 준수: 모든 useMemo/useCollection 호출은 최상위에 위치
   const configRef = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
     return doc(db, "metadata", "config")
@@ -134,6 +135,14 @@ export default function AdminPage() {
   }, [db, isActuallyAdmin])
   const { data: allFortunes } = useCollection(allFortunesQuery)
 
+  const problemsOnSelectedDate = useMemo(() => {
+    return allProblems?.filter(p => p.date === selectedDate) || []
+  }, [allProblems, selectedDate])
+
+  const fortuneOnSelectedDate = useMemo(() => {
+    return allFortunes?.find(f => f.date === selectedDate)
+  }, [allFortunes, selectedDate])
+
   const adminIds = useMemo(() => adminDocs?.map(d => d.id) || [], [adminDocs])
 
   const [teacherName, setTeacherName] = useState("")
@@ -149,15 +158,6 @@ export default function AdminPage() {
     streak30: 5000,
     problemDefault: 100
   })
-
-  // 날짜별 데이터 필터링을 위한 useMemo
-  const problemsOnSelectedDate = useMemo(() => {
-    return allProblems?.filter(p => p.date === selectedDate) || []
-  }, [allProblems, selectedDate])
-
-  const fortuneOnSelectedDate = useMemo(() => {
-    return allFortunes?.find(f => f.date === selectedDate)
-  }, [allFortunes, selectedDate])
 
   useEffect(() => {
     setIsMounted(true)
