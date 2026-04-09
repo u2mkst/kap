@@ -8,7 +8,7 @@ service cloud.firestore {
     }
     
     function isUserAdmin() {
-      return isAuthenticated() && exists(/databases/(default)/documents/roles_admin/$(request.auth.uid));
+      return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
     // 유저 정보 및 하위 컬렉션
@@ -68,7 +68,8 @@ service cloud.firestore {
     // 문의 시스템
     match /inquiries/{inquiryId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow list: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow list: if isUserAdmin();
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow get: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow update, delete: if isUserAdmin();
     }
@@ -76,7 +77,8 @@ service cloud.firestore {
     // 명언 추천 시스템
     match /quote_suggestions/{suggestionId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow list: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow list: if isUserAdmin();
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow get: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow update, delete: if isUserAdmin();
     }

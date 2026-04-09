@@ -35,7 +35,9 @@ import {
   ArrowRight,
   CheckCircle2,
   XCircle,
-  Sparkles
+  Sparkles,
+  KeyRound,
+  ShieldCheck
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc, where } from "firebase/firestore"
@@ -55,6 +57,7 @@ export default function AdminPage() {
   const [tempPoints, setTempPoints] = useState<{ [key: string]: number }>({})
   const [tempVotes, setTempVotes] = useState<{ [key: string]: number }>({})
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"))
+  const [claimCode, setClaimSecret] = useState("")
 
   // 단일 문제 등록 상태
   const [singleProblem, setSingleProblem] = useState({
@@ -83,14 +86,13 @@ export default function AdminPage() {
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
   
   const isActuallyAdmin = useMemo(() => {
-    return isAdminDoc !== null && !isAdminLoading;
+    return !!isAdminDoc && !isAdminLoading;
   }, [isAdminDoc, isAdminLoading]);
 
   // Hook 규칙 준수: 모든 useMemo/useCollection 호출은 최상위에 위치
   const configRef = useMemoFirebase(() => {
-    if (!isActuallyAdmin) return null
     return doc(db, "metadata", "config")
-  }, [isActuallyAdmin, db])
+  }, [db])
   const { data: configData } = useDoc(configRef)
 
   const teachersQuery = useMemoFirebase(() => {
@@ -176,13 +178,26 @@ export default function AdminPage() {
     }
   }, [configData])
 
-  useEffect(() => {
-    if (!isUserLoading && !isAdminLoading && isMounted) {
-      if (!user || !isActuallyAdmin) {
-        router.push("/dashboard")
+  const handleClaimAdmin = async () => {
+    if (!user) return
+    const secret = adminSecretCode || "ufes-admin-777"
+    if (claimCode === secret) {
+      setIsSaving(true)
+      try {
+        await setDoc(doc(db, "roles_admin", user.uid), {
+          addedAt: serverTimestamp(),
+          claimed: true
+        })
+        toast({ title: "관리자 권한 획득 성공!", description: "이제 모든 관리 기능을 사용할 수 있습니다." })
+      } catch (e) {
+        toast({ variant: "destructive", title: "권한 획득 실패", description: "잠시 후 다시 시도해 주세요." })
+      } finally {
+        setIsSaving(false)
       }
+    } else {
+      toast({ variant: "destructive", title: "인증 코드가 틀렸습니다." })
     }
-  }, [user, isActuallyAdmin, isUserLoading, isAdminLoading, isMounted, router])
+  }
 
   const handleAddTeacher = () => {
     if (!teacherName.trim()) return
@@ -485,7 +500,53 @@ export default function AdminPage() {
     )
   }
 
-  if (!isActuallyAdmin) return null
+  // 관리자 권한이 없을 경우 인증 화면 표시
+  if (!isActuallyAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-24 max-w-md animate-in fade-in duration-500">
+        <Card className="border-none shadow-2xl bg-card rounded-[2.5rem] overflow-hidden">
+          <div className="bg-primary/10 p-8 flex flex-col items-center gap-4">
+            <div className="p-4 bg-primary rounded-[1.5rem] shadow-lg">
+              <ShieldAlert className="h-10 w-10 text-white" />
+            </div>
+            <h1 className="text-2xl font-black text-primary">관리자 인증 필요</h1>
+            <p className="text-xs font-bold text-muted-foreground text-center">
+              이 페이지는 관리자 전용입니다.<br/>인증 코드를 입력하여 권한을 획득하세요.
+            </p>
+          </div>
+          <CardContent className="p-8 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-black flex items-center gap-2 text-muted-foreground">
+                <KeyRound className="h-3 w-3" /> 관리자 시크릿 코드
+              </Label>
+              <Input 
+                type="password" 
+                placeholder="인증 코드를 입력하세요" 
+                value={claimCode} 
+                onChange={(e) => setClaimSecret(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleClaimAdmin()}
+                className="rounded-2xl h-12 bg-muted/30 border-none px-5 font-bold focus-visible:ring-primary"
+              />
+            </div>
+            <Button 
+              onClick={handleClaimAdmin} 
+              disabled={isSaving || !claimCode.trim()} 
+              className="w-full h-12 rounded-2xl font-black bg-primary text-white shadow-md active:scale-95 transition-transform"
+            >
+              {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ShieldCheck className="mr-2 h-5 w-5" /> 관리자 권한 획득</>}
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => router.push("/dashboard")} 
+              className="w-full h-10 rounded-2xl font-bold text-muted-foreground"
+            >
+              대시보드로 돌아가기
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const problemExample = `2024-03-25|1|다항식의 덧셈|수학|중|x^2 + 2x + 1 을 x+1로 나누면?|x+1|150\n2024-03-25|2|삼각함수 기초|수학|상|sin(pi/2)의 값은?|1|200`
   const fortuneExample = `2024-03-25|천재는 1%의 영감과 99%의 노력으로 이루어진다|토마스 에디슨\n2024-03-26|실패는 성공의 어머니이다|토마스 에디슨`
