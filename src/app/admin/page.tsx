@@ -140,12 +140,14 @@ export default function AdminPage() {
   const { data: allFortunes } = useCollection(allFortunesQuery)
 
   const problemsOnSelectedDate = useMemo(() => {
+    if (!isActuallyAdmin) return []
     return allProblems?.filter(p => p.date === selectedDate) || []
-  }, [allProblems, selectedDate])
+  }, [allProblems, selectedDate, isActuallyAdmin])
 
   const fortuneOnSelectedDate = useMemo(() => {
+    if (!isActuallyAdmin) return undefined
     return allFortunes?.find(f => f.date === selectedDate)
-  }, [allFortunes, selectedDate])
+  }, [allFortunes, selectedDate, isActuallyAdmin])
 
   const adminIds = useMemo(() => adminDocs?.map(d => d.id) || [], [adminDocs])
 

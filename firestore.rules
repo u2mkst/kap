@@ -48,10 +48,13 @@ service cloud.firestore {
 
     // 관리자 권한 확인 및 획득
     match /roles_admin/{adminId} {
-      allow get: if isAuthenticated() && (request.auth.uid == adminId || isUserAdmin());
+      // 본인의 관리자 여부 확인 허용
+      allow get: if isAuthenticated() && request.auth.uid == adminId;
+      // 관리자는 전체 관리자 목록 조회 가능
       allow list: if isUserAdmin();
-      // 사용자가 직접 관리자 권한을 '클레임'할 수 있도록 생성을 허용
+      // 인증 코드를 통한 관리자 권한 직접 생성 허용 (최초 획득 시 필요)
       allow create: if isAuthenticated() && request.auth.uid == adminId;
+      // 기존 관리자 정보 수정 및 삭제는 관리자만 가능
       allow update, delete: if isUserAdmin();
     }
     
