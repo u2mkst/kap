@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog"
 import { Calendar } from "@/components/ui/calendar"
 import { 
@@ -41,7 +42,9 @@ import {
   Users,
   BrainCircuit,
   Send,
-  PartyPopper
+  PartyPopper,
+  Edit3,
+  BellRing
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc, where } from "firebase/firestore"
@@ -61,6 +64,8 @@ export default function DashboardPage() {
   const [isGeneratingLuck, setIsGeneratingLuck] = useState(false)
   const [displayScore, setDisplayScore] = useState(0)
   const [isCheckingIn, setIsCheckingIn] = useState(false)
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false)
+  const [tempComment, setTempComment] = useState("")
 
   const [weeklyMeals, setWeeklyMeals] = useState<{date: string, menu: string}[]>([])
   const [weeklyTimetable, setWeeklyTimetable] = useState<{date: string, timetable: string}[]>([])
@@ -70,6 +75,7 @@ export default function DashboardPage() {
 
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
+  const [showNotice, setShowNotice] = useState(false)
 
   // 오늘의 문제 관련 상태
   const [userAnswer, setUserAnswer] = useState("")
@@ -93,6 +99,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (configData?.kakaoApiKey) initKakao(configData.kakaoApiKey);
+    if (configData?.notice) {
+      // 대시보드 진입 시 공지가 있으면 팝업 띄우기
+      const hasSeenNotice = sessionStorage.getItem(`notice_${configData.notice.substring(0, 10)}`)
+      if (!hasSeenNotice) {
+        setShowNotice(true)
+      }
+    }
   }, [configData])
 
   useEffect(() => {
@@ -184,17 +197,27 @@ export default function DashboardPage() {
         if (start >= end) { setDisplayScore(end); clearInterval(timer); }
         else { setDisplayScore(Math.floor(start)); }
       }, 20);
+      setTempComment(personalFortuneData.comment || "")
       return () => clearInterval(timer);
     }
-  }, [personalFortuneData?.score]);
+  }, [personalFortuneData?.score, personalFortuneData?.comment]);
 
   const handleGenerateLuckyScore = async () => {
     if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck || !todayStr) return
     setIsGeneratingLuck(true)
     const randomScore = Math.floor(Math.random() * 41) + 60; 
     try {
-      await setDoc(personalFortuneRef, { score: randomScore, date: todayStr, createdAt: serverTimestamp() })
+      await setDoc(personalFortuneRef, { score: randomScore, date: todayStr, createdAt: serverTimestamp(), comment: "" })
     } finally { setIsGeneratingLuck(false) }
+  }
+
+  const handleUpdateFortuneComment = async () => {
+    if (!personalFortuneRef || isUpdatingComment) return
+    setIsUpdatingComment(true)
+    try {
+      await updateDoc(personalFortuneRef, { comment: tempComment, updatedAt: serverTimestamp() })
+      toast({ title: "오늘의 한마디 저장 완료!" })
+    } finally { setIsUpdatingComment(false) }
   }
 
   const handleAttendance = async () => {
@@ -261,6 +284,13 @@ export default function DashboardPage() {
     if (!userDocRef) return
     await updateDoc(userDocRef, { hasCompletedTutorial: true, updatedAt: serverTimestamp() })
     setShowTutorial(false)
+  }
+
+  const closeNotice = () => {
+    if (configData?.notice) {
+      sessionStorage.setItem(`notice_${configData.notice.substring(0, 10)}`, "true")
+    }
+    setShowNotice(false)
   }
 
   const handleShareMeal = (date: string, menu: string) => {
@@ -357,6 +387,28 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
+      {/* 공지 팝업 다이얼로그 */}
+      <Dialog open={showNotice} onOpenChange={setShowNotice}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-card">
+          <div className="bg-primary/10 p-6 flex flex-col items-center gap-3">
+            <div className="p-3 bg-primary rounded-2xl shadow-lg">
+              <BellRing className="h-8 w-8 text-white animate-bounce" />
+            </div>
+            <h2 className="text-xl font-black text-primary">KST HUB 공지사항</h2>
+          </div>
+          <div className="p-8">
+            <p className="text-sm font-bold text-foreground leading-relaxed whitespace-pre-wrap text-center">
+              {configData?.notice}
+            </p>
+          </div>
+          <div className="p-6 pt-0">
+            <Button onClick={closeNotice} className="w-full rounded-2xl h-12 font-black bg-primary text-white shadow-md">
+              확인했습니다
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div className="animate-in slide-in-from-left duration-700">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tighter leading-tight text-primary">
@@ -369,13 +421,13 @@ export default function DashboardPage() {
           </div>
         </div>
         <Link href="/plants" className="w-full sm:w-auto block">
-          <Card className="bg-primary text-primary-foreground p-4 px-6 rounded-[2rem] flex items-center gap-4 shadow-xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform cursor-pointer">
-            <div className="p-2.5 bg-primary-foreground/20 rounded-xl">
-              <Zap className="h-5 w-5 text-primary-foreground" />
+          <Card className="bg-primary text-primary-foreground p-3 px-5 rounded-2xl flex items-center gap-3 shadow-xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform cursor-pointer">
+            <div className="p-2 bg-primary-foreground/20 rounded-xl">
+              <Zap className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest mb-0.5">보유 포인트</p>
-              <p className="text-xl font-black tabular-nums tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
+              <p className="text-[8px] opacity-80 uppercase font-black tracking-widest">보유 포인트</p>
+              <p className="text-lg font-black tabular-nums tracking-tight leading-none">{userData?.points?.toLocaleString() || 0} P</p>
             </div>
           </Card>
         </Link>
@@ -657,6 +709,29 @@ export default function DashboardPage() {
                   <div className="relative">
                     <Progress value={displayScore} className="h-3 bg-muted rounded-full" />
                     <div className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-transparent via-background/20 to-transparent animate-shimmer" />
+                  </div>
+                  
+                  {/* 행운 점수 한마디 수정 인터페이스 */}
+                  <div className="pt-4 border-t border-muted space-y-2">
+                    <Label className="text-[10px] font-black opacity-50 uppercase tracking-widest flex items-center gap-1">
+                      <Edit3 className="h-3 w-3" /> 오늘의 한마디
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="오늘의 다짐을 적어보세요" 
+                        value={tempComment} 
+                        onChange={(e) => setTempComment(e.target.value)}
+                        className="rounded-xl h-10 bg-muted/30 border-none text-xs font-bold focus-visible:ring-primary"
+                      />
+                      <Button 
+                        size="icon" 
+                        onClick={handleUpdateFortuneComment}
+                        disabled={isUpdatingComment || tempComment === personalFortuneData.comment}
+                        className="h-10 w-10 shrink-0 rounded-xl bg-primary text-white"
+                      >
+                        {isUpdatingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (

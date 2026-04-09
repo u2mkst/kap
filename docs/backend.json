@@ -46,6 +46,7 @@
       "properties": {
         "id": { "type": "string" },
         "score": { "type": "number" },
+        "comment": { "type": "string", "description": "User's custom message for the day." },
         "date": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -97,6 +98,20 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "subject", "message", "status"]
+    },
+    "QuoteSuggestion": {
+      "title": "QuoteSuggestion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userNickname": { "type": "string" },
+        "fortuneText": { "type": "string" },
+        "author": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fortuneText", "status"]
     },
     "DailyProblem": {
       "title": "DailyProblem",
@@ -172,6 +187,10 @@
     "/inquiries/{inquiryId}": {
       "schema": { "$ref": "#/backend/entities/Inquiry" },
       "description": "Student inquiries and admin replies."
+    },
+    "/quote_suggestions/{suggestionId}": {
+      "schema": { "$ref": "#/backend/entities/QuoteSuggestion" },
+      "description": "User suggested quotes for the day."
     }
   }
 }

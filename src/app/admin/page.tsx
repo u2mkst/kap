@@ -32,7 +32,10 @@ import {
   BookOpen,
   PlusCircle,
   CalendarPlus,
-  ArrowRight
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Sparkles
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc, where } from "firebase/firestore"
@@ -106,6 +109,12 @@ export default function AdminPage() {
     return query(collection(db, "inquiries"), orderBy("createdAt", "desc"), limit(100))
   }, [db, isActuallyAdmin])
   const { data: inquiries } = useCollection(inquiriesQuery)
+
+  const quoteSuggestionsQuery = useMemoFirebase(() => {
+    if (!isActuallyAdmin) return null
+    return query(collection(db, "quote_suggestions"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
+  }, [db, isActuallyAdmin])
+  const { data: quoteSuggestions } = useCollection(quoteSuggestionsQuery)
 
   const adminDocsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
@@ -269,6 +278,32 @@ export default function AdminPage() {
     if (!confirm("이 문의를 영구 삭제하시겠습니까?")) return
     deleteDocumentNonBlocking(doc(db, "inquiries", id))
     toast({ title: "문의가 삭제되었습니다." })
+  }
+
+  const handleApproveQuote = async (suggestion: any) => {
+    if (!confirm("이 명언을 정식 명언으로 승인하시겠습니까?")) return
+    setIsSaving(true)
+    try {
+      const todayStr = format(new Date(), "yyyy-MM-dd")
+      await setDoc(doc(db, "daily_fortunes", todayStr), {
+        date: todayStr,
+        fortuneText: suggestion.fortuneText,
+        author: suggestion.author || suggestion.userNickname,
+        updatedAt: serverTimestamp()
+      })
+      await updateDoc(doc(db, "quote_suggestions", suggestion.id), { status: "approved" })
+      toast({ title: "명언 승인 및 등록 완료!", description: "오늘의 명언으로 반영되었습니다." })
+    } catch (e) {
+      toast({ variant: "destructive", title: "승인 실패" })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRejectQuote = (id: string) => {
+    if (!confirm("이 추천을 거절하시겠습니까?")) return
+    updateDocumentNonBlocking(doc(db, "quote_suggestions", id), { status: "rejected" })
+    toast({ title: "추천 거절 완료" })
   }
 
   const handleDeleteAllInquiries = () => {
@@ -468,8 +503,9 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="inquiry">
-        <TabsList className="grid w-full grid-cols-7 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
+        <TabsList className="grid w-full grid-cols-8 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
           <TabsTrigger value="inquiry" className="rounded-xl font-bold text-xs"><MessageSquare className="h-3 w-3 mr-1" /> 문의</TabsTrigger>
+          <TabsTrigger value="quote_requests" className="rounded-xl font-bold text-xs"><Sparkles className="h-3 w-3 mr-1" /> 추천</TabsTrigger>
           <TabsTrigger value="users" className="rounded-xl font-bold text-xs">학생</TabsTrigger>
           <TabsTrigger value="points" className="rounded-xl font-bold text-xs"><Coins className="h-3 w-3 mr-1" /> 포인트</TabsTrigger>
           <TabsTrigger value="bulk" className="rounded-xl font-bold text-xs">등록/현황</TabsTrigger>
@@ -534,6 +570,49 @@ export default function AdminPage() {
             {(!inquiries || inquiries.length === 0) && (
               <div className="text-center py-20 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20">
                 <p className="text-xs text-muted-foreground font-bold italic">처리할 문의가 없습니다.</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="quote_requests">
+          <div className="space-y-4">
+            <h2 className="text-sm font-black flex items-center gap-2 mb-4"><Sparkles className="h-4 w-4 text-accent" /> 학생들이 추천한 명언 목록</h2>
+            {quoteSuggestions?.map((s) => (
+              <Card key={s.id} className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="space-y-2 flex-grow">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-[10px] font-black rounded-full">추천: {s.userNickname} 학생</Badge>
+                      <span className="text-[10px] text-muted-foreground">{s.createdAt?.toDate?.().toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm font-black text-primary leading-relaxed italic">"{s.fortuneText}"</p>
+                    <p className="text-xs font-bold text-muted-foreground">- {s.author}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleApproveQuote(s)} 
+                      disabled={isSaving}
+                      className="bg-accent text-accent-foreground rounded-xl font-black text-xs"
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> 승인
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleRejectQuote(s.id)}
+                      className="text-destructive hover:bg-destructive/10 rounded-xl font-black text-xs"
+                    >
+                      <XCircle className="h-3 w-3 mr-1" /> 거절
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {(!quoteSuggestions || quoteSuggestions.length === 0) && (
+              <div className="text-center py-20 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20">
+                <p className="text-xs text-muted-foreground font-bold italic">대기 중인 명언 추천이 없습니다.</p>
               </div>
             )}
           </div>
@@ -981,9 +1060,17 @@ export default function AdminPage() {
 
         <TabsContent value="notice">
           <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-            <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">실시간 공지 사항</CardTitle></CardHeader>
+            <CardHeader className="border-b pb-4">
+              <CardTitle className="text-sm font-black">실시간 공지 사항</CardTitle>
+              <CardDescription className="text-xs">여기에 작성한 내용은 대시보드 진입 시 팝업으로 나타납니다.</CardDescription>
+            </CardHeader>
             <CardContent className="p-6 space-y-4">
-              <Input value={noticeText} onChange={(e) => setNoticeText(e.target.value)} className="rounded-2xl h-11 bg-background" placeholder="공지 내용" />
+              <Textarea 
+                value={noticeText} 
+                onChange={(e) => setNoticeText(e.target.value)} 
+                className="rounded-2xl min-h-[120px] bg-background" 
+                placeholder="학생들에게 보여줄 공지 내용을 입력하세요..." 
+              />
               <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-primary text-primary-foreground">공지 업데이트</Button>
             </CardContent>
           </Card>

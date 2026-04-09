@@ -5,7 +5,6 @@ import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { FloatingInquiry } from '@/components/floating-inquiry';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
@@ -37,7 +36,6 @@ export default function RootLayout({
           <main className="flex-grow">
             {children}
           </main>
-          <FloatingInquiry />
           <Footer />
           <Toaster />
         </FirebaseClientProvider>

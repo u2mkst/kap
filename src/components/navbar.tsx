@@ -12,7 +12,8 @@ import {
   LogOut,
   UserCircle,
   Sun,
-  Moon
+  Moon,
+  MessageSquare
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ const navItems = [
   { name: "홈", href: "/dashboard", icon: Home },
   { name: "나의 정원", href: "/plants", icon: Sprout },
   { name: "라운지", href: "/lounge", icon: Gamepad2 },
+  { name: "문의", href: "/support", icon: MessageSquare },
 ]
 
 export function Navbar() {
