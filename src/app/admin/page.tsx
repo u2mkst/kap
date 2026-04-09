@@ -150,7 +150,7 @@ export default function AdminPage() {
     problemDefault: 100
   })
 
-  // 날짜별 데이터 필터링을 위한 useMemo - 오류 방지를 위해 상단으로 이동
+  // 날짜별 데이터 필터링을 위한 useMemo
   const problemsOnSelectedDate = useMemo(() => {
     return allProblems?.filter(p => p.date === selectedDate) || []
   }, [allProblems, selectedDate])
@@ -1020,7 +1020,7 @@ export default function AdminPage() {
              </CardHeader>
              <CardContent className="p-6 space-y-4">
                 <div className="flex gap-2">
-                  <Input placeholder="선생님 성함" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} className="rounded-2xl bg-background" />
+                  <input placeholder="선생님 성함" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} className="rounded-2xl bg-background border px-4 h-10 w-full" />
                   <Button onClick={handleAddTeacher} className="rounded-2xl font-black bg-primary text-primary-foreground">추가</Button>
                 </div>
                 <div className="grid gap-2">

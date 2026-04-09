@@ -2,80 +2,83 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 공통 함수 정의
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    function isAdmin() {
+    function isUserAdmin() {
       return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
     // 유저 정보 및 하위 컬렉션
     match /users/{userId} {
-      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow get: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       allow list: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       
-      // 사용자 개인 데이터 (소유자 및 관리자 허용)
       match /personal_fortunes/{date} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       }
 
       match /attendance_logs/{date} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       }
 
       match /plants/{plantId} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       }
 
       match /solved_problems/{date} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       }
     }
 
     // 선생님 정보
     match /teachers/{teacherId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isUserAdmin();
     }
 
     // 앱 설정 및 공지
     match /metadata/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isUserAdmin();
     }
 
-    // 관리자 권한 확인
+    // 관리자 권한 확인 (본인 정보는 조회 가능, 목록은 관리자만)
     match /roles_admin/{adminId} {
-      allow get: if isAuthenticated() && (request.auth.uid == adminId || isAdmin());
-      allow list: if isAdmin();
+      allow get: if isAuthenticated() && (request.auth.uid == adminId || isUserAdmin());
+      allow list: if isUserAdmin();
+      allow write: if isUserAdmin();
     }
     
     // 일일 문제
     match /daily_problems/{problemId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isUserAdmin();
     }
 
     // 오늘의 명언 (공개 데이터)
     match /daily_fortunes/{date} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isUserAdmin();
     }
 
     // 문의 시스템
     match /inquiries/{inquiryId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow update, delete: if isAdmin();
+      allow list: if isAuthenticated() && (isUserAdmin() || resource.data.userId == request.auth.uid);
+      allow get: if isAuthenticated() && (isUserAdmin() || resource.data.userId == request.auth.uid);
+      allow update, delete: if isUserAdmin();
     }
 
     // 명언 추천 시스템
     match /quote_suggestions/{suggestionId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow update, delete: if isAdmin();
+      allow list: if isAuthenticated() && (isUserAdmin() || resource.data.userId == request.auth.uid);
+      allow get: if isAuthenticated() && (isUserAdmin() || resource.data.userId == request.auth.uid);
+      allow update, delete: if isUserAdmin();
     }
   }
 }
