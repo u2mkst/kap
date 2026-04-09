@@ -28,6 +28,10 @@ service cloud.firestore {
       match /plants/{plantId} {
         allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       }
+
+      match /solved_problems/{date} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      }
     }
 
     // 선생님 정보
