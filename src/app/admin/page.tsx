@@ -117,7 +117,6 @@ export default function AdminPage() {
 
   const quoteSuggestionsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    // 보안 규칙이 request.auth != null 이면 허용이지만, 관리자 페이지 로딩 흐름상 admin 확인 후 요청
     return query(collection(db, "quote_suggestions"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
   }, [db, isActuallyAdmin])
   const { data: quoteSuggestions } = useCollection(quoteSuggestionsQuery)
@@ -136,7 +135,7 @@ export default function AdminPage() {
 
   const allFortunesQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    return query(collection(db, "daily_fortunes"))
+    return query(collection(db, "daily_fortunes"), orderBy("date", "desc"))
   }, [db, isActuallyAdmin])
   const { data: allFortunes } = useCollection(allFortunesQuery)
 

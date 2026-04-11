@@ -2,12 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 1. 명언 추천 시스템 (사용자 요청에 따라 최우선 적용 및 단순화)
-    // 로그인한 모든 사용자는 제약 없이 추천 목록을 보고 작성할 수 있음
-    match /quote_suggestions/{suggestionId} {
-      allow read, write: if request.auth != null;
-    }
-
     // 공통 함수 정의
     function isAuthenticated() {
       return request.auth != null;
@@ -17,11 +11,22 @@ service cloud.firestore {
       return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // 유저 정보 및 하위 컬렉션
+    // 1. 명언 추천 시스템 (사용자 요청에 따라 최우선 적용 및 단순화)
+    // 로그인한 모든 사용자는 제약 없이 추천 목록을 보고 작성할 수 있음
+    match /quote_suggestions/{suggestionId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 2. 관리자 권한 확인 및 획득
+    match /roles_admin/{adminId} {
+      allow get, create: if isAuthenticated() && request.auth.uid == adminId;
+      allow list, update, delete: if isUserAdmin();
+    }
+
+    // 3. 유저 정보 및 하위 컬렉션
     match /users/{userId} {
-      allow get: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
+      allow get, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       allow list: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       
       match /personal_fortunes/{date} {
         allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
@@ -40,43 +45,34 @@ service cloud.firestore {
       }
     }
 
-    // 선생님 정보
+    // 4. 선생님 정보
     match /teachers/{teacherId} {
       allow read: if true;
       allow write: if isUserAdmin();
     }
 
-    // 앱 설정 및 공지
+    // 5. 앱 설정 및 공지
     match /metadata/{docId} {
       allow read: if true;
       allow write: if isUserAdmin();
     }
-
-    // 관리자 권한 확인 및 획득
-    match /roles_admin/{adminId} {
-      allow get: if isAuthenticated() && request.auth.uid == adminId;
-      allow list: if isUserAdmin();
-      allow create: if isAuthenticated() && request.auth.uid == adminId;
-      allow update, delete: if isUserAdmin();
-    }
     
-    // 일일 문제
+    // 6. 일일 문제
     match /daily_problems/{problemId} {
       allow read: if isAuthenticated();
       allow write: if isUserAdmin();
     }
 
-    // 오늘의 명언 (공개 데이터)
+    // 7. 오늘의 명언 (공개 데이터)
     match /daily_fortunes/{date} {
       allow read: if true;
       allow write: if isUserAdmin();
     }
 
-    // 문의 시스템
+    // 8. 문의 시스템
     match /inquiries/{inquiryId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow list: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
-      allow get: if isUserAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow list, get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isUserAdmin());
       allow update, delete: if isUserAdmin();
     }
   }
