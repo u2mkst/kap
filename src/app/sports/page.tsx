@@ -3,11 +3,11 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, ExternalLink, Activity, AlertCircle, Info, ChevronRight } from "lucide-react"
+import Script from "next/script"
+import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, Info, ChevronRight, LayoutGrid } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useUser } from "@/firebase"
 import { cn } from "@/lib/utils"
 
@@ -105,27 +105,6 @@ export default function SportsPage() {
     )
   }
 
-  const LeagueSection = ({ title, games, leagueType }: { title: string, games: Game[], leagueType: string }) => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black flex items-center gap-2 text-primary">
-          <ChevronRight className="h-5 w-5" /> {title}
-        </h2>
-        <Badge variant="secondary" className="font-bold">{games.length}개 경기</Badge>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {games.length > 0 ? (
-          games.map((game, idx) => <GameCard key={idx} game={game} />)
-        ) : (
-          <div className="col-span-full py-12 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
-            <CalendarDays className="h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm font-black text-muted-foreground italic">예정된 {title} 경기가 없습니다.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
   if (isUserLoading || !user) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center">
@@ -136,12 +115,17 @@ export default function SportsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
+      <Script 
+        src="https://widgets.api-sports.io/2.0.0/widgets.js" 
+        strategy="afterInteractive"
+      />
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
         <div className="space-y-1">
           <h1 className="text-4xl font-black tracking-tighter leading-tight text-primary flex items-center gap-3">
-            <Trophy className="h-10 w-10 text-yellow-500" /> 실시간 스포츠
+            <Trophy className="h-10 w-10 text-yellow-500" /> KST HUB 스포츠
           </h1>
-          <p className="text-muted-foreground text-sm font-bold">KST HUB 학생들을 위한 KBO & K리그 실시간 통합 중계</p>
+          <p className="text-muted-foreground text-sm font-bold">KBO 실시간 중계 및 K리그 공식 데이터 센터</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           {lastUpdated && (
@@ -157,56 +141,69 @@ export default function SportsPage() {
         </div>
       </div>
 
-      {sportsData.error && (
-        <div className="mb-8 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-center gap-3 text-destructive text-sm font-bold">
-          <AlertCircle className="h-5 w-5" />
-          {sportsData.error}
-        </div>
-      )}
-
       <div className="space-y-16">
-        <LeagueSection title="⚾ KBO 프로야구" games={sportsData.kbo} leagueType="KBO" />
-        <LeagueSection title="⚽ K리그1" games={sportsData.kleague1} leagueType="K1" />
-        <LeagueSection title="⚽ K리그2" games={sportsData.kleague2} leagueType="K2" />
+        {/* KBO 섹션 (커스텀 UI) */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black flex items-center gap-2 text-primary">
+              <ChevronRight className="h-5 w-5" /> ⚾ KBO 프로야구
+            </h2>
+            <Badge variant="secondary" className="font-bold">오늘의 {sportsData.kbo.length}경기</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {sportsData.kbo.length > 0 ? (
+              sportsData.kbo.map((game, idx) => <GameCard key={idx} game={game} />)
+            ) : (
+              <div className="col-span-full py-12 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
+                <CalendarDays className="h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm font-black text-muted-foreground italic">오늘 예정된 KBO 경기가 없습니다.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* K리그 섹션 (API-Sports 위젯) */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black flex items-center gap-2 text-primary">
+              <ChevronRight className="h-5 w-5" /> ⚽ K리그 데이터 센터
+            </h2>
+            <Badge className="bg-accent text-accent-foreground font-black">Official Widget</Badge>
+          </div>
+          
+          <div className="bg-card rounded-[2.5rem] border shadow-xl overflow-hidden p-1 sm:p-6 min-h-[600px] relative">
+            {/* @ts-ignore: Custom element from API-Sports Widget */}
+            <api-sports-widget 
+              data-type="leagues"
+              data-target-league="#8031"
+            ></api-sports-widget>
+
+            {/* @ts-ignore: Custom element from API-Sports Widget */}
+            <api-sports-widget 
+              data-type="config"
+              data-key="18d3e84e0351d299a100acfae51ad8e3"
+              data-sport="football"
+              data-lang="en"
+              data-theme="white"
+            ></api-sports-widget>
+            
+            <div className="absolute top-4 right-4 animate-pulse opacity-50">
+              <LayoutGrid className="h-4 w-4 text-primary" />
+            </div>
+          </div>
+        </section>
       </div>
 
-      {isLoading && (
-        <div className="fixed inset-0 bg-background/40 backdrop-blur-[2px] z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-card p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-5 border animate-in zoom-in-95">
-            <div className="relative">
-              <div className="h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-              <Activity className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-primary animate-pulse" />
-            </div>
-            <div className="text-center space-y-1">
-              <p className="text-sm font-black text-primary uppercase tracking-widest">데이터 동기화 중</p>
-              <p className="text-[10px] font-bold text-muted-foreground">KBO 및 K리그 정보 수집 중...</p>
-            </div>
-          </div>
+      <div className="mt-16 p-6 bg-muted/30 rounded-3xl border border-dashed border-border/50 flex items-center gap-4">
+        <div className="p-3 bg-primary/10 rounded-2xl">
+          <Info className="h-6 w-6 text-primary" />
         </div>
-      )}
-
-      <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
-        <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-3xl border border-dashed border-border/50">
-          <div className="p-3 bg-primary/10 rounded-2xl">
-            <Info className="h-6 w-6 text-primary" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-black text-primary uppercase tracking-tighter">데이터 출처</p>
-            <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">
-              본 서비스는 네이버 스포츠 크롤링 및 RapidAPI(Football-API) 데이터를 실시간으로 가공하여 제공합니다.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 p-6 bg-muted/30 rounded-3xl border border-dashed border-border/50">
-          <div className="p-3 bg-accent/10 rounded-2xl">
-            <ExternalLink className="h-6 w-6 text-accent" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-black text-accent uppercase tracking-tighter">상세 정보</p>
-            <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">
-              더 자세한 중계 정보 및 선수 기록은 각 리그 공식 홈페이지 또는 네이버 스포츠를 통해 확인 가능합니다.
-            </p>
-          </div>
+        <div className="space-y-1">
+          <p className="text-xs font-black text-primary uppercase tracking-tighter">정보 안내</p>
+          <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">
+            KBO 데이터는 네이버 스포츠 실시간 크롤링을 통해 제공되며, K리그 데이터는 API-Sports 공식 위젯을 통해 전송됩니다.
+            위젯이 로드되지 않을 경우 페이지를 새로고침(F5) 해주세요.
+          </p>
         </div>
       </div>
     </div>

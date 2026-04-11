@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
+/**
+ * @fileOverview 실시간 스포츠 데이터 수집 API (KBO 크롤링 + K리그 RapidAPI)
+ */
+
 export async function GET() {
   try {
     // =========================
@@ -12,9 +16,10 @@ export async function GET() {
       "https://sports.news.naver.com/kbaseball/schedule/index",
       {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "User-Agent": "Mozilla/5.0",
           "Accept-Language": "ko-KR,ko;q=0.9"
-        }
+        },
+        timeout: 5000
       }
     );
 
@@ -50,12 +55,13 @@ export async function GET() {
             params: {
               league: leagueId,
               season: 2024,
-              next: 10 // 다음 10경기
+              next: 5 // 다음 5경기
             },
             headers: {
               "x-rapidapi-key": API_KEY,
               "x-rapidapi-host": "api-football-v1.p.rapidapi.com"
-            }
+            },
+            timeout: 5000
           }
         );
 
@@ -97,10 +103,10 @@ export async function GET() {
   } catch (err: any) {
     console.error("Sports API Error:", err);
     return NextResponse.json({
-      error: err.message,
+      error: "일시적으로 스포츠 데이터를 불러올 수 없습니다.",
       kbo: [],
       kleague1: [],
       kleague2: []
-    }, { status: 500 });
+    }, { status: 200 }); // 500 에러 대신 빈 데이터 반환
   }
 }
