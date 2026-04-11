@@ -62,7 +62,7 @@ import {
 } from "@/firebase"
 import { doc, serverTimestamp, query, orderBy, collection, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { format, addDays, subDays, isBefore, parseISO } from "date-fns"
+import { format, addDays, subDays, isBefore, parseISO, isValid } from "date-fns"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -348,7 +348,7 @@ export default function AdminPage() {
     // 문제 삭제
     allProblems?.forEach(p => {
       const pDate = parseISO(p.date)
-      if (isBefore(pDate, thresholdDate)) {
+      if (isValid(pDate) && isBefore(pDate, thresholdDate)) {
         deleteDocumentNonBlocking(doc(db, "daily_problems", p.id))
         deleteCount++
       }
@@ -357,7 +357,7 @@ export default function AdminPage() {
     // 명언 삭제
     allFortunes?.forEach(f => {
       const fDate = parseISO(f.date)
-      if (isBefore(fDate, thresholdDate)) {
+      if (isValid(fDate) && isBefore(fDate, thresholdDate)) {
         deleteDocumentNonBlocking(doc(db, "daily_fortunes", f.date))
         deleteCount++
       }
@@ -452,20 +452,38 @@ export default function AdminPage() {
 
   const setNextDayForProblem = () => {
     if (!allProblems || allProblems.length === 0) return;
-    const sortedDates = [...allProblems].map(p => p.date).sort();
+    const sortedDates = allProblems
+      .map(p => p.date)
+      .filter((d): d is string => !!d && typeof d === 'string' && d.length >= 10)
+      .sort();
+    
+    if (sortedDates.length === 0) return;
     const lastDateStr = sortedDates[sortedDates.length - 1];
-    const nextDate = addDays(new Date(lastDateStr), 1);
-    setSingleProblem({ ...singleProblem, date: format(nextDate, "yyyy-MM-dd") });
-    toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
+    try {
+      const nextDate = addDays(parseISO(lastDateStr), 1);
+      setSingleProblem(prev => ({ ...prev, date: format(nextDate, "yyyy-MM-dd") }));
+      toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   const setNextDayForFortune = () => {
     if (!allFortunes || allFortunes.length === 0) return;
-    const sortedDates = [...allFortunes].map(f => f.date).sort();
+    const sortedDates = allFortunes
+      .map(f => f.date)
+      .filter((d): d is string => !!d && typeof d === 'string' && d.length >= 10)
+      .sort();
+    
+    if (sortedDates.length === 0) return;
     const lastDateStr = sortedDates[sortedDates.length - 1];
-    const nextDate = addDays(new Date(lastDateStr), 1);
-    setSingleFortune({ ...singleFortune, date: format(nextDate, "yyyy-MM-dd") });
-    toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
+    try {
+      const nextDate = addDays(parseISO(lastDateStr), 1);
+      setSingleFortune(prev => ({ ...prev, date: format(nextDate, "yyyy-MM-dd") }));
+      toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   const handleBulkFortunes = () => {
@@ -504,8 +522,13 @@ export default function AdminPage() {
 
   const getLastRegisteredDate = () => {
     if (!allFortunes || allFortunes.length === 0) return format(new Date(), "yyyy-MM-dd")
-    const sorted = [...allFortunes].map(f => f.date).sort()
-    return sorted[sorted.length - 1]
+    const validDates = allFortunes
+      .map(f => f.date)
+      .filter((d): d is string => !!d && typeof d === 'string' && d.length >= 10)
+      .sort()
+    
+    if (validDates.length === 0) return format(new Date(), "yyyy-MM-dd")
+    return validDates[validDates.length - 1]
   }
 
   // 로딩 상태 처리
@@ -733,13 +756,28 @@ export default function AdminPage() {
                     variant="outline" 
                     className="h-14 rounded-2xl border-2 hover:bg-accent/5 hover:border-accent flex items-center justify-between px-6"
                     onClick={() => {
-                      const nextDate = addDays(new Date(getLastRegisteredDate()), 1)
-                      handleApproveQuoteAction(format(nextDate, "yyyy-MM-dd"))
+                      try {
+                        const lastStr = getLastRegisteredDate()
+                        const nextDate = addDays(parseISO(lastStr), 1)
+                        handleApproveQuoteAction(format(nextDate, "yyyy-MM-dd"))
+                      } catch (e) {
+                        toast({ variant: "destructive", title: "날짜 계산 오류" })
+                      }
                     }}
                   >
                     <div className="text-left">
                       <p className="font-black text-sm">다음 등록 가능일</p>
-                      <p className="text-[10px] opacity-50">{format(addDays(new Date(getLastRegisteredDate()), 1), "yyyy-MM-dd")}</p>
+                      <p className="text-[10px] opacity-50">
+                        {(() => {
+                          try {
+                            const lastStr = getLastRegisteredDate()
+                            const nextDate = addDays(parseISO(lastStr), 1)
+                            return format(nextDate, "yyyy-MM-dd")
+                          } catch (e) {
+                            return "날짜 계산 중..."
+                          }
+                        })()}
+                      </p>
                     </div>
                     <CalendarPlus className="h-5 w-5 text-accent" />
                   </Button>
