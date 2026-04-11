@@ -36,24 +36,19 @@ export default function SportsPage() {
     try {
       const res = await fetch("/api/sports/kbo")
       const data = await res.json()
-      if (!data.error) setKboGames(data)
+      if (Array.isArray(data)) setKboGames(data)
     } catch (e) {
-      // 에러 발생 시 빈 배열 유지
+      console.error(e)
     }
   }, [])
 
   const fetchKLeague = useCallback(async () => {
     try {
-      const [k1, k2] = await Promise.all([
-        fetch("/api/sports/kleague?league=kleague1").then(r => r.json()),
-        fetch("/api/sports/kleague?league=kleague2").then(r => r.json())
-      ])
-      const combined = []
-      if (!k1.error) combined.push(...k1)
-      if (!k2.error) combined.push(...k2)
-      setKleagueGames(combined)
+      const res = await fetch("/api/sports/kleague")
+      const data = await res.json()
+      if (Array.isArray(data)) setKleagueGames(data)
     } catch (e) {
-      // 에러 발생 시 빈 배열 유지
+      console.error(e)
     }
   }, [])
 
@@ -132,7 +127,7 @@ export default function SportsPage() {
           <h1 className="text-4xl font-black tracking-tighter leading-tight text-primary flex items-center gap-3">
             <Trophy className="h-10 w-10" /> 실시간 스포츠
           </h1>
-          <p className="text-muted-foreground text-sm font-bold mt-1">KBO와 K리그 경기 현황을 실시간으로 확인하세요.</p>
+          <p className="text-muted-foreground text-sm font-bold mt-1">오늘 진행되는 KBO와 K리그 경기 현황입니다.</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="hidden sm:block text-right">
@@ -191,14 +186,14 @@ export default function SportsPage() {
         <div className="fixed inset-0 bg-background/20 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
           <div className="bg-card p-6 rounded-[2rem] shadow-2xl flex flex-col items-center gap-4 animate-in zoom-in-95">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-xs font-black text-primary uppercase tracking-widest">데이터 수집 중...</p>
+            <p className="text-xs font-black text-primary uppercase tracking-widest">실시간 데이터 수집 중...</p>
           </div>
         </div>
       )}
 
       <div className="mt-12 flex flex-col items-center gap-2 pb-12 opacity-50">
         <div className="flex items-center gap-2 px-4 py-1.5 bg-muted rounded-full text-[10px] font-black uppercase tracking-tighter">
-          <ExternalLink className="h-3 w-3" /> Data provided by NAVER Sports
+          <ExternalLink className="h-3 w-3" /> Real-time data from NAVER Sports API
         </div>
         <p className="text-[9px] font-bold text-muted-foreground">KST HUB Live Sports Monitoring System</p>
       </div>

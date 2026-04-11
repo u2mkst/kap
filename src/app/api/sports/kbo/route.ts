@@ -1,34 +1,42 @@
+
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 
 export async function GET() {
   try {
-    const url = "https://sports.news.naver.com/kbaseball/schedule/index";
+    // 한국 시간(KST) 기준 오늘 날짜 구하기
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstDate = new Date(now.getTime() + kstOffset);
+    const todayStr = kstDate.toISOString().split('T')[0].replace(/-/g, '');
+
+    // 네이버 스포츠 공식 API (JSON)
+    const url = `https://api-gw.sports.naver.com/schedule/games?category=kbo&date=${todayStr}`;
+    
     const { data } = await axios.get(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept-Language": "ko-KR,ko;q=0.9"
       },
       timeout: 5000
     });
-    const $ = cheerio.load(data);
 
-    let games: any[] = [];
+    if (!data?.result?.games) {
+      return NextResponse.json([]);
+    }
 
-    // 네이버 스포츠 일정 테이블의 tr 요소를 순회
-    $(".sch_tb tbody tr").each((i, el) => {
-      const time = $(el).find(".td_date").text().trim();
-      const teams = $(el).find(".td_vs").text().trim();
-      const score = $(el).find(".td_score").text().trim();
-
-      if (teams) {
-        games.push({ time, teams, score });
-      }
+    const games = data.result.games.map((g: any) => {
+      const isBefore = g.gameState === 'BEFORE';
+      return {
+        time: g.startTime || '미정',
+        teams: `${g.awayTeamName} vs ${g.homeTeamName}`,
+        score: isBefore ? "" : `${g.awayTeamScore} : ${g.homeTeamScore}`
+      };
     });
 
     return NextResponse.json(games);
   } catch (error) {
+    console.error("KBO API Error:", error);
     return NextResponse.json({ error: "Failed to fetch KBO data" }, { status: 500 });
   }
 }
