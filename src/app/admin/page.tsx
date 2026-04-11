@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -78,6 +77,7 @@ export default function AdminPage() {
     author: ""
   })
 
+  // 관리자 권한 확인
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
     return doc(db, "roles_admin", user.uid)
@@ -87,16 +87,16 @@ export default function AdminPage() {
   
   // 관리자 권한이 명확히 로드되고 존재할 때만 true
   const isActuallyAdmin = useMemo(() => {
-    return !!isAdminDoc && !isAdminLoading;
-  }, [isAdminDoc, isAdminLoading]);
+    return !!user && !!isAdminDoc && !isAdminLoading;
+  }, [user, isAdminDoc, isAdminLoading]);
 
-  // Hook 규칙 준수: 모든 useMemo/useCollection 호출은 최상위에 위치
+  // 시스템 설정 데이터
   const configRef = useMemoFirebase(() => {
     return doc(db, "metadata", "config")
   }, [db])
   const { data: configData } = useDoc(configRef)
 
-  // 모든 관리자 전용 쿼리는 isActuallyAdmin이 true일 때만 실행되도록 보호
+  // 관리자 전용 데이터 쿼리 - isActuallyAdmin이 true일 때만 실행되도록 보호
   const teachersQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
@@ -117,6 +117,7 @@ export default function AdminPage() {
 
   const quoteSuggestionsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
+    // 명언 추천 시스템 보안 규칙이 request.auth != null 이면 허용이므로 일반 쿼리 수행
     return query(collection(db, "quote_suggestions"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
   }, [db, isActuallyAdmin])
   const { data: quoteSuggestions } = useCollection(quoteSuggestionsQuery)
@@ -140,14 +141,14 @@ export default function AdminPage() {
   const { data: allFortunes } = useCollection(allFortunesQuery)
 
   const problemsOnSelectedDate = useMemo(() => {
-    if (!isActuallyAdmin) return []
-    return allProblems?.filter(p => p.date === selectedDate) || []
-  }, [allProblems, selectedDate, isActuallyAdmin])
+    if (!allProblems) return []
+    return allProblems.filter(p => p.date === selectedDate)
+  }, [allProblems, selectedDate])
 
   const fortuneOnSelectedDate = useMemo(() => {
-    if (!isActuallyAdmin) return undefined
-    return allFortunes?.find(f => f.date === selectedDate)
-  }, [allFortunes, selectedDate, isActuallyAdmin])
+    if (!allFortunes) return undefined
+    return allFortunes.find(f => f.date === selectedDate)
+  }, [allFortunes, selectedDate])
 
   const adminIds = useMemo(() => adminDocs?.map(d => d.id) || [], [adminDocs])
 
