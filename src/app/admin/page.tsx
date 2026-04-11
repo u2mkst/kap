@@ -14,6 +14,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Calendar } from "@/components/ui/calendar"
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog"
+import { 
   ShieldAlert, 
   Trash2, 
   Loader2, 
@@ -37,7 +46,9 @@ import {
   XCircle,
   Sparkles,
   KeyRound,
-  ShieldCheck
+  ShieldCheck,
+  CalendarRange,
+  History
 } from "lucide-react"
 import { 
   useFirestore, 
@@ -51,7 +62,7 @@ import {
 } from "@/firebase"
 import { doc, serverTimestamp, query, orderBy, collection, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { format, addDays } from "date-fns"
+import { format, addDays, subDays, isBefore, parseISO } from "date-fns"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -65,6 +76,10 @@ export default function AdminPage() {
   const [tempVotes, setTempVotes] = useState<{ [key: string]: number }>({})
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"))
   const [claimCode, setClaimSecret] = useState("")
+
+  // 명언 승인 선택 상태
+  const [selectedQuoteForApprove, setSelectedQuoteForApprove] = useState<any>(null)
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
 
   // 단일 문제 등록 상태
   const [singleProblem, setSingleProblem] = useState({
@@ -296,23 +311,24 @@ export default function AdminPage() {
     toast({ title: "문의가 삭제되었습니다." })
   }
 
-  const handleApproveQuote = (suggestion: any) => {
-    if (!confirm("이 명언을 정식 명언으로 승인하시겠습니까?")) return
+  const handleApproveQuoteAction = (targetDate: string) => {
+    if (!selectedQuoteForApprove) return
     setIsSaving(true)
-    const todayStr = format(new Date(), "yyyy-MM-dd")
     
-    // 1. 오늘의 명언으로 등록
-    setDocumentNonBlocking(doc(db, "daily_fortunes", todayStr), {
-      date: todayStr,
-      fortuneText: suggestion.fortuneText,
-      author: suggestion.author || suggestion.userNickname,
+    // 1. 해당 날짜의 명언으로 등록
+    setDocumentNonBlocking(doc(db, "daily_fortunes", targetDate), {
+      date: targetDate,
+      fortuneText: selectedQuoteForApprove.fortuneText,
+      author: selectedQuoteForApprove.author || selectedQuoteForApprove.userNickname,
       updatedAt: serverTimestamp()
     }, { merge: true })
 
     // 2. 추천 상태 업데이트
-    updateDocumentNonBlocking(doc(db, "quote_suggestions", suggestion.id), { status: "approved" })
+    updateDocumentNonBlocking(doc(db, "quote_suggestions", selectedQuoteForApprove.id), { status: "approved" })
     
-    toast({ title: "명언 승인 및 등록 완료!", description: "오늘의 명언으로 반영되었습니다." })
+    toast({ title: "명언 승인 및 등록 완료!", description: `${targetDate}의 명언으로 반영되었습니다.` })
+    setIsApproveDialogOpen(false)
+    setSelectedQuoteForApprove(null)
     setIsSaving(false)
   }
 
@@ -320,6 +336,35 @@ export default function AdminPage() {
     if (!confirm("이 추천을 거절하시겠습니까?")) return
     updateDocumentNonBlocking(doc(db, "quote_suggestions", id), { status: "rejected" })
     toast({ title: "추천 거절 완료" })
+  }
+
+  const handleCleanupOldData = () => {
+    if (!confirm("2일 전의 모든 운세와 문제 기록을 삭제하시겠습니까?")) return
+    setIsSaving(true)
+    
+    const thresholdDate = subDays(new Date(), 2)
+    let deleteCount = 0
+
+    // 문제 삭제
+    allProblems?.forEach(p => {
+      const pDate = parseISO(p.date)
+      if (isBefore(pDate, thresholdDate)) {
+        deleteDocumentNonBlocking(doc(db, "daily_problems", p.id))
+        deleteCount++
+      }
+    })
+
+    // 명언 삭제
+    allFortunes?.forEach(f => {
+      const fDate = parseISO(f.date)
+      if (isBefore(fDate, thresholdDate)) {
+        deleteDocumentNonBlocking(doc(db, "daily_fortunes", f.date))
+        deleteCount++
+      }
+    })
+
+    toast({ title: "데이터 정리 완료", description: `${deleteCount}개의 오래된 데이터가 삭제되었습니다.` })
+    setIsSaving(false)
   }
 
   const handleDeleteAllInquiries = () => {
@@ -455,6 +500,12 @@ export default function AdminPage() {
     const hasProblem = allProblems?.some(p => p.date === dStr)
     const hasFortune = allFortunes?.some(f => f.date === dStr)
     return { hasProblem, hasFortune }
+  }
+
+  const getLastRegisteredDate = () => {
+    if (!allFortunes || allFortunes.length === 0) return format(new Date(), "yyyy-MM-dd")
+    const sorted = [...allFortunes].map(f => f.date).sort()
+    return sorted[sorted.length - 1]
   }
 
   // 로딩 상태 처리
@@ -623,7 +674,10 @@ export default function AdminPage() {
                     <div className="flex gap-2 shrink-0">
                       <Button 
                         size="sm" 
-                        onClick={() => handleApproveQuote(s)} 
+                        onClick={() => {
+                          setSelectedQuoteForApprove(s)
+                          setIsApproveDialogOpen(true)
+                        }} 
                         disabled={isSaving}
                         className="bg-accent text-accent-foreground rounded-xl font-black text-xs"
                       >
@@ -648,6 +702,54 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+
+          {/* 명언 승인 날짜 선택 다이얼로그 */}
+          <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+            <DialogContent className="rounded-[2.5rem] max-w-sm bg-card border-none shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black text-primary">명언 등록 날짜 선택</DialogTitle>
+                <DialogDescription className="text-xs font-bold opacity-60">추천된 명언을 언제 게시할까요?</DialogDescription>
+              </DialogHeader>
+              <div className="py-6 space-y-4">
+                <div className="p-4 bg-muted/30 rounded-2xl">
+                  <p className="text-[11px] font-black text-primary mb-1">선택된 명언</p>
+                  <p className="text-xs font-bold italic opacity-80 leading-relaxed">"{selectedQuoteForApprove?.fortuneText}"</p>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="h-14 rounded-2xl border-2 hover:bg-primary/5 hover:border-primary flex items-center justify-between px-6"
+                    onClick={() => handleApproveQuoteAction(format(new Date(), "yyyy-MM-dd"))}
+                  >
+                    <div className="text-left">
+                      <p className="font-black text-sm">오늘 등록</p>
+                      <p className="text-[10px] opacity-50">{format(new Date(), "yyyy-MM-dd")}</p>
+                    </div>
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="h-14 rounded-2xl border-2 hover:bg-accent/5 hover:border-accent flex items-center justify-between px-6"
+                    onClick={() => {
+                      const nextDate = addDays(new Date(getLastRegisteredDate()), 1)
+                      handleApproveQuoteAction(format(nextDate, "yyyy-MM-dd"))
+                    }}
+                  >
+                    <div className="text-left">
+                      <p className="font-black text-sm">다음 등록 가능일</p>
+                      <p className="text-[10px] opacity-50">{format(addDays(new Date(getLastRegisteredDate()), 1), "yyyy-MM-dd")}</p>
+                    </div>
+                    <CalendarPlus className="h-5 w-5 text-accent" />
+                  </Button>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsApproveDialogOpen(false)} className="rounded-xl w-full">취소</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="users">
@@ -1109,20 +1211,51 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="config">
-          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-            <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 설정</CardTitle></CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground">관리자 인증 코드</Label>
-                <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} className="rounded-2xl h-11 bg-background" />
-              </div>
-              <div className="space-y-2 pt-4 border-t">
-                <Label className="text-xs font-bold text-muted-foreground">카카오 JavaScript 키</Label>
-                <Input type="text" value={kakaoApiKey} onChange={(e) => setKakaoApiKey(e.target.value)} className="rounded-2xl h-11 bg-background" />
-              </div>
-              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 font-black bg-destructive text-white">전체 설정 저장</Button>
-            </CardContent>
-          </Card>
+          <div className="grid gap-6">
+            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+              <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 설정</CardTitle></CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-muted-foreground">관리자 인증 코드</Label>
+                  <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} className="rounded-2xl h-11 bg-background" />
+                </div>
+                <div className="space-y-2 pt-4 border-t">
+                  <Label className="text-xs font-bold text-muted-foreground">카카오 JavaScript 키</Label>
+                  <Input type="text" value={kakaoApiKey} onChange={(e) => setKakaoApiKey(e.target.value)} className="rounded-2xl h-11 bg-background" />
+                </div>
+                <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 font-black bg-destructive text-white">전체 설정 저장</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-md bg-card rounded-3xl overflow-hidden border-2 border-destructive/20">
+              <CardHeader className="bg-destructive/5 pb-4">
+                <CardTitle className="text-sm font-black flex items-center gap-2 text-destructive">
+                  <Eraser className="h-4 w-4" /> 시스템 최적화 및 청소
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold">오래된 데이터를 정리하여 성능을 개선합니다.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-2xl">
+                  <History className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-black">2일 전 기록 삭제</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      오늘 날짜 기준 2일 전보다 오래된 모든 **운세(Fortune)** 및 **문제(Problem)** 데이터를 삭제합니다. <br/>
+                      이 작업은 취소할 수 없으니 주의해 주세요.
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleCleanupOldData} 
+                  disabled={isSaving}
+                  className="w-full h-12 rounded-2xl font-black shadow-lg hover:shadow-destructive/20 active:scale-95 transition-all"
+                >
+                  {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Trash2 className="h-5 w-5 mr-2" /> 오래된 데이터 정리하기 (2일 이상)</>}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
