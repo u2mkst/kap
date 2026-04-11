@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, ExternalLink, Activity, ListOrdered, LayoutGrid } from "lucide-react"
+import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, ExternalLink, Activity, ListOrdered, LayoutGrid, AlertCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,8 +35,8 @@ export default function SportsPage() {
   const { user, isUserLoading } = useUser()
   const router = useRouter()
   
-  const [kboData, setKboData] = useState<{games: Game[], rankings: Ranking[]}>({ games: [], rankings: [] })
-  const [kleagueData, setKleagueData] = useState<{games: Game[], rankings: Ranking[]}>({ games: [], rankings: [] })
+  const [kboData, setKboData] = useState<{games: Game[], rankings: Ranking[], error?: string}>({ games: [], rankings: [] })
+  const [kleagueData, setKleagueData] = useState<{games: Game[], rankings: Ranking[], error?: string}>({ games: [], rankings: [] })
   
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -51,13 +51,12 @@ export default function SportsPage() {
     setIsLoading(true)
     try {
       const [kboRes, kleagueRes] = await Promise.all([
-        fetch("/api/sports/kbo").then(r => r.json()),
-        fetch("/api/sports/kleague").then(r => r.json())
+        fetch("/api/sports/kbo").then(r => r.json()).catch(() => ({ error: "통신 오류" })),
+        fetch("/api/sports/kleague").then(r => r.json()).catch(() => ({ error: "통신 오류" }))
       ])
       
-      if (kboRes && !kboRes.error) setKboData(kboRes)
-      if (kleagueRes && !kleagueRes.error) setKleagueData(kleagueRes)
-      
+      setKboData(kboRes)
+      setKleagueData(kleagueRes)
       setLastUpdated(new Date())
     } catch (e) {
       console.error(e)
@@ -69,7 +68,7 @@ export default function SportsPage() {
   useEffect(() => {
     if (user) {
       loadAll()
-      const interval = setInterval(loadAll, 60000) // 1분마다 자동 갱신
+      const interval = setInterval(loadAll, 60000)
       return () => clearInterval(interval)
     }
   }, [loadAll, user])
@@ -111,6 +110,19 @@ export default function SportsPage() {
       </Card>
     )
   }
+
+  const ErrorDisplay = ({ message }: { message?: string }) => (
+    <div className="col-span-full py-12 text-center bg-destructive/5 rounded-[2.5rem] border-2 border-dashed border-destructive/20 flex flex-col items-center gap-3">
+      <AlertCircle className="h-10 w-10 text-destructive/50" />
+      <div className="space-y-1">
+        <p className="text-sm font-black text-destructive">{message || "데이터를 불러올 수 없습니다."}</p>
+        <p className="text-[10px] font-bold text-muted-foreground">잠시 후 다시 시도하거나 새로고침 버튼을 눌러주세요.</p>
+      </div>
+      <Button variant="outline" size="sm" onClick={loadAll} className="mt-2 rounded-full h-8 px-4 text-[10px] font-black">
+        다시 시도
+      </Button>
+    </div>
+  )
 
   if (isUserLoading || !user) {
     return (
@@ -161,7 +173,9 @@ export default function SportsPage() {
             
             <TabsContent value="games">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {kboData.games.length > 0 ? (
+                {kboData.error ? (
+                  <ErrorDisplay message={kboData.error} />
+                ) : kboData.games.length > 0 ? (
                   kboData.games.map((game, idx) => <GameCard key={idx} game={game} />)
                 ) : !isLoading && (
                   <div className="col-span-full py-20 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
@@ -173,34 +187,38 @@ export default function SportsPage() {
             </TabsContent>
             
             <TabsContent value="rankings">
-              <Card className="rounded-[2rem] overflow-hidden border-none shadow-lg">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="w-16 text-center font-black">순위</TableHead>
-                      <TableHead className="font-black">팀명</TableHead>
-                      <TableHead className="text-center font-black">경기</TableHead>
-                      <TableHead className="text-center font-black">승</TableHead>
-                      <TableHead className="text-center font-black">패</TableHead>
-                      <TableHead className="text-center font-black">무</TableHead>
-                      <TableHead className="text-right font-black">승률</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {kboData.rankings.map((r) => (
-                      <TableRow key={r.teamName} className="hover:bg-primary/5 transition-colors">
-                        <TableCell className="text-center font-black text-primary">{r.rank}</TableCell>
-                        <TableCell className="font-bold">{r.teamName}</TableCell>
-                        <TableCell className="text-center font-medium opacity-60">{r.gameCount}</TableCell>
-                        <TableCell className="text-center font-bold text-blue-600">{r.won}</TableCell>
-                        <TableCell className="text-center font-bold text-red-600">{r.lost}</TableCell>
-                        <TableCell className="text-center font-medium">{r.drawn}</TableCell>
-                        <TableCell className="text-right font-black tabular-nums">{r.winRate}</TableCell>
+              {kboData.error ? (
+                <ErrorDisplay message={kboData.error} />
+              ) : (
+                <Card className="rounded-[2rem] overflow-hidden border-none shadow-lg">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-16 text-center font-black">순위</TableHead>
+                        <TableHead className="font-black">팀명</TableHead>
+                        <TableHead className="text-center font-black">경기</TableHead>
+                        <TableHead className="text-center font-black">승</TableHead>
+                        <TableHead className="text-center font-black">패</TableHead>
+                        <TableHead className="text-center font-black">무</TableHead>
+                        <TableHead className="text-right font-black">승률</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {kboData.rankings.map((r) => (
+                        <TableRow key={r.teamName} className="hover:bg-primary/5 transition-colors">
+                          <TableCell className="text-center font-black text-primary">{r.rank}</TableCell>
+                          <TableCell className="font-bold">{r.teamName}</TableCell>
+                          <TableCell className="text-center font-medium opacity-60">{r.gameCount}</TableCell>
+                          <TableCell className="text-center font-bold text-blue-600">{r.won}</TableCell>
+                          <TableCell className="text-center font-bold text-red-600">{r.lost}</TableCell>
+                          <TableCell className="text-center font-medium">{r.drawn}</TableCell>
+                          <TableCell className="text-right font-black tabular-nums">{r.winRate}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </TabsContent>
@@ -217,7 +235,9 @@ export default function SportsPage() {
             
             <TabsContent value="games">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {kleagueData.games.length > 0 ? (
+                {kleagueData.error ? (
+                  <ErrorDisplay message={kleagueData.error} />
+                ) : kleagueData.games.length > 0 ? (
                   kleagueData.games.map((game, idx) => <GameCard key={idx} game={game} />)
                 ) : !isLoading && (
                   <div className="col-span-full py-20 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
@@ -229,34 +249,38 @@ export default function SportsPage() {
             </TabsContent>
             
             <TabsContent value="rankings">
-              <Card className="rounded-[2rem] overflow-hidden border-none shadow-lg">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="w-16 text-center font-black">순위</TableHead>
-                      <TableHead className="font-black">팀명</TableHead>
-                      <TableHead className="text-center font-black">경기</TableHead>
-                      <TableHead className="text-center font-black">승</TableHead>
-                      <TableHead className="text-center font-black">무</TableHead>
-                      <TableHead className="text-center font-black">패</TableHead>
-                      <TableHead className="text-right font-black">승점</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {kleagueData.rankings.map((r) => (
-                      <TableRow key={r.teamName} className="hover:bg-primary/5 transition-colors">
-                        <TableCell className="text-center font-black text-primary">{r.rank}</TableCell>
-                        <TableCell className="font-bold">{r.teamName}</TableCell>
-                        <TableCell className="text-center font-medium opacity-60">{r.gameCount}</TableCell>
-                        <TableCell className="text-center font-bold text-blue-600">{r.won}</TableCell>
-                        <TableCell className="text-center font-bold text-green-600">{r.drawn}</TableCell>
-                        <TableCell className="text-center font-bold text-red-600">{r.lost}</TableCell>
-                        <TableCell className="text-right font-black tabular-nums text-primary">{r.point}</TableCell>
+              {kleagueData.error ? (
+                <ErrorDisplay message={kleagueData.error} />
+              ) : (
+                <Card className="rounded-[2rem] overflow-hidden border-none shadow-lg">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-16 text-center font-black">순위</TableHead>
+                        <TableHead className="font-black">팀명</TableHead>
+                        <TableHead className="text-center font-black">경기</TableHead>
+                        <TableHead className="text-center font-black">승</TableHead>
+                        <TableHead className="text-center font-black">무</TableHead>
+                        <TableHead className="text-center font-black">패</TableHead>
+                        <TableHead className="text-right font-black">승점</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {kleagueData.rankings.map((r) => (
+                        <TableRow key={r.teamName} className="hover:bg-primary/5 transition-colors">
+                          <TableCell className="text-center font-black text-primary">{r.rank}</TableCell>
+                          <TableCell className="font-bold">{r.teamName}</TableCell>
+                          <TableCell className="text-center font-medium opacity-60">{r.gameCount}</TableCell>
+                          <TableCell className="text-center font-bold text-blue-600">{r.won}</TableCell>
+                          <TableCell className="text-center font-bold text-green-600">{r.drawn}</TableCell>
+                          <TableCell className="text-center font-bold text-red-600">{r.lost}</TableCell>
+                          <TableCell className="text-right font-black tabular-nums text-primary">{r.point}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </TabsContent>
