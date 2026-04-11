@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // 한국 시간(KST) 기준 오늘 날짜 구하기
+    // 한국 시간(KST) 기준 오늘 날짜 구하기 (YYYYMMDD)
     const now = new Date();
     const kstOffset = 9 * 60 * 60 * 1000;
     const kstDate = new Date(now.getTime() + kstOffset);
     const todayStr = kstDate.toISOString().split('T')[0].replace(/-/g, '');
 
-    // 네이버 스포츠 공식 API (JSON)
+    // 네이버 스포츠 공식 데이터 API (내부 경로)
     const scheduleUrl = `https://api-gw.sports.naver.com/schedule/games?category=kbo&date=${todayStr}`;
     const rankingUrl = `https://api-gw.sports.naver.com/ranking/league?category=kbo`;
     
@@ -17,7 +17,8 @@ export async function GET() {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       "Accept": "application/json, text/plain, */*",
       "Referer": "https://sports.news.naver.com/kbaseball/index",
-      "Origin": "https://sports.news.naver.com"
+      "Origin": "https://sports.news.naver.com",
+      "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7"
     };
 
     const [scheduleRes, rankingRes] = await Promise.all([
@@ -26,7 +27,11 @@ export async function GET() {
     ]);
 
     if (!scheduleRes.ok || !rankingRes.ok) {
-      throw new Error('Naver API response was not ok');
+      return NextResponse.json({ 
+        games: [], 
+        rankings: [], 
+        error: "네이버 서버로부터 데이터를 가져올 수 없습니다." 
+      }, { status: 200 });
     }
 
     const scheduleData = await scheduleRes.json();
@@ -57,11 +62,10 @@ export async function GET() {
     return NextResponse.json({ games, rankings });
   } catch (error) {
     console.error("KBO API Error:", error);
-    // 500 에러 대신 빈 데이터와 에러 메시지를 반환하여 UI 크래시 방지
     return NextResponse.json({ 
       games: [], 
       rankings: [], 
-      error: "데이터를 불러오는 중 오류가 발생했습니다." 
+      error: "데이터를 불러오는 중 시스템 오류가 발생했습니다." 
     }, { status: 200 });
   }
 }

@@ -8,6 +8,7 @@ export async function GET() {
     const kstDate = new Date(now.getTime() + kstOffset);
     const todayStr = kstDate.toISOString().split('T')[0].replace(/-/g, '');
 
+    // K리그 스케줄 및 랭킹 (K리그 1 중심)
     const scheduleUrl = `https://api-gw.sports.naver.com/schedule/games?category=kleague&date=${todayStr}`;
     const rankingUrl = `https://api-gw.sports.naver.com/ranking/league?category=kleague`;
     
@@ -15,7 +16,8 @@ export async function GET() {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
       "Accept": "application/json, text/plain, */*",
       "Referer": "https://sports.news.naver.com/kfootball/index",
-      "Origin": "https://sports.news.naver.com"
+      "Origin": "https://sports.news.naver.com",
+      "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7"
     };
 
     const [scheduleRes, rankingRes] = await Promise.all([
@@ -24,7 +26,11 @@ export async function GET() {
     ]);
 
     if (!scheduleRes.ok || !rankingRes.ok) {
-      throw new Error('Naver API response was not ok');
+      return NextResponse.json({ 
+        games: [], 
+        rankings: [], 
+        error: "네이버 서버 응답 오류" 
+      }, { status: 200 });
     }
 
     const scheduleData = await scheduleRes.json();
@@ -58,7 +64,7 @@ export async function GET() {
     return NextResponse.json({ 
       games: [], 
       rankings: [], 
-      error: "데이터를 불러오는 중 오류가 발생했습니다." 
+      error: "시스템 오류로 축구 데이터를 불러오지 못했습니다." 
     }, { status: 200 });
   }
 }
