@@ -76,7 +76,7 @@ export default function AdminPage() {
     author: ""
   })
 
-  // 관리자 권한 확인 - 이 문서는 본인이면 무조건 get 가능 (규칙 2번)
+  // 관리자 권한 확인
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
     return doc(db, "roles_admin", user.uid)
@@ -86,7 +86,8 @@ export default function AdminPage() {
   
   // 실제 관리자 권한이 확정된 상태 (로딩이 끝났고 문서가 존재함)
   const isActuallyAdmin = useMemo(() => {
-    return !!user && !!isAdminDoc && !isAdminLoading;
+    // isAdminLoading이 false이고 isAdminDoc이 null이 아닐 때만 true
+    return !!user && !!isAdminDoc && isAdminLoading === false;
   }, [user, isAdminDoc, isAdminLoading]);
 
   // 시스템 설정 데이터 (인증 코드 확인용 - 공개 읽기 가능)
