@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user profile in the Class Hub academy.",
+      "description": "Represents a user profile in the KST HUB academy.",
       "properties": {
         "id": { "type": "string" },
         "username": { "type": "string" },

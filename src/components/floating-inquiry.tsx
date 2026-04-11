@@ -244,7 +244,7 @@ export function FloatingInquiry() {
             </div>
           </Tabs>
           <div className="p-4 bg-muted/20 text-center">
-            <p className="text-[9px] font-black opacity-30 uppercase tracking-widest">class hub student support system</p>
+            <p className="text-[9px] font-black opacity-30 uppercase tracking-widest">KST HUB</p>
           </div>
         </DialogContent>
       </Dialog>

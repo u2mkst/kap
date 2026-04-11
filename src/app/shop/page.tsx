@@ -12,7 +12,7 @@ export default function ShopPage() {
     { id: 2, name: "매점 떡볶이 교환권", price: 1500, category: "간식", icon: "🍱" },
     { id: 3, name: "학습용 보조 배터리", price: 15000, category: "학습도구", icon: "🔋" },
     { id: 4, name: "전강좌 10% 할인권", price: 5000, category: "혜택", icon: "📉" },
-    { id: 5, name: "허브 로고 머그컵", price: 2500, category: "굿즈", icon: "☕" },
+    { id: 5, name: "KST HUB 로고 머그컵", price: 2500, category: "굿즈", icon: "☕" },
     { id: 6, name: "1:1 멘토링 30분권", price: 8000, category: "혜택", icon: "👨‍🏫" },
   ]
 
@@ -66,7 +66,7 @@ export default function ShopPage() {
           <h3 className="font-bold text-xl mb-2 text-primary">포인트는 어떻게 모으나요?</h3>
           <p className="text-sm text-muted-foreground max-w-lg mx-auto">
             매일 출석체크, 과제 제출, 퀴즈 정답 맞히기, 그리고 목표 학습 시간 달성을 통해 포인트를 얻을 수 있습니다.
-            지치지 않는 학습을 위해 클래스 허브가 드리는 작은 선물입니다!
+            지치지 않는 학습을 위해 KST HUB가 드리는 작은 선물입니다!
           </p>
         </CardContent>
       </Card>
