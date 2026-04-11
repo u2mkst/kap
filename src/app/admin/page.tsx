@@ -90,7 +90,7 @@ export default function AdminPage() {
     return !!user && !!isAdminDoc && !isAdminLoading;
   }, [user, isAdminDoc, isAdminLoading]);
 
-  // 시스템 설정 데이터
+  // 시스템 설정 데이터 (권한 상관없이 로드 - 공개 데이터 기반)
   const configRef = useMemoFirebase(() => {
     return doc(db, "metadata", "config")
   }, [db])
@@ -117,7 +117,7 @@ export default function AdminPage() {
 
   const quoteSuggestionsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    // 명언 추천 시스템 보안 규칙이 request.auth != null 이면 허용이므로 일반 쿼리 수행
+    // 보안 규칙이 request.auth != null 이면 허용이지만, 관리자 페이지 로딩 흐름상 admin 확인 후 요청
     return query(collection(db, "quote_suggestions"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
   }, [db, isActuallyAdmin])
   const { data: quoteSuggestions } = useCollection(quoteSuggestionsQuery)
