@@ -12,14 +12,19 @@ service cloud.firestore {
       return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // 1. 명언 추천 시스템 (사용자 요청: 최상단 배치 및 전원 개방)
+    // 1. 고객센터 및 명언 추천 (사용자 요청: 최우선 전면 개방)
+    // 로그인한 사용자라면 누구나 읽고 쓸 수 있도록 설정
     match /quote_suggestions/{doc} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /inquiries/{doc} {
       allow read, write: if isAuthenticated();
     }
 
     // 2. 관리자 권한 확인 및 획득
     match /roles_admin/{adminId} {
-      // 권한 확인을 위해 목록 및 개별 문서 조회를 모든 학생에게 허용
+      // 권한 확인을 위해 목록 조회를 모든 학생에게 허용
       allow read: if isAuthenticated();
       // 누구나 인증 코드를 통해 자신을 관리자로 등록(Claim)할 수 있도록 허용
       allow create: if isAuthenticated() && request.auth.uid == adminId;
@@ -27,21 +32,9 @@ service cloud.firestore {
       allow update, delete: if isUserAdmin();
     }
 
-    // 3. 문의 시스템 (고객센터)
-    match /inquiries/{inquiryId} {
-      // 본인의 UID로만 문의 생성 가능
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      // 목록 조회 권한 거부 오류 방지를 위해 모든 학생에게 허용 (UI에서 본인 것만 필터링)
-      allow list: if isAuthenticated();
-      // 상세 조회는 본인 또는 관리자만 가능 (데이터 보호)
-      allow get: if isAuthenticated() && (isUserAdmin() || resource.data.userId == request.auth.uid);
-      // 답변 작성 및 삭제는 관리자만
-      allow update, delete: if isUserAdmin();
-    }
-
-    // 4. 유저 프로필 및 정보
+    // 3. 유저 프로필 및 정보
     match /users/{userId} {
-      // 통계 및 랭킹을 위해 목록 조회를 허용함
+      // 통계 및 랭킹, 학교 인원 표시를 위해 목록 조회를 허용
       allow list: if isAuthenticated();
       // 프로필 상세 조회는 로그인 유저라면 가능
       allow get: if isAuthenticated();
@@ -54,7 +47,7 @@ service cloud.firestore {
       }
     }
 
-    // 5. 선생님 및 앱 설정 데이터
+    // 4. 선생님 및 앱 설정 데이터
     match /teachers/{teacherId} {
       allow read: if isAuthenticated();
       allow write: if isUserAdmin();
