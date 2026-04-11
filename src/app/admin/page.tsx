@@ -90,10 +90,8 @@ export default function AdminPage() {
     return !!user && !!isAdminDoc && !isAdminLoading;
   }, [user, isAdminDoc, isAdminLoading]);
 
-  // 시스템 설정 데이터 (권한 상관없이 로드 - 공개 데이터 기반)
-  const configRef = useMemoFirebase(() => {
-    return doc(db, "metadata", "config")
-  }, [db])
+  // 시스템 설정 데이터
+  const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
   // 관리자 전용 데이터 쿼리 - isActuallyAdmin이 true일 때만 실행되도록 보호

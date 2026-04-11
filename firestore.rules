@@ -26,21 +26,9 @@ service cloud.firestore {
     // 3. 유저 정보 및 하위 컬렉션
     match /users/{userId} {
       allow get, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
-      allow list: if isAuthenticated();
+      allow list: if isUserAdmin();
       
-      match /personal_fortunes/{date} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
-      }
-
-      match /attendance_logs/{date} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
-      }
-
-      match /plants/{plantId} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
-      }
-
-      match /solved_problems/{date} {
+      match /{allSubcollections=**} {
         allow read, write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       }
     }
