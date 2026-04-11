@@ -76,7 +76,7 @@ export default function AdminPage() {
     author: ""
   })
 
-  // 관리자 권한 확인
+  // 관리자 권한 확인 - 이 문서는 본인이면 무조건 get 가능 (규칙 2번)
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
     return doc(db, "roles_admin", user.uid)
@@ -84,16 +84,16 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
   
-  // 관리자 권한 상태
+  // 실제 관리자 권한이 확정된 상태 (로딩이 끝났고 문서가 존재함)
   const isActuallyAdmin = useMemo(() => {
     return !!user && !!isAdminDoc && !isAdminLoading;
   }, [user, isAdminDoc, isAdminLoading]);
 
-  // 시스템 설정 데이터 (인증 코드 확인용)
+  // 시스템 설정 데이터 (인증 코드 확인용 - 공개 읽기 가능)
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
-  // 관리자 전용 데이터 쿼리 - isActuallyAdmin이 true일 때만 실행되도록 보호
+  // 관리자 전용 데이터 쿼리 - isActuallyAdmin이 true일 때만 실행되도록 엄격히 보호
   const teachersQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
@@ -114,7 +114,6 @@ export default function AdminPage() {
 
   const quoteSuggestionsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    // 명언 추천 목록은 모든 관리자에게 보임
     return query(collection(db, "quote_suggestions"), orderBy("createdAt", "desc"))
   }, [db, isActuallyAdmin])
   const { data: quoteSuggestions } = useCollection(quoteSuggestionsQuery)
@@ -503,7 +502,7 @@ export default function AdminPage() {
     )
   }
 
-  // 관리자 권한이 없을 경우 인증 화면 표시
+  // 관리자 권한이 없을 경우 인증 화면 표시 (데이터 쿼리 전)
   if (!isActuallyAdmin) {
     return (
       <div className="container mx-auto px-4 h-[calc(100vh-120px)] flex items-center justify-center">
