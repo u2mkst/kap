@@ -2,6 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // 1. 명언 추천 시스템 (사용자 요청에 따라 최우선 적용 및 단순화)
+    // 로그인한 모든 사용자는 제약 없이 추천 목록을 보고 작성할 수 있음
+    match /quote_suggestions/{suggestionId} {
+      allow read, write: if request.auth != null;
+    }
+
     // 공통 함수 정의
     function isAuthenticated() {
       return request.auth != null;
@@ -9,12 +15,6 @@ service cloud.firestore {
     
     function isUserAdmin() {
       return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    // 1. 명언 추천 시스템 (사용자 요청에 따라 최우선 적용 및 단순화)
-    // 로그인한 모든 사용자는 제약 없이 추천 목록을 보고 작성할 수 있음
-    match /quote_suggestions/{suggestionId} {
-      allow read, write: if isAuthenticated();
     }
 
     // 2. 관리자 권한 확인 및 획득
