@@ -12,7 +12,8 @@ import {
   LogOut,
   UserCircle,
   Sun,
-  Moon
+  Moon,
+  Trophy
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -34,6 +35,7 @@ import {
 const navItems = [
   { name: "홈", href: "/dashboard", icon: Home },
   { name: "나의 정원", href: "/plants", icon: Sprout },
+  { name: "스포츠", href: "/sports", icon: Trophy },
   { name: "라운지", href: "/lounge", icon: Gamepad2 },
 ]
 
@@ -51,7 +53,6 @@ export function Navbar() {
   }, [user, db])
   const { data: userData } = useDoc(userDocRef)
 
-  // 지정된 관리자만 메뉴를 볼 수 있도록 함
   const adminRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "roles_admin", user.uid)
@@ -116,7 +117,6 @@ export function Navbar() {
                 {userData?.theme === 'dark' ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
               </Button>
 
-              {/* 지정된 사람에게만 관리자 버튼 노출 */}
               {isAdminDoc && (
                 <LinkNext href="/admin">
                   <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10">
@@ -169,7 +169,7 @@ export function Navbar() {
                       KST HUB
                     </SheetTitle>
                   </SheetHeader>
-                  <div className="flex flex-col gap-2 p-4">
+                  <div className="flex flex-col gap-2 p-4 overflow-y-auto max-h-[calc(100vh-100px)]">
                     <div className="bg-muted/30 p-4 rounded-3xl mb-4">
                       <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">나의 정보</p>
                       <p className="font-black text-sm">{userData?.nickname || "학생"}님</p>
@@ -215,7 +215,6 @@ export function Navbar() {
                       <span>마이페이지</span>
                     </LinkNext>
 
-                    {/* 지정된 사람에게만 관리자 버튼 노출 */}
                     {isAdminDoc && (
                       <LinkNext
                         href="/admin"
@@ -227,7 +226,7 @@ export function Navbar() {
                       </LinkNext>
                     )}
 
-                    <div className="mt-auto pt-6">
+                    <div className="mt-auto pt-6 pb-8">
                       <Button 
                         variant="ghost" 
                         className="w-full text-destructive font-bold justify-start px-3.5 h-12 rounded-2xl hover:bg-destructive/5"
