@@ -1,4 +1,3 @@
-
 "use client"
 
 import { usePathname, useRouter } from "next/navigation"
@@ -53,6 +52,7 @@ export function Navbar() {
   }, [user, db])
   const { data: userData } = useDoc(userDocRef)
 
+  // 지정된 관리자만 메뉴를 볼 수 있도록 함
   const adminRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "roles_admin", user.uid)
@@ -117,6 +117,7 @@ export function Navbar() {
                 {userData?.theme === 'dark' ? <Sun className="h-4 w-4 text-yellow-500" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
               </Button>
 
+              {/* 지정된 사람에게만 관리자 버튼 노출 */}
               {isAdminDoc && (
                 <LinkNext href="/admin">
                   <Button variant="ghost" size="icon" className="rounded-full hover:bg-destructive/10">
@@ -124,6 +125,7 @@ export function Navbar() {
                   </Button>
                 </LinkNext>
               )}
+              
               <LinkNext href="/profile">
                 <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
                   <UserCircle className="h-4 w-4 text-muted-foreground" />
@@ -214,6 +216,7 @@ export function Navbar() {
                       <span>마이페이지</span>
                     </LinkNext>
 
+                    {/* 지정된 사람에게만 관리자 버튼 노출 */}
                     {isAdminDoc && (
                       <LinkNext
                         href="/admin"

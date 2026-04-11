@@ -42,7 +42,6 @@ import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDo
 import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { format, addDays } from "date-fns"
-import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
 export default function AdminPage() {
@@ -85,12 +84,12 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
   
-  // 관리자 권한이 명확히 로드되고 존재할 때만 true
+  // 관리자 권한 상태
   const isActuallyAdmin = useMemo(() => {
     return !!user && !!isAdminDoc && !isAdminLoading;
   }, [user, isAdminDoc, isAdminLoading]);
 
-  // 시스템 설정 데이터
+  // 시스템 설정 데이터 (인증 코드 확인용)
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
@@ -115,7 +114,8 @@ export default function AdminPage() {
 
   const quoteSuggestionsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    return query(collection(db, "quote_suggestions"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
+    // 명언 추천 목록은 모든 관리자에게 보임
+    return query(collection(db, "quote_suggestions"), orderBy("createdAt", "desc"))
   }, [db, isActuallyAdmin])
   const { data: quoteSuggestions } = useCollection(quoteSuggestionsQuery)
 
@@ -188,7 +188,8 @@ export default function AdminPage() {
       try {
         await setDoc(doc(db, "roles_admin", user.uid), {
           addedAt: serverTimestamp(),
-          claimed: true
+          claimed: true,
+          nickname: user.displayName || "관리자"
         })
         toast({ title: "관리자 권한 획득 성공!", description: "이제 모든 관리 기능을 사용할 수 있습니다." })
       } catch (e) {
@@ -643,36 +644,41 @@ export default function AdminPage() {
                 <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-4">
                   <div className="space-y-2 flex-grow">
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-[10px] font-black rounded-full">추천: {s.userNickname} 학생</Badge>
+                      <Badge variant={s.status === "pending" ? "destructive" : "secondary"} className="text-[10px] font-black rounded-full">
+                        {s.status === "pending" ? "대기중" : s.status === "approved" ? "승인됨" : "거절됨"}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] font-bold rounded-full">추천: {s.userNickname} 학생</Badge>
                       <span className="text-[10px] text-muted-foreground">{s.createdAt?.toDate?.().toLocaleString()}</span>
                     </div>
                     <p className="text-sm font-black text-primary leading-relaxed italic">"{s.fortuneText}"</p>
                     <p className="text-xs font-bold text-muted-foreground">- {s.author}</p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleApproveQuote(s)} 
-                      disabled={isSaving}
-                      className="bg-accent text-accent-foreground rounded-xl font-black text-xs"
-                    >
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> 승인
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleRejectQuote(s.id)}
-                      className="text-destructive hover:bg-destructive/10 rounded-xl font-black text-xs"
-                    >
-                      <XCircle className="h-3 w-3 mr-1" /> 거절
-                    </Button>
-                  </div>
+                  {s.status === "pending" && (
+                    <div className="flex gap-2 shrink-0">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleApproveQuote(s)} 
+                        disabled={isSaving}
+                        className="bg-accent text-accent-foreground rounded-xl font-black text-xs"
+                      >
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> 승인
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleRejectQuote(s.id)}
+                        className="text-destructive hover:bg-destructive/10 rounded-xl font-black text-xs"
+                      >
+                        <XCircle className="h-3 w-3 mr-1" /> 거절
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
             {(!quoteSuggestions || quoteSuggestions.length === 0) && (
               <div className="text-center py-20 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20">
-                <p className="text-xs text-muted-foreground font-bold italic">대기 중인 명언 추천이 없습니다.</p>
+                <p className="text-xs text-muted-foreground font-bold italic">명언 추천 내역이 없습니다.</p>
               </div>
             )}
           </div>
