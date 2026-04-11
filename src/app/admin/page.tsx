@@ -90,14 +90,6 @@ export default function AdminPage() {
     return !!user && !!isAdminDoc && !isAdminLoading;
   }, [user, isAdminDoc, isAdminLoading]);
 
-  // 비관리자 홈으로 튕겨내기 로직
-  useEffect(() => {
-    if (isMounted && !isAdminLoading && !isAdminDoc) {
-      toast({ variant: "destructive", title: "접근 거부", description: "관리자만 접근 가능합니다. 대시보드로 이동합니다." })
-      router.push("/dashboard")
-    }
-  }, [isMounted, isAdminLoading, isAdminDoc, router])
-
   // 시스템 설정 데이터 (권한 상관없이 로드 - 공개 데이터 기반)
   const configRef = useMemoFirebase(() => {
     return doc(db, "metadata", "config")
@@ -512,11 +504,47 @@ export default function AdminPage() {
     )
   }
 
-  // 관리자 권한이 없을 경우 로딩만 표시 (useEffect에서 리다이렉트 처리)
+  // 관리자 권한이 없을 경우 인증 화면 표시
   if (!isActuallyAdmin) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="container mx-auto px-4 h-[calc(100vh-120px)] flex items-center justify-center">
+        <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="bg-primary/10 p-8 text-center border-b border-primary/10">
+            <div className="mx-auto mb-4 h-16 w-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+              <KeyRound className="h-8 w-8 text-white" />
+            </div>
+            <CardTitle className="text-2xl font-black text-primary">관리자 인증</CardTitle>
+            <CardDescription className="text-xs font-bold text-primary/60">
+              이 페이지는 관리자 전용입니다. <br/>관리자 인증 코드를 입력해 주세요.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-8 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-black text-muted-foreground ml-1">인증 코드 (Secret Code)</Label>
+              <Input 
+                type="password" 
+                placeholder="코드를 입력하세요" 
+                value={claimCode} 
+                onChange={(e) => setClaimSecret(e.target.value)}
+                className="h-12 rounded-2xl bg-muted/30 border-none focus-visible:ring-primary font-mono text-center tracking-widest"
+              />
+            </div>
+            <Button 
+              onClick={handleClaimAdmin} 
+              disabled={isSaving || !claimCode.trim()} 
+              className="w-full h-12 rounded-2xl font-black bg-primary text-white shadow-md hover:bg-primary/90 transition-all active:scale-95"
+            >
+              {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ShieldCheck className="h-5 w-5 mr-2" /> 관리자 권한 획득</>}
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => router.push("/dashboard")} 
+              className="w-full rounded-2xl h-10 text-xs font-bold text-muted-foreground"
+            >
+              대시보드로 돌아가기
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
