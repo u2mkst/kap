@@ -39,10 +39,9 @@ import {
   ShieldCheck
 } from "lucide-react"
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
-import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc, where } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp, query, orderBy, collection, addDoc, limit, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { format, addDays } from "date-fns"
-import { cn } from "@/lib/utils"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -76,7 +75,7 @@ export default function AdminPage() {
     author: ""
   })
 
-  // 관리자 권한 확인
+  // 관리자 권한 확인 (실시간 리스너)
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
     return doc(db, "roles_admin", user.uid)
@@ -86,7 +85,6 @@ export default function AdminPage() {
   
   // 실제 관리자 권한이 확정된 상태 (로딩이 끝났고 문서가 존재함)
   const isActuallyAdmin = useMemo(() => {
-    // isAdminLoading이 false이고 isAdminDoc이 null이 아닐 때만 true
     return !!user && !!isAdminDoc && isAdminLoading === false;
   }, [user, isAdminDoc, isAdminLoading]);
 
@@ -477,33 +475,19 @@ export default function AdminPage() {
     return { hasProblem, hasFortune }
   }
 
+  // 로딩 상태 처리
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-        <div className="flex flex-col items-center gap-8 relative z-10">
-          <div className="relative group">
-            <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
-            <div className="relative h-24 w-24 rounded-[2rem] bg-card border border-primary/10 flex items-center justify-center shadow-2xl animate-float animate-glow">
-              <BookOpen className="h-12 w-12 text-primary animate-pulse-gentle" />
-            </div>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
-              Admin Accessing...
-            </h2>
-            <div className="flex gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
-              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
-              <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
-            </div>
-          </div>
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm font-black text-muted-foreground">관리자 권한 확인 중...</p>
         </div>
       </div>
     )
   }
 
-  // 관리자 권한이 없을 경우 인증 화면 표시 (데이터 쿼리 전)
+  // 관리자 권한이 없을 경우 인증 화면 표시 (데이터 쿼리 전에 차단)
   if (!isActuallyAdmin) {
     return (
       <div className="container mx-auto px-4 h-[calc(100vh-120px)] flex items-center justify-center">
