@@ -10,31 +10,44 @@ export async function GET() {
     const kstDate = new Date(now.getTime() + kstOffset);
     const todayStr = kstDate.toISOString().split('T')[0].replace(/-/g, '');
 
-    // 네이버 스포츠 공식 API (JSON)
-    const url = `https://api-gw.sports.naver.com/schedule/games?category=kbo&date=${todayStr}`;
+    // 1. 경기 일정 API
+    const scheduleUrl = `https://api-gw.sports.naver.com/schedule/games?category=kbo&date=${todayStr}`;
+    // 2. 순위 API
+    const rankingUrl = `https://api-gw.sports.naver.com/ranking/league?category=kbo`;
     
-    const { data } = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept-Language": "ko-KR,ko;q=0.9"
-      },
-      timeout: 5000
-    });
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "Accept-Language": "ko-KR,ko;q=0.9"
+    };
 
-    if (!data?.result?.games) {
-      return NextResponse.json([]);
-    }
+    const [scheduleRes, rankingRes] = await Promise.all([
+      axios.get(scheduleUrl, { headers, timeout: 5000 }),
+      axios.get(rankingUrl, { headers, timeout: 5000 })
+    ]);
 
-    const games = data.result.games.map((g: any) => {
+    const games = scheduleRes.data?.result?.games?.map((g: any) => {
       const isBefore = g.gameState === 'BEFORE';
       return {
         time: g.startTime || '미정',
         teams: `${g.awayTeamName} vs ${g.homeTeamName}`,
-        score: isBefore ? "" : `${g.awayTeamScore} : ${g.homeTeamScore}`
+        score: isBefore ? "" : `${g.awayTeamScore} : ${g.homeTeamScore}`,
+        status: g.gameState,
+        stadium: g.stadium
       };
-    });
+    }) || [];
 
-    return NextResponse.json(games);
+    const rankings = rankingRes.data?.result?.rankings?.map((r: any) => ({
+      rank: r.rank,
+      teamName: r.teamName,
+      gameCount: r.gameCount,
+      won: r.won,
+      lost: r.lost,
+      drawn: r.drawn,
+      winRate: r.winRate,
+      lastResults: r.lastFiveGames
+    })) || [];
+
+    return NextResponse.json({ games, rankings });
   } catch (error) {
     console.error("KBO API Error:", error);
     return NextResponse.json({ error: "Failed to fetch KBO data" }, { status: 500 });
