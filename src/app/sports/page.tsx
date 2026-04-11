@@ -2,11 +2,13 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, ExternalLink, Activity } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useUser } from "@/firebase"
 import { cn } from "@/lib/utils"
 
 interface Game {
@@ -16,10 +18,19 @@ interface Game {
 }
 
 export default function SportsPage() {
+  const { user, isUserLoading } = useUser()
+  const router = useRouter()
   const [kboGames, setKboGames] = useState<Game[]>([])
   const [kleagueGames, setKleagueGames] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  // 로그인 체크
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, isUserLoading, router])
 
   const fetchKBO = useCallback(async () => {
     try {
@@ -27,7 +38,7 @@ export default function SportsPage() {
       const data = await res.json()
       if (!data.error) setKboGames(data)
     } catch (e) {
-      console.error(e)
+      // 에러 발생 시 빈 배열 유지
     }
   }, [])
 
@@ -42,7 +53,7 @@ export default function SportsPage() {
       if (!k2.error) combined.push(...k2)
       setKleagueGames(combined)
     } catch (e) {
-      console.error(e)
+      // 에러 발생 시 빈 배열 유지
     }
   }, [])
 
@@ -54,14 +65,16 @@ export default function SportsPage() {
   }, [fetchKBO, fetchKLeague])
 
   useEffect(() => {
-    loadAll()
-    const interval = setInterval(loadAll, 30000) // 30초마다 자동 갱신
-    return () => clearInterval(interval)
-  }, [loadAll])
+    if (user) {
+      loadAll()
+      const interval = setInterval(loadAll, 30000) // 30초마다 자동 갱신
+      return () => clearInterval(interval)
+    }
+  }, [loadAll, user])
 
   const isLive = (score: string) => score && score.includes(":")
 
-  const GameCard = ({ game, type }: { game: Game, type: 'kbo' | 'kleague' }) => {
+  const GameCard = ({ game }: { game: Game }) => {
     const live = isLive(game.score)
     return (
       <Card className={cn(
@@ -104,6 +117,14 @@ export default function SportsPage() {
     )
   }
 
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
@@ -142,7 +163,7 @@ export default function SportsPage() {
         <TabsContent value="kbo" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {kboGames.length > 0 ? (
-              kboGames.map((game, idx) => <GameCard key={idx} game={game} type="kbo" />)
+              kboGames.map((game, idx) => <GameCard key={idx} game={game} />)
             ) : !isLoading ? (
               <div className="col-span-full py-20 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
                 <CalendarDays className="h-12 w-12 text-muted-foreground/30" />
@@ -155,7 +176,7 @@ export default function SportsPage() {
         <TabsContent value="kleague" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {kleagueGames.length > 0 ? (
-              kleagueGames.map((game, idx) => <GameCard key={idx} game={game} type="kleague" />)
+              kleagueGames.map((game, idx) => <GameCard key={idx} game={game} />)
             ) : !isLoading ? (
               <div className="col-span-full py-20 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
                 <CalendarDays className="h-12 w-12 text-muted-foreground/30" />

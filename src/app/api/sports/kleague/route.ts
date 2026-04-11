@@ -11,8 +11,10 @@ export async function GET(request: Request) {
     const url = `https://sports.news.naver.com/kfootball/schedule/index?competition=${league}`;
     const { data } = await axios.get(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://sports.news.naver.com/'
+      },
+      timeout: 5000
     });
     const $ = cheerio.load(data);
 
@@ -30,7 +32,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json(games);
   } catch (error) {
-    console.error("K-League Scraper Error:", error);
     return NextResponse.json({ error: "Failed to fetch K-League data" }, { status: 500 });
   }
 }
