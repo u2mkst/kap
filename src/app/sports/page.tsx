@@ -122,7 +122,6 @@ export default function SportsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
-      {/* API-Sports Widget Script 로드 */}
       <Script 
         src="https://widgets.api-sports.io/2.0.0/widgets.js" 
         strategy="afterInteractive"
@@ -133,7 +132,7 @@ export default function SportsPage() {
           <h1 className="text-4xl font-black tracking-tighter leading-tight text-primary flex items-center gap-3">
             <Trophy className="h-10 w-10 text-yellow-500" /> KST HUB 스포츠
           </h1>
-          <p className="text-muted-foreground text-sm font-bold">KBO 및 K리그 실시간 공식 데이터 센터</p>
+          <p className="text-muted-foreground text-sm font-bold">실시간 공식 데이터 센터</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           {lastUpdated && (
@@ -157,7 +156,6 @@ export default function SportsPage() {
       )}
 
       <div className="space-y-16">
-        {/* KBO 섹션 (API 카드 형식) */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
@@ -177,37 +175,25 @@ export default function SportsPage() {
           </div>
         </section>
 
-        {/* K리그 섹션 (카드 + 위젯 통합) */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
-              <ChevronRight className="h-5 w-5" /> ⚽ K리그 경기 일정
+              <ChevronRight className="h-5 w-5" /> ⚽ K리그 경기 일정 (Widget)
             </h2>
             <Badge className="bg-accent text-accent-foreground font-black">Official Data</Badge>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-            {[...sportsData.kleague1, ...sportsData.kleague2].length > 0 ? (
-              [...sportsData.kleague1, ...sportsData.kleague2].map((game, idx) => <GameCard key={idx} game={game} />)
-            ) : (
-              <div className="col-span-full py-8 text-center bg-muted/10 rounded-2xl border-border border-dashed border">
-                <p className="text-xs font-bold text-muted-foreground italic opacity-50">진행 예정인 K리그 경기가 없습니다.</p>
-              </div>
-            )}
-          </div>
-
           <div className="bg-card rounded-[2.5rem] border shadow-xl overflow-hidden p-1 sm:p-6 min-h-[600px] relative transition-all hover:shadow-2xl">
             <div className="flex items-center gap-2 mb-4 px-4">
               <LayoutGrid className="h-4 w-4 text-primary" />
               <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">K-League Official Widget</span>
             </div>
             
-            {/* API-Sports Widget Container */}
             <div className="w-full">
               {/* @ts-ignore */}
               <api-sports-widget 
                 data-type="leagues"
-                data-target-league="#8031"
+                data-league="292"
               ></api-sports-widget>
 
               {/* @ts-ignore */}
