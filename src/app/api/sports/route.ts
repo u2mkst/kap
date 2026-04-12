@@ -59,7 +59,7 @@ export async function GET() {
           {
             params: {
               league: leagueId,
-              next: 5 // 다음 5경기 정보
+              next: 5 // 다음 5경기 정보 (시즌 필터 제거하여 최신 데이터 확보)
             },
             headers: {
               "x-rapidapi-key": API_KEY,

@@ -178,9 +178,9 @@ export default function SportsPage() {
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
-              <ChevronRight className="h-5 w-5" /> ⚽ K리그 경기 일정 (Widget)
+              <ChevronRight className="h-5 w-5" /> ⚽ K리그 공식 데이터 (Widget)
             </h2>
-            <Badge className="bg-accent text-accent-foreground font-black">Official Data</Badge>
+            <Badge className="bg-accent text-accent-foreground font-black">Official API-Sports</Badge>
           </div>
           
           <div className="bg-card rounded-[2.5rem] border shadow-xl overflow-hidden p-1 sm:p-6 min-h-[600px] relative transition-all hover:shadow-2xl">
@@ -193,7 +193,7 @@ export default function SportsPage() {
               {/* @ts-ignore */}
               <api-sports-widget 
                 data-type="leagues"
-                data-league="292"
+                data-target-league="#8031"
               ></api-sports-widget>
 
               {/* @ts-ignore */}
@@ -217,7 +217,7 @@ export default function SportsPage() {
           <p className="text-xs font-black text-primary uppercase tracking-tighter">데이터 안내</p>
           <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">
             스포츠 데이터는 네이버 스포츠 크롤링 및 API-Sports 공식 데이터를 통해 실시간으로 동기화됩니다.
-            위젯이 로드되지 않거나 데이터가 보이지 않을 경우 '실시간 새로고침' 버튼을 눌러주세요.
+            KBO 데이터는 우리 사이트에서 직접 가공하며, K리그 데이터는 공식 위젯을 통해 제공됩니다.
           </p>
         </div>
       </div>
