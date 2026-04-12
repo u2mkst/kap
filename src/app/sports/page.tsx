@@ -147,13 +147,6 @@ export default function SportsPage() {
         </div>
       </div>
 
-      {sportsData.error && (
-        <div className="mb-8 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-center gap-3 text-destructive animate-in slide-in-from-top-2">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p className="text-xs font-black">{sportsData.error}</p>
-        </div>
-      )}
-
       <div className="space-y-16">
         <section className="space-y-6">
           <div className="flex items-center justify-between">
@@ -168,7 +161,7 @@ export default function SportsPage() {
             ) : (
               <div className="col-span-full py-12 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
                 <CalendarDays className="h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm font-black text-muted-foreground italic">현재 불러올 수 있는 KBO 경기가 없습니다.</p>
+                <p className="text-sm font-black text-muted-foreground italic">현재 진행중인 KBO 경기가 없습니다.</p>
               </div>
             )}
           </div>
