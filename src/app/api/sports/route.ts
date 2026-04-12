@@ -1,7 +1,6 @@
-
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { load } from 'cheerio';
 
 /**
  * @fileOverview KST HUB 통합 스포츠 API (KBO 네이버 크롤링 + K리그 RapidAPI)
@@ -20,14 +19,14 @@ export async function GET() {
         "https://sports.news.naver.com/kbaseball/schedule/index",
         {
           headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0",
             "Accept-Language": "ko-KR,ko;q=0.9"
           },
           timeout: 5000
         }
       );
 
-      const $ = cheerio.load(kboRes.data);
+      const $ = load(kboRes.data);
       
       $(".sch_tb tbody tr").each((i, el) => {
         const time = $(el).find(".td_date").text().trim();
@@ -96,7 +95,7 @@ export async function GET() {
       getKLeague(293, "K리그2")
     ]);
 
-    // 최종 통합 반환 (Next.js App Router 표준)
+    // 최종 통합 반환
     return NextResponse.json({
       kbo: kboGames.slice(0, 10),
       kleague1: k1,
