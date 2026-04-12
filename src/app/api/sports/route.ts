@@ -4,7 +4,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 /**
- * @fileOverview 실시간 스포츠 데이터 수집 API (KBO 크롤링 + K리그 RapidAPI)
+ * @fileOverview KST HUB 실시간 스포츠 데이터 API (KBO 크롤링 + K리그 RapidAPI 통합)
  */
 
 export async function GET() {
@@ -16,10 +16,11 @@ export async function GET() {
       "https://sports.news.naver.com/kbaseball/schedule/index",
       {
         headers: {
-          "User-Agent": "Mozilla/5.0",
-          "Accept-Language": "ko-KR,ko;q=0.9"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Accept-Language": "ko-KR,ko;q=0.9",
+          "Referer": "https://sports.news.naver.com/kbaseball/index"
         },
-        timeout: 5000
+        timeout: 8000
       }
     );
 
@@ -31,10 +32,10 @@ export async function GET() {
       const teams = $(el).find(".td_vs").text().trim();
       const score = $(el).find(".td_score").text().trim();
 
-      if (teams) {
+      if (teams && teams !== "VS") {
         kboGames.push({
           league: "KBO",
-          time,
+          time: time || "진행중",
           teams,
           score: score || "경기 전",
           status: score ? "LIVE/END" : "READY"
@@ -45,6 +46,7 @@ export async function GET() {
     // =========================
     // ⚽ K리그1 + K리그2 (RapidAPI)
     // =========================
+    // API KEY에서 불필요한 공백/줄바꿈 제거
     const API_KEY = "18d3e84e0351d299a100acfae51ad8e3";
 
     async function getKLeague(leagueId: number, name: string) {
@@ -55,7 +57,7 @@ export async function GET() {
             params: {
               league: leagueId,
               season: 2024,
-              next: 5 // 다음 5경기
+              next: 5 
             },
             headers: {
               "x-rapidapi-key": API_KEY,
@@ -85,14 +87,14 @@ export async function GET() {
       }
     }
 
-    // 병렬로 데이터 수집
+    // 데이터 병렬 수집
     const [k1, k2] = await Promise.all([
       getKLeague(292, "K리그1"),
       getKLeague(293, "K리그2")
     ]);
 
     // =========================
-    // 최종 통합 응답
+    // 최종 통합 응답 반환
     // =========================
     return NextResponse.json({
       kbo: kboGames.slice(0, 10),
@@ -103,10 +105,10 @@ export async function GET() {
   } catch (err: any) {
     console.error("Sports API Error:", err);
     return NextResponse.json({
-      error: "일시적으로 스포츠 데이터를 불러올 수 없습니다.",
+      error: "데이터 수집 중 오류가 발생했습니다.",
       kbo: [],
       kleague1: [],
       kleague2: []
-    }, { status: 200 }); // 500 에러 대신 빈 데이터 반환
+    }, { status: 200 }); // 클라이언트 크래시 방지를 위해 200 OK와 빈 데이터 반환
   }
 }

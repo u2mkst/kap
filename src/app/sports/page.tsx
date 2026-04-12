@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Script from "next/script"
-import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, Info, ChevronRight, LayoutGrid } from "lucide-react"
+import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, Info, ChevronRight, LayoutGrid, AlertCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -54,7 +54,7 @@ export default function SportsPage() {
       setLastUpdated(new Date())
     } catch (e) {
       console.error("Data fetch error:", e)
-      setSportsData(prev => ({ ...prev, error: "데이터를 불러오는 중 오류가 발생했습니다." }))
+      setSportsData(prev => ({ ...prev, error: "서버와 통신할 수 없습니다." }))
     } finally {
       setIsLoading(false)
     }
@@ -63,7 +63,7 @@ export default function SportsPage() {
   useEffect(() => {
     if (user) {
       loadSports()
-      const interval = setInterval(loadSports, 60000) // 1분마다 갱신
+      const interval = setInterval(loadSports, 60000) // 1분 자동 갱신
       return () => clearInterval(interval)
     }
   }, [loadSports, user])
@@ -107,14 +107,19 @@ export default function SportsPage() {
 
   if (isUserLoading || !user) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+        <div className="flex flex-col items-center gap-4 relative z-10">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-xs font-black animate-pulse">스포츠 데이터 동기화 중...</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
+      {/* API-Sports Widget Script */}
       <Script 
         src="https://widgets.api-sports.io/2.0.0/widgets.js" 
         strategy="afterInteractive"
@@ -141,14 +146,21 @@ export default function SportsPage() {
         </div>
       </div>
 
+      {sportsData.error && (
+        <div className="mb-8 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-center gap-3 text-destructive animate-in slide-in-from-top-2">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="text-xs font-black">{sportsData.error}</p>
+        </div>
+      )}
+
       <div className="space-y-16">
-        {/* KBO 섹션 (커스텀 UI) */}
+        {/* KBO 섹션 */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
               <ChevronRight className="h-5 w-5" /> ⚾ KBO 프로야구
             </h2>
-            <Badge variant="secondary" className="font-bold">오늘의 {sportsData.kbo.length}경기</Badge>
+            <Badge variant="secondary" className="font-bold">오늘의 주요 경기</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {sportsData.kbo.length > 0 ? (
@@ -171,23 +183,26 @@ export default function SportsPage() {
             <Badge className="bg-accent text-accent-foreground font-black">Official Widget</Badge>
           </div>
           
-          <div className="bg-card rounded-[2.5rem] border shadow-xl overflow-hidden p-1 sm:p-6 min-h-[600px] relative">
-            {/* @ts-ignore: Custom element from API-Sports Widget */}
-            <api-sports-widget 
-              data-type="leagues"
-              data-target-league="#8031"
-            ></api-sports-widget>
+          <div className="bg-card rounded-[2.5rem] border shadow-xl overflow-hidden p-1 sm:p-6 min-h-[600px] relative transition-all hover:shadow-2xl">
+            {/* API-Sports Widget Container */}
+            <div className="w-full">
+              {/* @ts-ignore */}
+              <api-sports-widget 
+                data-type="leagues"
+                data-target-league="#8031"
+              ></api-sports-widget>
 
-            {/* @ts-ignore: Custom element from API-Sports Widget */}
-            <api-sports-widget 
-              data-type="config"
-              data-key="18d3e84e0351d299a100acfae51ad8e3"
-              data-sport="football"
-              data-lang="en"
-              data-theme="white"
-            ></api-sports-widget>
+              {/* @ts-ignore */}
+              <api-sports-widget 
+                data-type="config"
+                data-key="18d3e84e0351d299a100acfae51ad8e3"
+                data-sport="football"
+                data-lang="en"
+                data-theme="white"
+              ></api-sports-widget>
+            </div>
             
-            <div className="absolute top-4 right-4 animate-pulse opacity-50">
+            <div className="absolute top-4 right-4 animate-pulse opacity-50 pointer-events-none">
               <LayoutGrid className="h-4 w-4 text-primary" />
             </div>
           </div>
@@ -199,10 +214,10 @@ export default function SportsPage() {
           <Info className="h-6 w-6 text-primary" />
         </div>
         <div className="space-y-1">
-          <p className="text-xs font-black text-primary uppercase tracking-tighter">정보 안내</p>
+          <p className="text-xs font-black text-primary uppercase tracking-tighter">데이터 안내</p>
           <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">
-            KBO 데이터는 네이버 스포츠 실시간 크롤링을 통해 제공되며, K리그 데이터는 API-Sports 공식 위젯을 통해 전송됩니다.
-            위젯이 로드되지 않을 경우 페이지를 새로고침(F5) 해주세요.
+            KBO 데이터는 네이버 스포츠 실시간 크롤링을 통해 제공되며, K리그 데이터는 API-Sports 공식 위젯 및 RapidAPI를 통해 동기화됩니다.
+            위젯이 로드되지 않을 경우 페이지를 새로고침 해주세요.
           </p>
         </div>
       </div>
