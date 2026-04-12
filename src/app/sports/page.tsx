@@ -69,12 +69,13 @@ export default function SportsPage() {
   }, [loadSports, user])
 
   const GameCard = ({ game }: { game: Game }) => {
-    const isLive = game.status === 'LIVE' || game.status === '1H' || game.status === '2H' || game.status === 'HT' || game.status === 'LIVE/END';
+    // 라이브 상태 판별 (네이버 API 상태 또는 RapidAPI 상태 통합)
+    const isLive = game.status === 'RUNNING' || game.status === 'LIVE' || game.status === '1H' || game.status === '2H' || game.status === 'HT';
     
     return (
       <Card className={cn(
         "relative overflow-hidden transition-all border-none shadow-md group hover:shadow-xl bg-card",
-        isLive && "ring-2 ring-destructive/50"
+        isLive && "ring-2 ring-destructive/50 shadow-destructive/10"
       )}>
         {isLive && <div className="absolute top-0 left-0 w-full h-1 bg-destructive animate-pulse" />}
         <CardContent className="p-5">
@@ -94,7 +95,7 @@ export default function SportsPage() {
           <div className="space-y-3">
             <h3 className="text-sm font-black text-center tracking-tight leading-tight px-2 h-10 flex items-center justify-center">{game.teams}</h3>
             <div className={cn(
-              "p-3 rounded-2xl text-center font-black text-xl tracking-tighter tabular-nums shadow-sm",
+              "p-3 rounded-2xl text-center font-black text-xl tracking-tighter tabular-nums shadow-sm transition-colors",
               isLive ? "bg-destructive text-white" : "bg-muted/50 text-muted-foreground"
             )}>
               {game.score}
@@ -119,7 +120,7 @@ export default function SportsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
-      {/* API-Sports Widget Script */}
+      {/* API-Sports Widget Script 로드 */}
       <Script 
         src="https://widgets.api-sports.io/2.0.0/widgets.js" 
         strategy="afterInteractive"
@@ -160,7 +161,7 @@ export default function SportsPage() {
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
               <ChevronRight className="h-5 w-5" /> ⚾ KBO 프로야구
             </h2>
-            <Badge variant="secondary" className="font-bold">오늘의 주요 경기</Badge>
+            <Badge variant="secondary" className="font-bold">오늘의 경기</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {sportsData.kbo.length > 0 ? (
@@ -174,11 +175,11 @@ export default function SportsPage() {
           </div>
         </section>
 
-        {/* K리그 섹션 (API-Sports 위젯) */}
+        {/* K리그 섹션 (API-Sports 위젯 통합) */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
-              <ChevronRight className="h-5 w-5" /> ⚽ K리그 데이터 센터
+              <ChevronRight className="h-5 w-5" /> ⚽ K리그 공식 데이터
             </h2>
             <Badge className="bg-accent text-accent-foreground font-black">Official Widget</Badge>
           </div>
@@ -216,7 +217,7 @@ export default function SportsPage() {
         <div className="space-y-1">
           <p className="text-xs font-black text-primary uppercase tracking-tighter">데이터 안내</p>
           <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">
-            KBO 데이터는 네이버 스포츠 실시간 크롤링을 통해 제공되며, K리그 데이터는 API-Sports 공식 위젯 및 RapidAPI를 통해 동기화됩니다.
+            KBO 데이터는 네이버 스포츠 실시간 API 연동을 통해 제공되며, K리그 데이터는 API-Sports 공식 위젯 및 RapidAPI를 통해 동기화됩니다.
             위젯이 로드되지 않을 경우 페이지를 새로고침 해주세요.
           </p>
         </div>
