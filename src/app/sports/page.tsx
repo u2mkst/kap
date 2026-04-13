@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Script from "next/script"
-import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, Info, ChevronRight, LayoutGrid, AlertCircle } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Trophy, RefreshCw, Loader2, Radio, CalendarDays, Info, ChevronRight, LayoutGrid } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useUser } from "@/firebase"
@@ -25,8 +25,7 @@ export default function SportsPage() {
   const [sportsData, setSportsData] = useState<{
     kbo: Game[], 
     kleague1: Game[], 
-    kleague2: Game[],
-    error?: string
+    kleague2: Game[]
   }>({ kbo: [], kleague1: [], kleague2: [] })
   
   const [isLoading, setIsLoading] = useState(true)
@@ -43,20 +42,14 @@ export default function SportsPage() {
     try {
       const res = await fetch("/api/sports");
       const data = await res.json();
-      
-      if (data.error) {
-        setSportsData(prev => ({ ...prev, error: data.error }));
-      } else {
-        setSportsData({
-          kbo: data.kbo || [],
-          kleague1: data.kleague1 || [],
-          kleague2: data.kleague2 || [],
-        });
-      }
+      setSportsData({
+        kbo: data.kbo || [],
+        kleague1: data.kleague1 || [],
+        kleague2: data.kleague2 || [],
+      });
       setLastUpdated(new Date())
     } catch (e) {
       console.error("Data fetch error:", e)
-      setSportsData(prev => ({ ...prev, error: "서버와 통신할 수 없습니다." }))
     } finally {
       setIsLoading(false)
     }
@@ -71,7 +64,7 @@ export default function SportsPage() {
   }, [loadSports, user])
 
   const GameCard = ({ game }: { game: Game }) => {
-    const isLive = game.status === 'LIVE' || game.status === '1H' || game.status === '2H' || game.status === 'HT' || game.status === 'LIVE/END';
+    const isLive = game.status === 'RUNNING' || game.status === 'LIVE' || game.status === 'LIVE/END';
     
     return (
       <Card className={cn(
@@ -148,12 +141,13 @@ export default function SportsPage() {
       </div>
 
       <div className="space-y-16">
+        {/* KBO Section */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
               <ChevronRight className="h-5 w-5" /> ⚾ KBO 프로야구
             </h2>
-            <Badge variant="secondary" className="font-bold">LIVE & Schedule</Badge>
+            <Badge variant="secondary" className="font-bold">오늘의 경기</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {sportsData.kbo.length > 0 ? (
@@ -161,16 +155,17 @@ export default function SportsPage() {
             ) : (
               <div className="col-span-full py-12 text-center bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-muted flex flex-col items-center gap-3">
                 <CalendarDays className="h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm font-black text-muted-foreground italic">현재 진행중인 KBO 경기가 없습니다.</p>
+                <p className="text-sm font-black text-muted-foreground italic">오늘 예정된 KBO 경기가 없습니다.</p>
               </div>
             )}
           </div>
         </section>
 
+        {/* K-League Widget Section */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black flex items-center gap-2 text-primary">
-              <ChevronRight className="h-5 w-5" /> ⚽ K리그 공식 데이터 (Widget)
+              <ChevronRight className="h-5 w-5" /> ⚽ K리그 공식 위젯
             </h2>
             <Badge className="bg-accent text-accent-foreground font-black">Official API-Sports</Badge>
           </div>
@@ -178,7 +173,7 @@ export default function SportsPage() {
           <div className="bg-card rounded-[2.5rem] border shadow-xl overflow-hidden p-1 sm:p-6 min-h-[600px] relative transition-all hover:shadow-2xl">
             <div className="flex items-center gap-2 mb-4 px-4">
               <LayoutGrid className="h-4 w-4 text-primary" />
-              <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">K-League Official Widget</span>
+              <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">K-League Live Center</span>
             </div>
             
             <div className="w-full">
@@ -208,8 +203,8 @@ export default function SportsPage() {
         <div className="space-y-1">
           <p className="text-xs font-black text-primary uppercase tracking-tighter">데이터 안내</p>
           <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">
-            스포츠 데이터는 네이버 스포츠 크롤링 및 API-Sports 공식 데이터를 통해 실시간으로 동기화됩니다.
-            KBO 데이터는 우리 사이트에서 직접 가공하며, K리그 데이터는 공식 위젯을 통해 제공됩니다.
+            스포츠 데이터는 네이버 스포츠 공식 API 및 API-Sports 글로벌 센터를 통해 실시간으로 동기화됩니다.
+            KBO는 우리 사이트에서 직접 가공하며, K리그는 공식 위젯을 통해 제공됩니다.
           </p>
         </div>
       </div>
