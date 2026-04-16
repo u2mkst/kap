@@ -19,10 +19,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { User, School, ChevronLeft, Phone, BadgeCheck, Loader2, Search, AlertTriangle, BookOpen } from "lucide-react"
+import { User, School, ChevronLeft, BadgeCheck, Loader2, Search, BookOpen, Mail } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, serverTimestamp, collection, deleteDoc } from "firebase/firestore"
-import { deleteUser } from "firebase/auth"
+import { deleteUser, signOut } from "firebase/auth"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool } from "@/lib/neis-api"
 
@@ -44,7 +44,7 @@ export default function ProfilePage() {
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
   const teachersRef = useMemoFirebase(() => {
-    if (!user) return null // 로그인 완료 전에는 쿼리하지 않음
+    if (!user) return null
     return collection(db, "teachers")
   }, [db, user])
   const { data: teachers } = useCollection(teachersRef)
@@ -143,12 +143,12 @@ export default function ProfilePage() {
 
       <div className="space-y-6">
         <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-          <CardHeader><CardTitle className="text-lg font-black flex items-center gap-2"><Phone className="h-5 w-5 text-primary" /> 인증 정보</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg font-black flex items-center gap-2"><Mail className="h-5 w-5 text-primary" /> 계정 정보</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs font-bold opacity-70">로그인 휴대폰 번호</Label>
+              <Label className="text-xs font-bold opacity-70">연결된 이메일</Label>
               <div className="flex items-center gap-2 p-4 bg-muted/30 rounded-2xl border border-dashed">
-                <span className="font-black text-sm text-primary">{userData?.phoneNumber || "정보 없음"}</span>
+                <span className="font-black text-sm text-primary">{userData?.email || "정보 없음"}</span>
                 <BadgeCheck className="h-4 w-4 text-primary ml-auto" />
               </div>
             </div>

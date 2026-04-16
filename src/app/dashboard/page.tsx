@@ -1,67 +1,45 @@
 
 "use client"
 
-import { useMemo, useEffect, useState, useRef } from "react"
+import { useMemo, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter
+  DialogDescription
 } from "@/components/ui/dialog"
-import { Calendar } from "@/components/ui/calendar"
 import { 
-  Trophy, 
   Utensils, 
   Zap, 
-  Sparkles,
-  Clock,
-  School,
-  CheckCircle2,
+  Clock, 
   Loader2,
-  Maximize2,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Clover,
   Share2,
+  Clover,
   Quote,
   CalendarCheck,
-  History,
-  BookOpen,
-  Users,
   BrainCircuit,
   Send,
   PartyPopper,
   Edit3,
-  BellRing,
-  Phone,
-  ShieldCheck,
-  Lock
+  BookOpen
 } from "lucide-react"
-import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection, useAuth } from "@/firebase"
-import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc, where } from "firebase/firestore"
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, EmailAuthProvider, linkWithCredential } from "firebase/auth"
+import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from "@/firebase"
+import { doc, updateDoc, increment, serverTimestamp, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
-import { ko } from "date-fns/locale"
-import { cn } from "@/lib/utils"
 import { initKakao, shareMealToKakao, shareTimetableToKakao, shareFortuneToKakao, shareQuoteToKakao } from "@/lib/kakao-share"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
-  const auth = useAuth()
   const db = useFirestore()
   const router = useRouter()
 
@@ -81,16 +59,6 @@ export default function DashboardPage() {
   const [showTutorial, setShowTutorial] = useState(false)
   const [showNotice, setShowNotice] = useState(false)
   
-  // 번호 전환(Migration) 상태
-  const [showPhoneMigration, setShowPhoneMigration] = useState(false)
-  const [migrationStep, setMigrationStep] = useState<'input' | 'verify' | 'password'>('input')
-  const [migrationPhone, setMigrationPhone] = useState("")
-  const [migrationCode, setMigrationCode] = useState("")
-  const [migrationPass, setMigrationPass] = useState("")
-  const [isMigrationLoading, setIsMigrationLoading] = useState(false)
-  const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null)
-  const confirmationResult = useRef<ConfirmationResult | null>(null)
-
   // 오늘의 문제 관련 상태
   const [userAnswer, setUserAnswer] = useState("")
   const [isSolving, setIsSolving] = useState(false)
@@ -114,12 +82,10 @@ export default function DashboardPage() {
   }, [configData])
 
   useEffect(() => {
-    if (userData) {
-      if (userData.hasCompletedTutorial === false) setShowTutorial(true)
-      // 번호 정보가 없는 기존 유저 마이그레이션 유도
-      if (!userData.phoneNumber && !isUserDataLoading) setShowPhoneMigration(true)
+    if (userData && userData.hasCompletedTutorial === false) {
+      setShowTutorial(true)
     }
-  }, [userData, isUserDataLoading])
+  }, [userData])
 
   useEffect(() => {
     const targetDate = addWeeks(new Date(), weekOffset)
@@ -197,74 +163,6 @@ export default function DashboardPage() {
     }
   }, [personalFortuneData?.score]);
 
-  // 번호 전환 로직
-  const handleStartMigration = async () => {
-    const raw = migrationPhone.replace(/\D/g, '')
-    if (raw.length < 10) return
-    setIsMigrationLoading(true)
-    try {
-      if (!recaptchaVerifier.current) {
-        recaptchaVerifier.current = new RecaptchaVerifier(auth, 'recaptcha-migration', { size: 'invisible' })
-      }
-      const formatted = `+82${raw.substring(1)}`
-      const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current!)
-      confirmationResult.current = result
-      setMigrationStep('verify')
-      toast({ title: "인증번호 전송됨" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "전송 오류" })
-    } finally {
-      setIsMigrationLoading(false)
-    }
-  }
-
-  const handleVerifyMigration = async () => {
-    if (!confirmationResult.current || migrationCode.length !== 6) return
-    setIsMigrationLoading(true)
-    try {
-      // Temporarily link to verify ownership
-      await confirmationResult.current.confirm(migrationCode)
-      setMigrationStep('password')
-      toast({ title: "번호 인증 완료!", description: "이제 로그인에 사용할 비밀번호를 설정하세요." })
-    } catch (e) {
-      toast({ variant: "destructive", title: "인증번호 오류" })
-    } finally {
-      setIsMigrationLoading(false)
-    }
-  }
-
-  const handleCompleteMigration = async () => {
-    if (migrationPass.length < 6) {
-      toast({ variant: "destructive", title: "비밀번호 6자 이상 입력" })
-      return
-    }
-    setIsMigrationLoading(true)
-    try {
-      const raw = migrationPhone.replace(/\D/g, '')
-      const email = `82${raw.startsWith('0') ? raw.substring(1) : raw}@kst-hub.com`
-      const credential = EmailAuthProvider.credential(email, migrationPass)
-      
-      if (auth.currentUser) {
-        await linkWithCredential(auth.currentUser, credential)
-      }
-
-      if (userDocRef) {
-        await updateDoc(userDocRef, {
-          phoneNumber: `+82${raw.substring(1)}`,
-          updatedAt: serverTimestamp()
-        })
-      }
-      
-      setShowPhoneMigration(false)
-      toast({ title: "설정 완료", description: "이제 휴대폰 번호와 비밀번호로 로그인할 수 있습니다." })
-    } catch (e) {
-      console.error(e)
-      toast({ variant: "destructive", title: "최종 처리 오류" })
-    } finally {
-      setIsMigrationLoading(false)
-    }
-  }
-
   const handleGenerateLuckyScore = async () => {
     if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck || !todayStr) return
     setIsGeneratingLuck(true)
@@ -329,79 +227,6 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-500">
-      <div id="recaptcha-migration"></div>
-      
-      {/* 휴대폰 인증 및 비밀번호 설정 전환 팝업 */}
-      <Dialog open={showPhoneMigration} onOpenChange={() => {}}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-card">
-          <div className="bg-primary/10 p-8 flex flex-col items-center gap-4">
-            <div className="p-4 bg-primary rounded-3xl shadow-lg">
-              <Phone className="h-10 w-10 text-white" />
-            </div>
-            <DialogTitle className="text-2xl font-black text-primary">보안 방식 업데이트</DialogTitle>
-            <DialogDescription className="text-center font-bold text-primary/60">
-              KST HUB가 더 안전해졌습니다! <br/>
-              휴대폰 번호를 등록하고 로그인용 비밀번호를 설정해 주세요.
-            </DialogDescription>
-          </div>
-          
-          <div className="p-8 space-y-6">
-            {migrationStep === 'input' && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-black text-muted-foreground ml-1">본인의 휴대폰 번호</Label>
-                  <Input 
-                    placeholder="01012345678" 
-                    value={migrationPhone} 
-                    onChange={(e) => setMigrationPhone(e.target.value)}
-                    className="h-12 rounded-2xl bg-muted/30 border-none px-5 font-bold"
-                  />
-                </div>
-                <Button onClick={handleStartMigration} disabled={isMigrationLoading || migrationPhone.length < 10} className="w-full h-12 rounded-2xl font-black bg-primary">
-                  {isMigrationLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "인증번호 받기"}
-                </Button>
-              </div>
-            )}
-            
-            {migrationStep === 'verify' && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-black text-muted-foreground ml-1">인증코드 6자리</Label>
-                  <Input 
-                    placeholder="000000" 
-                    value={migrationCode} 
-                    onChange={(e) => setMigrationCode(e.target.value.substring(0, 6))}
-                    className="h-12 rounded-2xl bg-muted/30 border-none px-5 font-mono text-center tracking-[1em] font-black"
-                  />
-                </div>
-                <Button onClick={handleVerifyMigration} disabled={isMigrationLoading || migrationCode.length !== 6} className="w-full h-12 rounded-2xl font-black bg-primary">
-                  {isMigrationLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "확인"}
-                </Button>
-              </div>
-            )}
-
-            {migrationStep === 'password' && (
-              <div className="space-y-4 animate-in zoom-in-95 duration-300">
-                <div className="space-y-2">
-                  <Label className="text-xs font-black text-muted-foreground ml-1">로그인 비밀번호 설정</Label>
-                  <Input 
-                    type="password"
-                    placeholder="6자 이상 입력" 
-                    value={migrationPass} 
-                    onChange={(e) => setMigrationPass(e.target.value)}
-                    className="h-12 rounded-2xl bg-muted/30 border-none px-5 font-bold"
-                  />
-                  <p className="text-[10px] text-muted-foreground ml-1">번호로 로그인할 때 사용할 비밀번호입니다.</p>
-                </div>
-                <Button onClick={handleCompleteMigration} disabled={isMigrationLoading || migrationPass.length < 6} className="w-full h-12 rounded-2xl font-black bg-accent text-accent-foreground">
-                  {isMigrationLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "전환 및 설정 완료"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-primary">

@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,21 +10,15 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Phone, School, Loader2, UserCircle, Users, GraduationCap, Lock, Search, ShieldCheck, CheckCircle2, KeyRound } from "lucide-react"
-import { useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, EmailAuthProvider, linkWithCredential } from "firebase/auth"
+import { School, Loader2, UserCircle, Users, Mail, Search, CheckCircle2 } from "lucide-react"
+import { useAuth, useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase"
 import { doc, setDoc, serverTimestamp, collection, getDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool } from "@/lib/neis-api"
+import { initiateGoogleSignIn } from "@/firebase/non-blocking-login"
 
 export default function SignupPage() {
-  const [phoneNumber, setPhoneNumber] = useState("")
-  const [password, setPassword] = useState("")
-  const [passwordConfirm, setPasswordConfirm] = useState("")
-  const [verificationCode, setVerificationCode] = useState("")
-  const [isVerified, setIsVerified] = useState(false)
-  const [isCodeSent, setIsCodeSent] = useState(false)
-  
+  const { user, isUserLoading } = useUser()
   const [nickname, setNickname] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -44,57 +38,21 @@ export default function SignupPage() {
   const auth = useAuth()
   const db = useFirestore()
   const router = useRouter()
-  
-  const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null)
-  const confirmationResult = useRef<ConfirmationResult | null>(null)
-  const [verifiedUid, setVerifiedUid] = useState<string | null>(null)
 
   const teachersRef = useMemoFirebase(() => collection(db, "teachers"), [db])
   const { data: teachers } = useCollection(teachersRef)
 
-  const setupRecaptcha = () => {
-    if (!recaptchaVerifier.current) {
-      recaptchaVerifier.current = new RecaptchaVerifier(auth, 'recaptcha-container-signup', {
-        size: 'invisible',
-      });
-    }
-  }
-
-  const handleSendCode = async () => {
-    if (!phoneNumber.startsWith('010') || phoneNumber.length < 10) return
-    setIsLoading(true)
-    try {
-      setupRecaptcha()
-      const raw = phoneNumber.replace(/\D/g, '')
-      const formatted = `+82${raw.substring(1)}`
-      const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current!)
-      confirmationResult.current = result
-      setIsCodeSent(true)
-      toast({ title: "인증번호 전송 완료" })
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "전송 실패" })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleVerifyCode = async () => {
-    if (verificationCode.length !== 6) return
-    setIsLoading(true)
-    try {
-      const result = await confirmationResult.current?.confirm(verificationCode)
-      if (result?.user) {
-        setVerifiedUid(result.user.uid)
-        setIsVerified(true)
-        toast({ title: "본인 인증 성공" })
+  useEffect(() => {
+    const checkExisting = async () => {
+      if (user && !user.isAnonymous) {
+        const userDoc = await getDoc(doc(db, "users", user.uid))
+        if (userDoc.exists()) {
+          router.push("/dashboard")
+        }
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "인증 실패" })
-    } finally {
-      setIsLoading(false)
     }
-  }
+    checkExisting()
+  }, [user, db, router])
 
   const handleSchoolSearch = async (query: string) => {
     if (query.length < 2) {
@@ -112,34 +70,17 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isVerified || !verifiedUid) {
-      toast({ variant: "destructive", title: "인증 필요", description: "휴대폰 인증을 먼저 완료해 주세요." })
-      return
-    }
-    if (password.length < 6) {
-      toast({ variant: "destructive", title: "비밀번호 취약", description: "비밀번호는 6자리 이상이어야 합니다." })
-      return
-    }
-    if (password !== passwordConfirm) {
-      toast({ variant: "destructive", title: "비밀번호 불일치" })
+    if (!user || user.isAnonymous) {
+      toast({ variant: "destructive", title: "인증 필요", description: "소셜 로그인을 먼저 완료해 주세요." })
       return
     }
     if (!agreedToPrivacy) return
 
     setIsLoading(true)
     try {
-      // Create permanent password account by linking
-      const raw = phoneNumber.replace(/\D/g, '')
-      const virtualEmail = `82${raw.startsWith('0') ? raw.substring(1) : raw}@kst-hub.com`
-      const credential = EmailAuthProvider.credential(virtualEmail, password)
-      
-      if (auth.currentUser) {
-        await linkWithCredential(auth.currentUser, credential)
-      }
-
-      await setDoc(doc(db, "users", verifiedUid), {
-        id: verifiedUid,
-        phoneNumber: `+82${raw.substring(1)}`,
+      await setDoc(doc(db, "users", user.uid), {
+        id: user.uid,
+        email: user.email,
         nickname,
         firstName,
         lastName,
@@ -166,86 +107,49 @@ export default function SignupPage() {
     }
   }
 
+  if (!user || user.isAnonymous) {
+    return (
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-4 bg-background">
+        <Card className="w-full max-w-md border-none shadow-xl bg-card rounded-[2.5rem] p-8 text-center space-y-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <UserCircle className="h-10 w-10" />
+          </div>
+          <CardTitle className="text-2xl font-black">먼저 인증해 주세요</CardTitle>
+          <CardDescription className="font-bold">
+            소셜 로그인을 통해 본인 확인 후 정보를 등록할 수 있습니다.
+          </CardDescription>
+          <Button onClick={() => initiateGoogleSignIn(auth)} className="w-full h-12 rounded-2xl font-black bg-primary">
+            Google 계정으로 시작하기
+          </Button>
+          <p className="text-xs font-bold text-muted-foreground">
+            이미 계정이 있으신가요? <Link href="/login" className="text-primary hover:underline">로그인</Link>
+          </p>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center p-4 bg-background">
-      <div id="recaptcha-container-signup"></div>
       <Card className="w-full max-w-md border-none shadow-xl bg-card rounded-[2.5rem] overflow-hidden">
         <CardHeader className="text-center pb-2 bg-primary/5">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <UserCircle className="h-10 w-10" />
           </div>
-          <CardTitle className="text-2xl font-black font-headline text-primary">학생 회원가입</CardTitle>
-          <CardDescription className="text-xs font-bold opacity-60">새로운 스마트 교육 생활의 시작!</CardDescription>
+          <CardTitle className="text-2xl font-black font-headline text-primary">학생 정보 등록</CardTitle>
+          <CardDescription className="text-xs font-bold opacity-60">나머지 정보를 입력하면 가입이 완료됩니다.</CardDescription>
         </CardHeader>
         
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto px-6 py-6 custom-scrollbar">
-            {/* 휴대폰 인증 섹션 */}
-            <div className="space-y-3 p-4 bg-muted/20 rounded-3xl border border-dashed border-primary/20">
-              <h3 className="text-xs font-black flex items-center gap-2 text-primary"><Phone className="h-4 w-4" /> 본인 인증 (최초 1회)</h3>
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="01012345678" 
-                  value={phoneNumber} 
-                  onChange={(e) => setPhoneNumber(e.target.value)} 
-                  disabled={isVerified}
-                  className="rounded-xl h-10 bg-background border-none"
-                />
-                <Button 
-                  type="button" 
-                  onClick={handleSendCode} 
-                  disabled={isLoading || isVerified || phoneNumber.length < 10}
-                  className="shrink-0 rounded-xl h-10 px-4 text-xs font-black"
-                >
-                  {isCodeSent ? "재전송" : "전송"}
-                </Button>
+            <div className="p-4 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div className="text-[11px] font-bold text-green-700">
+                인증 완료: <span className="font-black">{user.email}</span>
               </div>
-              {isCodeSent && !isVerified && (
-                <div className="flex gap-2 animate-in slide-in-from-top-2">
-                  <Input 
-                    placeholder="인증번호" 
-                    value={verificationCode} 
-                    onChange={(e) => setVerificationCode(e.target.value)} 
-                    className="rounded-xl h-10 bg-background border-none"
-                  />
-                  <Button 
-                    type="button" 
-                    onClick={handleVerifyCode} 
-                    disabled={isLoading}
-                    className="shrink-0 rounded-xl h-10 px-4 text-xs font-black bg-accent text-accent-foreground"
-                  >
-                    확인
-                  </Button>
-                </div>
-              )}
-              {isVerified && (
-                <div className="flex items-center gap-2 text-xs font-black text-green-600 bg-green-50 p-2 rounded-xl">
-                  <CheckCircle2 className="h-4 w-4" /> 인증이 완료되었습니다.
-                </div>
-              )}
             </div>
 
-            <div className="pt-2 border-t space-y-3">
-              <h3 className="text-xs font-black mb-1 flex items-center gap-2 text-primary"><Lock className="h-4 w-4" /> 로그인 비밀번호</h3>
-              <Input 
-                type="password" 
-                placeholder="비밀번호 (6자 이상)" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
-                className="rounded-xl h-10 bg-muted/10" 
-              />
-              <Input 
-                type="password" 
-                placeholder="비밀번호 확인" 
-                value={passwordConfirm} 
-                onChange={(e) => setPasswordConfirm(e.target.value)} 
-                required 
-                className="rounded-xl h-10 bg-muted/10" 
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black opacity-50 ml-1">성</Label>
                 <Input placeholder="김" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="rounded-xl h-10 bg-muted/10" />
@@ -257,7 +161,7 @@ export default function SignupPage() {
             </div>
             
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black opacity-50 ml-1">닉네임</Label>
+              <Label className="text-[10px] font-black opacity-50 ml-1">닉네임 (게임 등에 사용)</Label>
               <Input placeholder="멋진학생" value={nickname} onChange={(e) => setNickname(e.target.value)} required className="rounded-xl h-10 bg-muted/10" />
             </div>
 
@@ -333,12 +237,9 @@ export default function SignupPage() {
           </CardContent>
           
           <CardFooter className="flex flex-col gap-4 p-6 pt-2">
-            <Button className="w-full h-12 font-black bg-primary rounded-2xl shadow-md" disabled={isLoading || !isVerified || !agreedToPrivacy}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "KST HUB 가입하기"}
+            <Button className="w-full h-12 font-black bg-primary rounded-2xl shadow-md" disabled={isLoading || !agreedToPrivacy}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "KST HUB 가입 완료"}
             </Button>
-            <p className="text-xs font-bold text-muted-foreground text-center">
-              이미 계정이 있으신가요? <Link href="/login" className="text-primary hover:underline">로그인</Link>
-            </p>
           </CardFooter>
         </form>
       </Card>
