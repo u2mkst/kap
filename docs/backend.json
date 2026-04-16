@@ -31,6 +31,33 @@
       },
       "required": ["id", "nickname", "points", "schoolType"]
     },
+    "Inquiry": {
+      "title": "Inquiry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userNickname": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "reply": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "replied"] },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "QuoteSuggestion": {
+      "title": "QuoteSuggestion",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userNickname": { "type": "string" },
+        "fortuneText": { "type": "string" },
+        "author": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Friend": {
       "title": "Friend",
       "type": "object",
@@ -95,6 +122,14 @@
     "/users/{userId}/games/sword": {
       "schema": { "$ref": "#/backend/entities/SwordGameProfile" },
       "description": "User's sword enhancement state."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/backend/entities/Inquiry" },
+      "description": "Student inquiries."
+    },
+    "/quote_suggestions/{suggestionId}": {
+      "schema": { "$ref": "#/backend/entities/QuoteSuggestion" },
+      "description": "Student quote recommendations."
     },
     "/sword_game_profiles/{profileId}": {
       "schema": { "$ref": "#/backend/entities/SwordGameProfile" },

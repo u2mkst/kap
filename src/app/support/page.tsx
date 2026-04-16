@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MessageSquare, Send, Loader2, CheckCircle2, Clock, Quote, Sparkles, Star } from "lucide-react"
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
-import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, limit, updateDoc } from "firebase/firestore"
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, updateDocumentNonBlocking } from "@/firebase"
+import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
@@ -49,17 +49,6 @@ export default function SupportPage() {
     return doc(db, "users", user.uid)
   }, [user?.uid, db])
   const { data: userData } = useDoc(userDocRef)
-
-  // 페이지 접속 시 안 읽은 답변 모두 읽음 처리
-  useEffect(() => {
-    if (myInquiries) {
-      myInquiries.forEach(iq => {
-        if (iq.status === "replied" && iq.isRead === false) {
-          updateDoc(doc(db, "inquiries", iq.id), { isRead: true })
-        }
-      })
-    }
-  }, [myInquiries, db])
 
   const handleSendInquiry = async () => {
     if (!subject.trim() || !message.trim() || !user) return
@@ -120,6 +109,11 @@ export default function SupportPage() {
         }))
       })
       .finally(() => setIsSending(false))
+  }
+
+  const handleMarkAsRead = (inquiryId: string) => {
+    if (!db) return
+    updateDocumentNonBlocking(doc(db, "inquiries", inquiryId), { isRead: true })
   }
 
   if (isUserLoading) {
@@ -250,9 +244,21 @@ export default function SupportPage() {
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest">선생님 답변</p>
                           </div>
                           <p className="text-xs font-bold leading-relaxed text-primary/90 whitespace-pre-wrap">{iq.reply}</p>
-                          <p className="text-[9px] text-primary/40 mt-3 font-bold">
-                            확인 시간: {iq.updatedAt?.toDate ? iq.updatedAt.toDate().toLocaleString() : "방금 전"}
-                          </p>
+                          <div className="flex justify-between items-center mt-3">
+                            <p className="text-[9px] text-primary/40 font-bold">
+                              확인 시간: {iq.updatedAt?.toDate ? iq.updatedAt.toDate().toLocaleString() : "방금 전"}
+                            </p>
+                            {!iq.isRead && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 text-[9px] font-black text-primary hover:bg-primary/10 rounded-full"
+                                onClick={() => handleMarkAsRead(iq.id)}
+                              >
+                                확인했습니다
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </CardContent>

@@ -126,7 +126,7 @@ export default function AdminPage() {
 
   const usersQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
-    return query(collection(db, "users"), orderBy("username", "asc"))
+    return query(collection(db, "users"), orderBy("nickname", "asc"))
   }, [db, isActuallyAdmin])
   const { data: allUsers } = useCollection(usersQuery)
 
