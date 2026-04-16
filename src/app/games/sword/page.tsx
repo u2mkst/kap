@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,9 @@ import {
   LogOut,
   Bell,
   Check,
-  X
+  X,
+  Sparkles,
+  Info
 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment, updateDoc, where, getDocs, deleteDoc, addDoc } from "firebase/firestore"
@@ -32,6 +34,7 @@ import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
+import Link from "next/link"
 
 type GameMessage = {
   id: string;
@@ -50,6 +53,10 @@ export default function SwordGamePage() {
   const [isEnhancing, setIsEnhancing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
+  // 게스트(체험) 모드 포인트 상태 (로그인 유저는 DB 사용, 익명 유저는 로컬 상태 우선)
+  const [guestPoints, setGuestPoints] = useState(500)
+  const [guestLevel, setGuestLevel] = useState(0)
+
   // 합동 플레이 상태
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [isInviting, setIsInviting] = useState<string | null>(null)
@@ -59,9 +66,11 @@ export default function SwordGamePage() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<any[]>([])
 
+  const isGuest = useMemo(() => user?.isAnonymous || !user, [user])
+
   // 1. 유저 프로필
   const userDocRef = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || user.isAnonymous) return null
     return doc(db, "users", user.uid)
   }, [user, db])
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
@@ -79,9 +88,9 @@ export default function SwordGamePage() {
   }, [db])
   const { data: rankings } = useCollection(rankingQuery)
 
-  // 4. 친구 목록
+  // 4. 친구 목록 (로그인 유저만)
   const friendsQuery = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || user.isAnonymous) return null
     return collection(db, "users", user.uid, "friends")
   }, [user, db])
   const { data: friendsList } = useCollection(friendsQuery)
@@ -105,7 +114,7 @@ export default function SwordGamePage() {
 
   // 8. 전체 유저 (온라인 상태 확인용)
   const usersQuery = useMemoFirebase(() => {
-    if (!user) return null
+    if (!user || user.isAnonymous) return null
     return collection(db, "users")
   }, [db, user])
   const { data: allUsers } = useCollection(usersQuery)
@@ -121,18 +130,19 @@ export default function SwordGamePage() {
   }).sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0))
 
   useEffect(() => {
-    if (!isUserLoading && !user) router.push("/login")
-  }, [user, isUserLoading, router])
-
-  useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [localMessages, sessionMessages])
 
-  const currentLevel = profile?.level || 0
-  const userNickname = userData?.nickname || "학생"
-  const userPoints = userData?.points || 0
+  // 현재 정보 계산
+  const userNickname = useMemo(() => {
+    if (isGuest) return `체험학생_${user?.uid?.substring(0, 4) || '9999'}`
+    return userData?.nickname || "학생"
+  }, [isGuest, userData, user])
+
+  const userPoints = isGuest ? guestPoints : (userData?.points || 0)
+  const currentLevel = isGuest ? guestLevel : (profile?.level || 0)
   const ENHANCE_COST = 10
 
   const getRates = (level: number) => {
@@ -165,7 +175,7 @@ export default function SwordGamePage() {
   const currentRates = getRates(currentLevel);
 
   const handleEnhance = async () => {
-    if (!user || !profileRef || !userData || !userDocRef || isEnhancing) return
+    if (!user || isEnhancing) return
     
     if (userPoints < ENHANCE_COST) {
       toast({ variant: "destructive", title: "포인트 부족!", description: "학습을 통해 포인트를 모아보세요!" })
@@ -174,15 +184,20 @@ export default function SwordGamePage() {
 
     setIsEnhancing(true)
 
-    updateDoc(userDocRef, {
-      points: increment(-ENHANCE_COST),
-      updatedAt: serverTimestamp()
-    }).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: userDocRef.path,
-        operation: 'update'
-      }))
-    })
+    // 포인트 차감
+    if (isGuest) {
+      setGuestPoints(prev => prev - ENHANCE_COST)
+    } else if (userDocRef) {
+      updateDoc(userDocRef, {
+        points: increment(-ENHANCE_COST),
+        updatedAt: serverTimestamp()
+      }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update'
+        }))
+      })
+    }
 
     const level = currentLevel
     const roll = Math.random() * 100
@@ -205,23 +220,28 @@ export default function SwordGamePage() {
       nextLevel = 0
     }
 
-    const gameData = {
-      userId: user.uid,
-      nickname: userNickname,
-      level: nextLevel,
-      maxLevel: Math.max(profile?.maxLevel || 0, nextLevel),
-      totalAttempts: increment(1),
-      updatedAt: serverTimestamp()
-    }
+    // 데이터 저장
+    if (isGuest) {
+      setGuestLevel(nextLevel)
+    } else if (profileRef) {
+      const gameData = {
+        userId: user.uid,
+        nickname: userNickname,
+        level: nextLevel,
+        maxLevel: Math.max(profile?.maxLevel || 0, nextLevel),
+        totalAttempts: increment(1),
+        updatedAt: serverTimestamp()
+      }
 
-    setDoc(profileRef, gameData, { merge: true })
-      .catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: profileRef.path,
-          operation: 'write',
-          requestResourceData: gameData
-        }))
-      })
+      setDoc(profileRef, gameData, { merge: true })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: profileRef.path,
+            operation: 'write',
+            requestResourceData: gameData
+          }))
+        })
+    }
 
     const newMessage: GameMessage = {
       id: Math.random().toString(36).substr(2, 9),
@@ -246,24 +266,22 @@ export default function SwordGamePage() {
 
   // 친구 초대 보내기
   const handleInviteFriend = async (friendId: string, friendNickname: string) => {
-    if (!user || !userData) return
+    if (!user) return
     setIsInviting(friendId)
     
     try {
       const sessionId = [user.uid, friendId].sort().join("_")
       
-      // 세션 문서 생성
       await setDoc(doc(db, "game_sessions", sessionId), {
         participants: [user.uid, friendId],
         active: true,
         createdAt: serverTimestamp()
       }, { merge: true })
 
-      // 친구에게 초대 알림 전송
       const inviteRef = doc(collection(db, "users", friendId, "invites"))
       await setDoc(inviteRef, {
         fromId: user.uid,
-        fromNickname: userData.nickname,
+        fromNickname: userNickname,
         status: "pending",
         sessionId: sessionId,
         createdAt: serverTimestamp()
@@ -325,7 +343,7 @@ export default function SwordGamePage() {
   }
 
   const handleAddFriend = async (friend: any) => {
-    if (!user) return
+    if (!user || user.isAnonymous) return
     const friendRef = doc(db, "users", user.uid, "friends", friend.id)
     await setDoc(friendRef, {
       friendId: friend.id,
@@ -339,12 +357,12 @@ export default function SwordGamePage() {
   }
 
   const handleRemoveFriend = async (friendId: string) => {
-    if (!user) return
+    if (!user || user.isAnonymous) return
     await deleteDoc(doc(db, "users", user.uid, "friends", friendId))
     toast({ title: "친구 삭제 완료" })
   }
 
-  if (isUserLoading || isProfileLoading || isUserDataLoading) {
+  if (isUserLoading || (user && !user.isAnonymous && (isProfileLoading || isUserDataLoading))) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -356,6 +374,20 @@ export default function SwordGamePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-500">
+      {isGuest && (
+        <div className="bg-accent/10 p-4 rounded-3xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 border border-accent/20 animate-bounce-slow">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-6 w-6 text-accent" />
+            <p className="text-sm font-black text-accent-foreground">
+              현재 체험 모드입니다. 기록을 저장하려면 정식 회원가입을 하세요!
+            </p>
+          </div>
+          <Link href="/signup">
+            <Button size="sm" className="bg-accent text-accent-foreground font-black rounded-xl">지금 가입하기</Button>
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row gap-6">
         
         {/* 메인 게임 영역 */}
@@ -391,7 +423,7 @@ export default function SwordGamePage() {
                       현재: +{currentLevel}
                     </Badge>
                     <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
-                      <Coins className="h-3 w-3" /> {userPoints.toLocaleString()}P 보유
+                      <Coins className="h-3 w-3" /> {userPoints.toLocaleString()}P {isGuest && "(체험용)"}
                     </div>
                   </div>
                   {activeSessionId && (
@@ -410,7 +442,7 @@ export default function SwordGamePage() {
                       {activeSessionId ? (
                         <>📢 [시스템] 합동 플레이 모드 활성화!<br/>- 친구의 강화 소식도 이곳에 실시간으로 표시됩니다.</>
                       ) : (
-                        <>📢 [시스템] {userNickname}님, 환영합니다!<br/>- 10포인트 소모 | 5단계부터 하락 위험!<br/>- 친구를 초대해 함께 즐겨보세요.</>
+                        <>📢 [시스템] {userNickname}님, 환영합니다!<br/>- 10포인트 소모 | 5단계부터 하락 위험!<br/>- {isGuest ? '체험 모드에서는 500P가 무료 제공됩니다.' : '친구를 초대해 함께 즐겨보세요.'}</>
                       )}
                     </div>
 
@@ -418,7 +450,7 @@ export default function SwordGamePage() {
                       <div key={msg.id} className="animate-in slide-in-from-bottom-2 duration-300">
                         <div className={cn(
                           "p-4 rounded-2xl border transition-all",
-                          msg.nickname === userNickname ? "ml-4" : "mr-4 border-dashed",
+                          msg.nickname === userNickname ? "ml-4 shadow-sm" : "mr-4 border-dashed",
                           msg.status === 'success' ? "bg-green-500/10 border-green-500/20" :
                           msg.status === 'fail' ? "bg-blue-500/10 border-blue-500/20" :
                           msg.status === 'decrease' ? "bg-orange-500/10 border-orange-500/20" :
@@ -503,83 +535,95 @@ export default function SwordGamePage() {
             </TabsList>
 
             <TabsContent value="friends" className="space-y-4 m-0">
-              <Card className="border-none shadow-xl bg-card rounded-[2rem] overflow-hidden">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-black flex items-center gap-2">친구 관리</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 space-y-4">
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="아이디 또는 닉네임" 
-                      value={searchQuery} 
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearchFriend()}
-                      className="h-9 text-xs rounded-xl bg-muted/30 border-none"
-                    />
-                    <Button size="icon" onClick={handleSearchFriend} disabled={isSearching} className="h-9 w-9 rounded-xl shrink-0"><Search className="h-4 w-4" /></Button>
-                  </div>
-
-                  {searchResults.length > 0 && (
-                    <div className="bg-primary/5 p-3 rounded-2xl space-y-2 border border-primary/10 animate-in zoom-in-95">
-                      <p className="text-[10px] font-black text-primary px-1">검색 결과</p>
-                      {searchResults.map(res => (
-                        <div key={res.id} className="flex items-center justify-between bg-card p-2 rounded-xl shadow-sm border border-primary/5">
-                          <span className="text-xs font-bold">{res.nickname}</span>
-                          <Button size="sm" onClick={() => handleAddFriend(res)} className="h-7 rounded-lg text-[10px] font-black"><UserPlus className="h-3 w-3 mr-1" /> 추가</Button>
-                        </div>
-                      ))}
+              {isGuest ? (
+                <Card className="border-none shadow-xl bg-card rounded-[2rem] p-6 text-center">
+                  <Users className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-xs font-bold text-muted-foreground leading-relaxed">
+                    친구 관리 기능은 <br/>로그인 후 이용할 수 있습니다.
+                  </p>
+                  <Link href="/login" className="block mt-4">
+                    <Button variant="outline" size="sm" className="w-full text-[10px] font-black rounded-xl">로그인하러 가기</Button>
+                  </Link>
+                </Card>
+              ) : (
+                <Card className="border-none shadow-xl bg-card rounded-[2rem] overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-black flex items-center gap-2">친구 관리</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="아이디 또는 닉네임" 
+                        value={searchQuery} 
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearchFriend()}
+                        className="h-9 text-xs rounded-xl bg-muted/30 border-none"
+                      />
+                      <Button size="icon" onClick={handleSearchFriend} disabled={isSearching} className="h-9 w-9 rounded-xl shrink-0"><Search className="h-4 w-4" /></Button>
                     </div>
-                  )}
 
-                  <ScrollArea className="h-[300px]">
-                    <div className="space-y-2 pr-2">
-                      {friendsWithStatus.map(f => (
-                        <div key={f.friendId} className="group flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <div className="relative">
-                              <div className="h-8 w-8 bg-card rounded-full border flex items-center justify-center font-black text-xs">
-                                {f.nickname[0]}
+                    {searchResults.length > 0 && (
+                      <div className="bg-primary/5 p-3 rounded-2xl space-y-2 border border-primary/10 animate-in zoom-in-95">
+                        <p className="text-[10px] font-black text-primary px-1">검색 결과</p>
+                        {searchResults.map(res => (
+                          <div key={res.id} className="flex items-center justify-between bg-card p-2 rounded-xl shadow-sm border border-primary/5">
+                            <span className="text-xs font-bold">{res.nickname}</span>
+                            <Button size="sm" onClick={() => handleAddFriend(res)} className="h-7 rounded-lg text-[10px] font-black"><UserPlus className="h-3 w-3 mr-1" /> 추가</Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <ScrollArea className="h-[300px]">
+                      <div className="space-y-2 pr-2">
+                        {friendsWithStatus.map(f => (
+                          <div key={f.friendId} className="group flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <div className="relative">
+                                <div className="h-8 w-8 bg-card rounded-full border flex items-center justify-center font-black text-xs">
+                                  {f.nickname[0]}
+                                </div>
+                                <div className={cn(
+                                  "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background",
+                                  f.isOnline ? "bg-green-500" : "bg-gray-400"
+                                )} />
                               </div>
-                              <div className={cn(
-                                "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background",
-                                f.isOnline ? "bg-green-500" : "bg-gray-400"
-                              )} />
+                              <div className="flex flex-col">
+                                <span className="text-xs font-black">{f.nickname}</span>
+                                <span className="text-[9px] font-bold text-primary">+{f.level} 검 보유</span>
+                              </div>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs font-black">{f.nickname}</span>
-                              <span className="text-[9px] font-bold text-primary">+{f.level} 검 보유</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-1">
-                            {f.isOnline && !activeSessionId && (
+                            <div className="flex gap-1">
+                              {f.isOnline && !activeSessionId && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleInviteFriend(f.friendId, f.nickname)}
+                                  disabled={isInviting === f.friendId}
+                                  className="h-7 rounded-lg text-[9px] font-black border-primary/20 text-primary hover:bg-primary/10"
+                                >
+                                  {isInviting === f.friendId ? <Loader2 className="h-3 w-3 animate-spin" /> : "함께하기"}
+                                </Button>
+                              )}
                               <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleInviteFriend(f.friendId, f.nickname)}
-                                disabled={isInviting === f.friendId}
-                                className="h-7 rounded-lg text-[9px] font-black border-primary/20 text-primary hover:bg-primary/10"
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleRemoveFriend(f.friendId)}
+                                className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
                               >
-                                {isInviting === f.friendId ? <Loader2 className="h-3 w-3 animate-spin" /> : "함께하기"}
+                                <UserMinus className="h-3.5 w-3.5" />
                               </Button>
-                            )}
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleRemoveFriend(f.friendId)}
-                              className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
-                            >
-                              <UserMinus className="h-3.5 w-3.5" />
-                            </Button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                      {friendsWithStatus.length === 0 && (
-                        <p className="text-center py-10 text-[10px] font-bold text-muted-foreground italic">아직 친구가 없습니다.</p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                        ))}
+                        {friendsWithStatus.length === 0 && (
+                          <p className="text-center py-10 text-[10px] font-bold text-muted-foreground italic">아직 친구가 없습니다.</p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="ranking" className="space-y-4 m-0">
@@ -591,7 +635,7 @@ export default function SwordGamePage() {
                   {rankings?.map((r, i) => (
                     <div key={r.id} className={cn(
                       "flex justify-between items-center p-3 rounded-2xl text-xs font-bold transition-all",
-                      r.userId === user?.uid ? "bg-primary text-white scale-105" : "bg-muted/30"
+                      r.userId === user?.uid ? "bg-primary text-white scale-105 shadow-md" : "bg-muted/30"
                     )}>
                       <div className="flex items-center gap-2">
                         <span className="opacity-50">#{i + 1}</span>
@@ -600,19 +644,24 @@ export default function SwordGamePage() {
                       <Badge variant={r.level >= 10 ? "destructive" : "secondary"} className="h-5 rounded-full text-[10px] font-black">+{r.level}</Badge>
                     </div>
                   ))}
+                  <p className="text-[9px] text-center text-muted-foreground mt-4 font-bold">
+                    <Info className="h-3 w-3 inline mr-1" /> 게스트 기록은 순위에 반영되지 않습니다.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
 
-          <Card className="border-none shadow-xl bg-card rounded-[2rem] p-6 text-center space-y-3">
-             <div className="mx-auto h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center"><Zap className="h-6 w-6 text-accent" /></div>
-             <div className="space-y-1">
-               <p className="text-[10px] font-black opacity-40 uppercase">나의 최고 기록</p>
-               <p className="text-2xl font-black text-primary">+{profile?.maxLevel || 0}</p>
-             </div>
-             <p className="text-[10px] font-bold text-muted-foreground">총 {profile?.totalAttempts || 0}번의 도전</p>
-          </Card>
+          {!isGuest && (
+            <Card className="border-none shadow-xl bg-card rounded-[2rem] p-6 text-center space-y-3">
+               <div className="mx-auto h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center"><Zap className="h-6 w-6 text-accent" /></div>
+               <div className="space-y-1">
+                 <p className="text-[10px] font-black opacity-40 uppercase">나의 최고 기록</p>
+                 <p className="text-2xl font-black text-primary">+{profile?.maxLevel || 0}</p>
+               </div>
+               <p className="text-[10px] font-bold text-muted-foreground">총 {profile?.totalAttempts || 0}번의 도전</p>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { BookOpen, Loader2, Phone, ShieldCheck, ArrowRight, Lock, KeyRound } from "lucide-react"
+import { BookOpen, Loader2, Phone, ShieldCheck, ArrowRight, Lock, KeyRound, Zap } from "lucide-react"
 import { useAuth, useUser, useFirestore } from "@/firebase"
 import { 
   RecaptchaVerifier, 
@@ -18,6 +18,7 @@ import {
 } from "firebase/auth"
 import { doc, getDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
 
 export default function LoginPage() {
   const [phoneNumber, setPhoneNumber] = useState("")
@@ -37,7 +38,7 @@ export default function LoginPage() {
   const confirmationResult = useRef<ConfirmationResult | null>(null)
 
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!isUserLoading && user && !user.isAnonymous) {
       router.push("/dashboard")
     }
   }, [user, isUserLoading, router])
@@ -67,7 +68,6 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       const raw = formatRawPhone(phoneNumber)
-      // Virtual email format: 821012345678@kst-hub.com
       const email = `82${raw.startsWith('0') ? raw.substring(1) : raw}@kst-hub.com`
       await signInWithEmailAndPassword(auth, email, password)
       toast({ title: "로그인 성공", description: "반갑습니다!" })
@@ -128,6 +128,12 @@ export default function LoginPage() {
     }
   }
 
+  const handleGuestLogin = () => {
+    initiateAnonymousSignIn(auth)
+    toast({ title: "게스트 모드", description: "강화 게임 체험을 시작합니다." })
+    router.push("/games/sword")
+  }
+
   if (isUserLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
@@ -186,14 +192,24 @@ export default function LoginPage() {
               <Button className="w-full h-12 rounded-2xl font-black bg-primary shadow-md" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "로그인"}
               </Button>
-              <Button 
-                type="button"
-                variant="ghost" 
-                className="w-full text-xs font-bold opacity-60" 
-                onClick={() => setLoginMode('otp')}
-              >
-                비밀번호를 모르시나요? 인증번호로 로그인
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  type="button"
+                  variant="ghost" 
+                  className="w-full text-xs font-bold opacity-60 h-8" 
+                  onClick={() => setLoginMode('otp')}
+                >
+                  비밀번호를 모르시나요? 인증번호로 로그인
+                </Button>
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="w-full text-xs font-black border-accent/30 text-accent-foreground h-10 rounded-xl" 
+                  onClick={handleGuestLogin}
+                >
+                  <Zap className="h-3 w-3 mr-2 text-accent" /> 게스트로 바로 체험하기
+                </Button>
+              </div>
             </form>
           ) : (
             <div className="space-y-4 animate-in fade-in duration-300">
