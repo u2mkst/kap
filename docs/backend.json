@@ -56,6 +56,26 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "nickname", "level"]
+    },
+    "GameInvite": {
+      "title": "GameInvite",
+      "type": "object",
+      "properties": {
+        "fromId": { "type": "string" },
+        "fromNickname": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "sessionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "GameSession": {
+      "title": "GameSession",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -70,6 +90,10 @@
       "schema": { "$ref": "#/backend/entities/Friend" },
       "description": "User's friend list."
     },
+    "/users/{userId}/invites/{inviteId}": {
+      "schema": { "$ref": "#/backend/entities/GameInvite" },
+      "description": "Game invitations."
+    },
     "/users/{userId}/games/sword": {
       "schema": { "$ref": "#/backend/entities/SwordGameProfile" },
       "description": "User's sword enhancement state."
@@ -77,6 +101,14 @@
     "/sword_game_profiles/{profileId}": {
       "schema": { "$ref": "#/backend/entities/SwordGameProfile" },
       "description": "Global sword game profiles for ranking."
+    },
+    "/game_sessions/{sessionId}": {
+      "schema": { "$ref": "#/backend/entities/GameSession" },
+      "description": "Active multiplayer game sessions."
+    },
+    "/game_sessions/{sessionId}/messages/{msgId}": {
+      "schema": { "type": "object" },
+      "description": "Messages/Logs within a session."
     }
   }
 }

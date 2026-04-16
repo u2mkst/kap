@@ -20,11 +20,14 @@ import {
   Users,
   Search,
   UserMinus,
-  Circle,
-  MessageSquare
+  MessageSquare,
+  LogOut,
+  Bell,
+  Check,
+  X
 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment, updateDoc, where, getDocs, deleteDoc } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment, updateDoc, where, getDocs, deleteDoc, addDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -37,7 +40,7 @@ type GameMessage = {
   nickname: string;
   before: number;
   after: number;
-  timestamp: Date;
+  timestamp: any;
 }
 
 export default function SwordGamePage() {
@@ -45,9 +48,12 @@ export default function SwordGamePage() {
   const db = useFirestore()
   const router = useRouter()
   const [isEnhancing, setIsEnhancing] = useState(false)
-  const [messages, setMessages] = useState<GameMessage[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
+  // 합동 플레이 상태
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [isInviting, setIsInviting] = useState<string | null>(null)
+
   // Friend System States
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
@@ -80,9 +86,26 @@ export default function SwordGamePage() {
   }, [user, db])
   const { data: friendsList } = useCollection(friendsQuery)
 
-  // 5. 온라인 친구들을 위한 상세 유저 정보 쿼리 (실시간)
+  // 5. 받은 초대 목록
+  const invitesQuery = useMemoFirebase(() => {
+    if (!user) return null
+    return query(collection(db, "users", user.uid, "invites"), where("status", "==", "pending"), orderBy("createdAt", "desc"))
+  }, [db, user])
+  const { data: incomingInvites } = useCollection(invitesQuery)
+
+  // 6. 세션 메시지 (합동 플레이 시)
+  const sessionMessagesQuery = useMemoFirebase(() => {
+    if (!activeSessionId) return null
+    return query(collection(db, "game_sessions", activeSessionId, "messages"), orderBy("timestamp", "asc"), limit(50))
+  }, [db, activeSessionId])
+  const { data: sessionMessages } = useCollection(sessionMessagesQuery)
+
+  // 7. 로컬 메시지 (싱글 플레이 시)
+  const [localMessages, setLocalMessages] = useState<GameMessage[]>([])
+
+  // 8. 전체 유저 (온라인 상태 확인용)
   const usersQuery = useMemoFirebase(() => {
-    if (!user) return null // 로그인 전에는 쿼리하지 않음
+    if (!user) return null
     return collection(db, "users")
   }, [db, user])
   const { data: allUsers } = useCollection(usersQuery)
@@ -105,7 +128,7 @@ export default function SwordGamePage() {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [messages])
+  }, [localMessages, sessionMessages])
 
   const currentLevel = profile?.level || 0
   const userNickname = userData?.nickname || "학생"
@@ -210,8 +233,72 @@ export default function SwordGamePage() {
       timestamp: new Date()
     }
 
-    setMessages(prev => [...prev.slice(-49), newMessage])
+    if (activeSessionId) {
+      addDoc(collection(db, "game_sessions", activeSessionId, "messages"), {
+        ...newMessage,
+        timestamp: serverTimestamp()
+      })
+    } else {
+      setLocalMessages(prev => [...prev.slice(-49), newMessage])
+    }
     setIsEnhancing(false)
+  }
+
+  // 친구 초대 보내기
+  const handleInviteFriend = async (friendId: string, friendNickname: string) => {
+    if (!user || !userData) return
+    setIsInviting(friendId)
+    
+    try {
+      const sessionId = [user.uid, friendId].sort().join("_")
+      
+      // 세션 문서 생성
+      await setDoc(doc(db, "game_sessions", sessionId), {
+        participants: [user.uid, friendId],
+        active: true,
+        createdAt: serverTimestamp()
+      }, { merge: true })
+
+      // 친구에게 초대 알림 전송
+      const inviteRef = doc(collection(db, "users", friendId, "invites"))
+      await setDoc(inviteRef, {
+        fromId: user.uid,
+        fromNickname: userData.nickname,
+        status: "pending",
+        sessionId: sessionId,
+        createdAt: serverTimestamp()
+      })
+
+      toast({ title: "초대 전송!", description: `${friendNickname}님에게 합동 플레이 초대를 보냈습니다.` })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsInviting(null)
+    }
+  }
+
+  // 초대 수락
+  const handleAcceptInvite = async (invite: any) => {
+    if (!user) return
+    try {
+      await updateDoc(doc(db, "users", user.uid, "invites", invite.id), { status: "accepted" })
+      setActiveSessionId(invite.sessionId)
+      toast({ title: "초대 수락!", description: "합동 플레이 룸으로 입장합니다." })
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // 초대 거절
+  const handleRejectInvite = async (inviteId: string) => {
+    if (!user) return
+    await deleteDoc(doc(db, "users", user.uid, "invites", inviteId))
+  }
+
+  // 세션 나가기
+  const handleExitSession = () => {
+    setActiveSessionId(null)
+    toast({ title: "세션 종료", description: "싱글 플레이 모드로 전환합니다." })
   }
 
   // 친구 검색 로직
@@ -219,7 +306,6 @@ export default function SwordGamePage() {
     if (!searchQuery.trim()) return
     setIsSearching(true)
     try {
-      // 닉네임 또는 아이디로 검색
       const qNick = query(collection(db, "users"), where("nickname", "==", searchQuery.trim()))
       const qId = query(collection(db, "users"), where("username", "==", searchQuery.trim()))
       
@@ -266,31 +352,53 @@ export default function SwordGamePage() {
     )
   }
 
+  const displayMessages = activeSessionId ? (sessionMessages || []) : localMessages
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-500">
       <div className="flex flex-col lg:flex-row gap-6">
         
         {/* 메인 게임 영역 */}
         <div className="flex-grow space-y-6">
-          <Card className="border-none shadow-2xl bg-card rounded-[2.5rem] overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b border-primary/10">
+          <Card className={cn(
+            "border-none shadow-2xl bg-card rounded-[2.5rem] overflow-hidden transition-all duration-500",
+            activeSessionId && "ring-4 ring-primary/20 scale-[1.01]"
+          )}>
+            <CardHeader className={cn(
+              "p-6 border-b border-primary/10 transition-colors",
+              activeSessionId ? "bg-primary/10" : "bg-primary/5"
+            )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary rounded-2xl shadow-lg">
-                    <Sword className="h-6 w-6 text-white" />
+                  <div className={cn(
+                    "p-3 rounded-2xl shadow-lg transition-colors",
+                    activeSessionId ? "bg-accent text-accent-foreground" : "bg-primary text-white"
+                  )}>
+                    {activeSessionId ? <Users className="h-6 w-6" /> : <Sword className="h-6 w-6" />}
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-black">검 강화 게임</CardTitle>
-                    <CardDescription className="text-xs font-bold text-primary/60">{userNickname}님의 도전! (회당 10P)</CardDescription>
+                    <CardTitle className="text-xl font-black">
+                      {activeSessionId ? "합동 플레이 룸" : "검 강화 게임"}
+                    </CardTitle>
+                    <CardDescription className="text-xs font-bold text-primary/60">
+                      {activeSessionId ? "친구와 함께 실시간으로 강화 중!" : `${userNickname}님의 도전! (회당 10P)`}
+                    </CardDescription>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge variant="outline" className="h-7 px-3 rounded-full border-primary/20 bg-background font-black text-primary">
-                    현재: +{currentLevel}
-                  </Badge>
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
-                    <Coins className="h-3 w-3" /> {userPoints.toLocaleString()}P 보유
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant="outline" className="h-7 px-3 rounded-full border-primary/20 bg-background font-black text-primary">
+                      현재: +{currentLevel}
+                    </Badge>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
+                      <Coins className="h-3 w-3" /> {userPoints.toLocaleString()}P 보유
+                    </div>
                   </div>
+                  {activeSessionId && (
+                    <Button variant="ghost" size="icon" onClick={handleExitSession} className="text-destructive hover:bg-destructive/10 rounded-full h-10 w-10">
+                      <LogOut className="h-5 w-5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -299,36 +407,43 @@ export default function SwordGamePage() {
                 <ScrollArea className="flex-grow p-6">
                   <div className="space-y-4">
                     <div className="bg-primary/10 p-4 rounded-2xl border border-primary/10 text-xs font-bold text-primary leading-relaxed">
-                      📢 [시스템] {userNickname}님, 환영합니다!<br/>
-                      - 10포인트 소모 | 5단계부터 하락 위험!<br/>
-                      - 친구들의 강화 소식을 실시간으로 확인해보세요.
+                      {activeSessionId ? (
+                        <>📢 [시스템] 합동 플레이 모드 활성화!<br/>- 친구의 강화 소식도 이곳에 실시간으로 표시됩니다.</>
+                      ) : (
+                        <>📢 [시스템] {userNickname}님, 환영합니다!<br/>- 10포인트 소모 | 5단계부터 하락 위험!<br/>- 친구를 초대해 함께 즐겨보세요.</>
+                      )}
                     </div>
 
-                    {messages.map((msg) => (
+                    {displayMessages.map((msg: any) => (
                       <div key={msg.id} className="animate-in slide-in-from-bottom-2 duration-300">
                         <div className={cn(
-                          "p-4 rounded-2xl border",
+                          "p-4 rounded-2xl border transition-all",
+                          msg.nickname === userNickname ? "ml-4" : "mr-4 border-dashed",
                           msg.status === 'success' ? "bg-green-500/10 border-green-500/20" :
                           msg.status === 'fail' ? "bg-blue-500/10 border-blue-500/20" :
                           msg.status === 'decrease' ? "bg-orange-500/10 border-orange-500/20" :
                           "bg-destructive/10 border-destructive/20"
                         )}>
-                          <p className={cn("text-xs font-black mb-1", 
+                          <p className={cn("text-[10px] font-black mb-1 uppercase tracking-widest", 
                             msg.status === 'success' ? "text-green-600" :
                             msg.status === 'fail' ? "text-blue-600" :
                             msg.status === 'decrease' ? "text-orange-600" : "text-destructive"
                           )}>
-                            {msg.status === 'success' ? '🔥 [성공]' : 
-                             msg.status === 'fail' ? '🛡️ [유지]' : 
-                             msg.status === 'decrease' ? '📉 [하락]' : '💥 [파괴]'}
+                            {msg.status === 'success' ? '🔥 SUCCESS' : 
+                             msg.status === 'fail' ? '🛡️ STABLE' : 
+                             msg.status === 'decrease' ? '📉 DECREASE' : '💥 DESTROYED'}
                           </p>
-                          <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
-                          <p className="text-[11px] font-bold">강화: +{msg.before} → +{msg.after}</p>
-                          <p className="text-[11px] font-black">
-                            결과: {msg.status === 'success' ? '✅ 대성공!' : 
-                                   msg.status === 'fail' ? '💠 변화 없음' : 
-                                   msg.status === 'decrease' ? '⚠️ 수치 하락' : '💀 초기화'}
-                          </p>
+                          <div className="flex justify-between items-end">
+                            <div>
+                              <p className="text-xs font-black">{msg.nickname}</p>
+                              <p className="text-[11px] font-bold opacity-60">+{msg.before} → +{msg.after}</p>
+                            </div>
+                            <span className="text-lg font-black">
+                              {msg.status === 'success' ? '✅' : 
+                               msg.status === 'fail' ? '💠' : 
+                               msg.status === 'decrease' ? '⚠️' : '💀'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -354,6 +469,33 @@ export default function SwordGamePage() {
 
         {/* 사이드바: 친구 & 순위 */}
         <div className="w-full lg:w-80 space-y-6">
+          {/* 받은 초대 알림 */}
+          {incomingInvites && incomingInvites.length > 0 && (
+            <div className="space-y-2 animate-in zoom-in-95 duration-300">
+              <p className="text-[10px] font-black text-primary flex items-center gap-1.5 px-2">
+                <Bell className="h-3 w-3" /> 도착한 초대 ({incomingInvites.length})
+              </p>
+              {incomingInvites.map((inv) => (
+                <Card key={inv.id} className="border-none shadow-lg bg-primary text-white rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="flex-grow">
+                      <p className="text-[10px] font-bold opacity-80">합동 플레이 초대</p>
+                      <p className="text-xs font-black">{inv.fromNickname}님</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button size="icon" onClick={() => handleAcceptInvite(inv)} className="h-8 w-8 rounded-full bg-white text-primary hover:bg-white/90">
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleRejectInvite(inv.id)} className="h-8 w-8 rounded-full text-white/50 hover:bg-white/10">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           <Tabs defaultValue="friends">
             <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-muted/50 p-1 mb-4">
               <TabsTrigger value="friends" className="rounded-xl font-bold text-xs"><Users className="h-3 w-3 mr-1" /> 친구</TabsTrigger>
@@ -408,14 +550,27 @@ export default function SwordGamePage() {
                               <span className="text-[9px] font-bold text-primary">+{f.level} 검 보유</span>
                             </div>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleRemoveFriend(f.friendId)}
-                            className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
-                          >
-                            <UserMinus className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex gap-1">
+                            {f.isOnline && !activeSessionId && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleInviteFriend(f.friendId, f.nickname)}
+                                disabled={isInviting === f.friendId}
+                                className="h-7 rounded-lg text-[9px] font-black border-primary/20 text-primary hover:bg-primary/10"
+                              >
+                                {isInviting === f.friendId ? <Loader2 className="h-3 w-3 animate-spin" /> : "함께하기"}
+                              </Button>
+                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleRemoveFriend(f.friendId)}
+                              className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                            >
+                              <UserMinus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       {friendsWithStatus.length === 0 && (
