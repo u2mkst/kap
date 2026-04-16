@@ -385,7 +385,7 @@ export default function DashboardPage() {
              <CardHeader className="border-b bg-muted/10 py-4 flex flex-row items-center justify-between">
                <CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-5 w-5 text-accent" /> 오늘의 명언</CardTitle>
                {fortuneData && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => shareQuoteToKakao(fortuneData.fortuneText, fortuneData.author, configData?.kakaoApiKey)}><Share2 className="h-3.5 w-3.5" /></Button>}
-             </Header>
+             </CardHeader>
              <CardContent className="p-6">
                 {fortuneData ? (
                   <div className="space-y-4">
