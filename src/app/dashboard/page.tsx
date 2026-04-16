@@ -34,7 +34,7 @@ import {
   ShieldCheck,
   ArrowRight
 } from "lucide-react"
-import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from "@/firebase"
+import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"

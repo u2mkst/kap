@@ -17,24 +17,10 @@ import {
   ShieldAlert, 
   Trash2, 
   Loader2, 
-  BrainCircuit, 
   Coins,
   Save,
-  Quote,
   MessageSquare,
-  Eraser,
-  CalendarDays,
-  Copy,
-  Info,
-  RefreshCw,
-  Edit2,
-  Settings2,
-  PlusCircle,
-  CalendarPlus,
-  ArrowRight,
-  KeyRound,
-  ShieldCheck,
-  History
+  KeyRound
 } from "lucide-react"
 import { 
   useFirestore, 
@@ -48,7 +34,7 @@ import {
 } from "@/firebase"
 import { doc, serverTimestamp, query, orderBy, collection, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { format, addDays, subDays, isBefore, parseISO, isValid } from "date-fns"
+import { format, subDays, isBefore, parseISO, isValid } from "date-fns"
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser()
@@ -59,7 +45,6 @@ export default function AdminPage() {
   const [selectedTeacherFilter, setSelectedTeacherFilter] = useState("all")
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
   const [tempPoints, setTempPoints] = useState<{ [key: string]: number }>({})
-  const [tempVotes, setTempVotes] = useState<{ [key: string]: number }>({})
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"))
   const [claimCode, setClaimSecret] = useState("")
 
@@ -72,12 +57,6 @@ export default function AdminPage() {
     problemText: "",
     answer: "",
     rewardPoints: 100
-  })
-
-  const [singleFortune, setSingleFortune] = useState({
-    date: format(new Date(), "yyyy-MM-dd"),
-    fortuneText: "",
-    author: ""
   })
 
   const adminRef = useMemoFirebase(() => {
@@ -124,29 +103,16 @@ export default function AdminPage() {
   }, [db, isActuallyAdmin])
   const { data: allProblems } = useCollection(allProblemsQuery)
 
-  const allFortunesQuery = useMemoFirebase(() => {
-    if (!isActuallyAdmin) return null
-    return query(collection(db, "daily_fortunes"), orderBy("date", "desc"))
-  }, [db, isActuallyAdmin])
-  const { data: allFortunes } = useCollection(allFortunesQuery)
-
   const problemsOnSelectedDate = useMemo(() => {
     if (!allProblems) return []
     return allProblems.filter(p => p.date === selectedDate)
   }, [allProblems, selectedDate])
-
-  const fortuneOnSelectedDate = useMemo(() => {
-    if (!allFortunes) return undefined
-    return allFortunes.find(f => f.date === selectedDate)
-  }, [allFortunes, selectedDate])
 
   const adminIds = useMemo(() => adminDocs?.map(d => d.id) || [], [adminDocs])
 
   const [teacherName, setTeacherName] = useState("")
   const [noticeText, setNoticeText] = useState("")
   const [adminSecretCode, setAdminSecretCode] = useState("")
-  const [bulkProblemText, setBulkProblemText] = useState("")
-  const [bulkFortuneText, setBulkFortuneText] = useState("")
 
   const [pointsConfig, setPointsConfig] = useState({
     dailyAttendance: 100,
@@ -209,27 +175,6 @@ export default function AdminPage() {
     toast({ title: "삭제 완료" })
   }
 
-  const handleResetAllVotes = () => {
-    if (!teachers || teachers.length === 0) return
-    if (!confirm("정말 모든 투표 결과를 0으로 초기화하시겠습니까?")) return
-    
-    setIsSaving(true)
-    teachers.forEach(t => {
-      updateDocumentNonBlocking(doc(db, "teachers", t.id), { vote: 0, updatedAt: serverTimestamp() })
-    })
-    toast({ title: "투표 초기화 완료" })
-    setIsSaving(false)
-  }
-
-  const handleUpdateVoteCount = (teacherId: string) => {
-    const newVote = tempVotes[teacherId]
-    if (newVote === undefined || isNaN(newVote)) return
-    setIsSaving(true)
-    updateDocumentNonBlocking(doc(db, "teachers", teacherId), { vote: newVote, updatedAt: serverTimestamp() })
-    toast({ title: "투표수 수정 완료" })
-    setIsSaving(false)
-  }
-
   const handleUpdateConfig = () => {
     if (!configRef) return
     setIsSaving(true)
@@ -279,7 +224,7 @@ export default function AdminPage() {
   }
 
   const handleCleanupOldData = () => {
-    if (!confirm("2일 전의 모든 운세와 문제 기록을 삭제하시겠습니까?")) return
+    if (!confirm("2일 전의 모든 문제 기록을 삭제하시겠습니까?")) return
     setIsSaving(true)
     
     const thresholdDate = subDays(new Date(), 2)
@@ -293,45 +238,7 @@ export default function AdminPage() {
       }
     })
 
-    allFortunes?.forEach(f => {
-      const fDate = parseISO(f.date)
-      if (isValid(fDate) && isBefore(fDate, thresholdDate)) {
-        deleteDocumentNonBlocking(doc(db, "daily_fortunes", f.date))
-        deleteCount++
-      }
-    })
-
     toast({ title: "데이터 정리 완료", description: `${deleteCount}개의 오래된 데이터가 삭제되었습니다.` })
-    setIsSaving(false)
-  }
-
-  const handleBulkProblems = () => {
-    if (!bulkProblemText.trim()) return
-    setIsSaving(true)
-    const lines = bulkProblemText.trim().split("\n")
-    let count = 0
-    lines.forEach(line => {
-      if (!line.trim()) return
-      const [date, grade, title, topic, difficulty, problemText, answer, rewardPoints] = line.split("|")
-      if (date && grade && title && problemText && answer) {
-        const problemId = `${date}_${grade}`
-        setDocumentNonBlocking(doc(db, "daily_problems", problemId), {
-          id: problemId,
-          date,
-          grade,
-          title,
-          topic: topic || "일반",
-          difficulty: difficulty || "중",
-          problemText,
-          answer,
-          rewardPoints: parseInt(rewardPoints || "100"),
-          updatedAt: serverTimestamp()
-        }, { merge: true })
-        count++
-      }
-    })
-    toast({ title: "문제 일괄 등록 완료", description: `${count}개의 문제가 등록되었습니다.` })
-    setBulkProblemText("")
     setIsSaving(false)
   }
 
@@ -353,53 +260,6 @@ export default function AdminPage() {
     
     toast({ title: "문제 등록 완료!" })
     setSingleProblem({ ...singleProblem, title: "", problemText: "", answer: "" })
-    setIsSaving(false)
-  }
-
-  const handleSingleFortuneSave = () => {
-    const { date, fortuneText, author } = singleFortune
-    if (!date || !fortuneText) {
-      toast({ variant: "destructive", title: "날짜와 명언 내용을 입력해주세요." })
-      return
-    }
-
-    setIsSaving(true)
-    setDocumentNonBlocking(doc(db, "daily_fortunes", date), {
-      date,
-      fortuneText,
-      author: author || "알 수 없음",
-      updatedAt: serverTimestamp()
-    }, { merge: true })
-    
-    toast({ title: "명언 등록 완료!" })
-    setSingleFortune({ ...singleFortune, fortuneText: "", author: "" })
-    setIsSaving(false)
-  }
-
-  const handleBulkFortunes = () => {
-    if (!bulkFortuneText.trim()) return
-    setIsSaving(true)
-    const lines = bulkFortuneText.trim().split("\n")
-    let count = 0
-    lines.forEach(line => {
-      if (!line.trim()) return
-      const parts = line.split("|")
-      const date = parts[0]
-      const quoteText = parts[1]
-      const author = parts[2] || "알 수 없음"
-
-      if (date && quoteText) {
-        setDocumentNonBlocking(doc(db, "daily_fortunes", date), {
-          date,
-          fortuneText: quoteText,
-          author,
-          updatedAt: serverTimestamp()
-        }, { merge: true })
-        count++
-      }
-    })
-    toast({ title: "명언 일괄 등록 완료", description: `${count}개의 명언이 등록되었습니다.` })
-    setBulkFortuneText("")
     setIsSaving(false)
   }
 
@@ -440,13 +300,12 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="inquiry">
-        <TabsList className="grid w-full grid-cols-7 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
+        <TabsList className="grid w-full grid-cols-6 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
           <TabsTrigger value="inquiry" className="rounded-xl font-bold text-xs"><MessageSquare className="h-3 w-3 mr-1" /> 문의</TabsTrigger>
           <TabsTrigger value="users" className="rounded-xl font-bold text-xs">학생</TabsTrigger>
           <TabsTrigger value="points" className="rounded-xl font-bold text-xs"><Coins className="h-3 w-3 mr-1" /> 포인트</TabsTrigger>
           <TabsTrigger value="bulk" className="rounded-xl font-bold text-xs">등록/현황</TabsTrigger>
           <TabsTrigger value="vote" className="rounded-xl font-bold text-xs">투표</TabsTrigger>
-          <TabsTrigger value="notice" className="rounded-xl font-bold text-xs">공지</TabsTrigger>
           <TabsTrigger value="config" className="rounded-xl font-bold text-xs">설정</TabsTrigger>
         </TabsList>
 
@@ -552,7 +411,6 @@ export default function AdminPage() {
                 <Calendar onDateClick={(d) => setSelectedDate(format(d, "yyyy-MM-dd"))} />
                 <div className="p-3 bg-muted/30 rounded-xl space-y-2">
                   <p className="text-[10px] font-black">문제: {problemsOnSelectedDate.length}개</p>
-                  <p className="text-[10px] font-black">명언: {fortuneOnSelectedDate ? "등록됨" : "없음"}</p>
                 </div>
              </Card>
           </div>
@@ -572,13 +430,6 @@ export default function AdminPage() {
                  </div>
                ))}
              </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notice">
-          <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-4">
-            <Textarea value={noticeText} onChange={(e) => setNoticeText(e.target.value)} className="rounded-2xl min-h-[120px]" placeholder="공지 내용 입력..." />
-            <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 bg-primary">공지 업데이트</Button>
           </Card>
         </TabsContent>
 

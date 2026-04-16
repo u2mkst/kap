@@ -3,14 +3,14 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { MessageSquare, Send, Loader2, CheckCircle2, Clock } from "lucide-react"
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, updateDocumentNonBlocking } from "@/firebase"
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, limit } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -22,7 +22,6 @@ export default function SupportPage() {
   const router = useRouter()
   
   const [isSending, setIsSending] = useState(false)
-  
   const [subject, setSubject] = useState("")
   const [message, setMessage] = useState("")
 

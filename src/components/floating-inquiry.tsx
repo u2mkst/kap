@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle, Send, Loader2, MessageSquarePlus } from "lucide-react"
+import { MessageCircle, Send, Loader2 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import {
