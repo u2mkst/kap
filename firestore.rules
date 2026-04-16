@@ -46,7 +46,8 @@ service cloud.firestore {
 
     // 4. 선생님 및 메타데이터
     match /teachers/{teacherId} {
-      allow read: if isAuthenticated();
+      // 회원가입 시 선생님 선택을 위해 읽기 권한을 공개로 설정
+      allow read: if true;
       allow write: if isUserAdmin();
     }
 

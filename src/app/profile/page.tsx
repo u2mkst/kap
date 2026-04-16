@@ -43,7 +43,10 @@ export default function ProfilePage() {
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  const teachersRef = useMemoFirebase(() => collection(db, "teachers"), [db])
+  const teachersRef = useMemoFirebase(() => {
+    if (!user) return null // 로그인 완료 전에는 쿼리하지 않음
+    return collection(db, "teachers")
+  }, [db, user])
   const { data: teachers } = useCollection(teachersRef)
 
   const [formData, setFormData] = useState({

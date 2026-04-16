@@ -82,8 +82,9 @@ export default function SwordGamePage() {
 
   // 5. 온라인 친구들을 위한 상세 유저 정보 쿼리 (실시간)
   const usersQuery = useMemoFirebase(() => {
+    if (!user) return null // 로그인 전에는 쿼리하지 않음
     return collection(db, "users")
-  }, [db])
+  }, [db, user])
   const { data: allUsers } = useCollection(usersQuery)
 
   const friendsWithStatus = (friendsList || []).map(f => {
