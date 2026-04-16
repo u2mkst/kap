@@ -10,15 +10,17 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Phone, School, Loader2, UserCircle, Users, GraduationCap, Lock, Search, ShieldCheck, CheckCircle2 } from "lucide-react"
+import { Phone, School, Loader2, UserCircle, Users, GraduationCap, Lock, Search, ShieldCheck, CheckCircle2, KeyRound } from "lucide-react"
 import { useAuth, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth"
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, EmailAuthProvider, linkWithCredential } from "firebase/auth"
 import { doc, setDoc, serverTimestamp, collection, getDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { searchSchool } from "@/lib/neis-api"
 
 export default function SignupPage() {
   const [phoneNumber, setPhoneNumber] = useState("")
+  const [password, setPassword] = useState("")
+  const [passwordConfirm, setPasswordConfirm] = useState("")
   const [verificationCode, setVerificationCode] = useState("")
   const [isVerified, setIsVerified] = useState(false)
   const [isCodeSent, setIsCodeSent] = useState(false)
@@ -63,7 +65,8 @@ export default function SignupPage() {
     setIsLoading(true)
     try {
       setupRecaptcha()
-      const formatted = `+82${phoneNumber.substring(1)}`
+      const raw = phoneNumber.replace(/\D/g, '')
+      const formatted = `+82${raw.substring(1)}`
       const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current!)
       confirmationResult.current = result
       setIsCodeSent(true)
@@ -113,13 +116,30 @@ export default function SignupPage() {
       toast({ variant: "destructive", title: "인증 필요", description: "휴대폰 인증을 먼저 완료해 주세요." })
       return
     }
+    if (password.length < 6) {
+      toast({ variant: "destructive", title: "비밀번호 취약", description: "비밀번호는 6자리 이상이어야 합니다." })
+      return
+    }
+    if (password !== passwordConfirm) {
+      toast({ variant: "destructive", title: "비밀번호 불일치" })
+      return
+    }
     if (!agreedToPrivacy) return
 
     setIsLoading(true)
     try {
+      // Create permanent password account by linking
+      const raw = phoneNumber.replace(/\D/g, '')
+      const virtualEmail = `82${raw.startsWith('0') ? raw.substring(1) : raw}@kst-hub.com`
+      const credential = EmailAuthProvider.credential(virtualEmail, password)
+      
+      if (auth.currentUser) {
+        await linkWithCredential(auth.currentUser, credential)
+      }
+
       await setDoc(doc(db, "users", verifiedUid), {
         id: verifiedUid,
-        phoneNumber: `+82${phoneNumber.substring(1)}`,
+        phoneNumber: `+82${raw.substring(1)}`,
         nickname,
         firstName,
         lastName,
@@ -139,6 +159,7 @@ export default function SignupPage() {
       toast({ title: "회원가입 완료!", description: "KST HUB에 오신 것을 환영합니다." })
       router.push("/dashboard")
     } catch (error: any) {
+      console.error(error)
       toast({ variant: "destructive", title: "가입 실패", description: error.message })
     } finally {
       setIsLoading(false)
@@ -161,7 +182,7 @@ export default function SignupPage() {
           <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto px-6 py-6 custom-scrollbar">
             {/* 휴대폰 인증 섹션 */}
             <div className="space-y-3 p-4 bg-muted/20 rounded-3xl border border-dashed border-primary/20">
-              <h3 className="text-xs font-black flex items-center gap-2 text-primary"><Phone className="h-4 w-4" /> 본인 인증</h3>
+              <h3 className="text-xs font-black flex items-center gap-2 text-primary"><Phone className="h-4 w-4" /> 본인 인증 (최초 1회)</h3>
               <div className="flex gap-2">
                 <Input 
                   placeholder="01012345678" 
@@ -202,6 +223,26 @@ export default function SignupPage() {
                   <CheckCircle2 className="h-4 w-4" /> 인증이 완료되었습니다.
                 </div>
               )}
+            </div>
+
+            <div className="pt-2 border-t space-y-3">
+              <h3 className="text-xs font-black mb-1 flex items-center gap-2 text-primary"><Lock className="h-4 w-4" /> 로그인 비밀번호</h3>
+              <Input 
+                type="password" 
+                placeholder="비밀번호 (6자 이상)" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+                className="rounded-xl h-10 bg-muted/10" 
+              />
+              <Input 
+                type="password" 
+                placeholder="비밀번호 확인" 
+                value={passwordConfirm} 
+                onChange={(e) => setPasswordConfirm(e.target.value)} 
+                required 
+                className="rounded-xl h-10 bg-muted/10" 
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-2 border-t">

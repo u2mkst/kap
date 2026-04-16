@@ -8,19 +8,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { BookOpen, Loader2, Phone, ShieldCheck, ArrowRight } from "lucide-react"
+import { BookOpen, Loader2, Phone, ShieldCheck, ArrowRight, Lock, KeyRound } from "lucide-react"
 import { useAuth, useUser, useFirestore } from "@/firebase"
 import { 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
-  ConfirmationResult 
+  ConfirmationResult,
+  signInWithEmailAndPassword
 } from "firebase/auth"
 import { doc, getDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const [phoneNumber, setPhoneNumber] = useState("")
+  const [password, setPassword] = useState("")
   const [verificationCode, setVerificationCode] = useState("")
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password')
   const [isCodeSent, setIsCodeSent] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [timer, setTimer] = useState(0)
@@ -55,16 +58,29 @@ export default function LoginPage() {
     }
   }
 
-  const formatPhoneNumber = (val: string) => {
-    const cleaned = val.replace(/\D/g, '')
-    if (cleaned.startsWith('010') && cleaned.length <= 11) {
-      return `+82${cleaned.substring(1)}`
+  const formatRawPhone = (val: string) => val.replace(/\D/g, '')
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (phoneNumber.length < 10 || !password) return
+
+    setIsLoading(true)
+    try {
+      const raw = formatRawPhone(phoneNumber)
+      // Virtual email format: 821012345678@kst-hub.com
+      const email = `82${raw.startsWith('0') ? raw.substring(1) : raw}@kst-hub.com`
+      await signInWithEmailAndPassword(auth, email, password)
+      toast({ title: "로그인 성공", description: "반갑습니다!" })
+      router.push("/dashboard")
+    } catch (error: any) {
+      console.error(error)
+      toast({ variant: "destructive", title: "로그인 실패", description: "번호 또는 비밀번호를 확인해 주세요." })
+    } finally {
+      setIsLoading(false)
     }
-    return cleaned
   }
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSendCode = async () => {
     if (!phoneNumber.startsWith('010') || phoneNumber.length < 10) {
       toast({ variant: "destructive", title: "번호 오류", description: "올바른 휴대폰 번호를 입력하세요." })
       return
@@ -73,7 +89,8 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       setupRecaptcha()
-      const formatted = formatPhoneNumber(phoneNumber)
+      const raw = formatRawPhone(phoneNumber)
+      const formatted = `+82${raw.substring(1)}`
       const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current!)
       confirmationResult.current = result
       setIsCodeSent(true)
@@ -95,7 +112,6 @@ export default function LoginPage() {
     try {
       const result = await confirmationResult.current?.confirm(verificationCode)
       if (result?.user) {
-        // 기존 회원 여부 확인
         const userDoc = await getDoc(doc(db, "users", result.user.uid))
         if (!userDoc.exists()) {
           toast({ title: "환영합니다!", description: "초기 정보를 등록해 주세요." })
@@ -135,12 +151,14 @@ export default function LoginPage() {
             <Phone className="h-8 w-8" />
           </div>
           <CardTitle className="text-2xl font-black font-headline text-primary tracking-tight">KST HUB 로그인</CardTitle>
-          <CardDescription className="text-xs font-bold opacity-60">아이디 대신 휴대폰 번호로 안전하게 로그인하세요.</CardDescription>
+          <CardDescription className="text-xs font-bold opacity-60">
+            {loginMode === 'password' ? '휴대폰 번호와 비밀번호로 로그인하세요.' : '인증번호를 통해 안전하게 로그인하세요.'}
+          </CardDescription>
         </CardHeader>
         
         <CardContent className="p-8 space-y-6">
-          {!isCodeSent ? (
-            <form onSubmit={handleSendCode} className="space-y-4">
+          {loginMode === 'password' ? (
+            <form onSubmit={handlePasswordLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-xs font-black text-muted-foreground ml-1">휴대폰 번호</Label>
                 <Input 
@@ -153,35 +171,80 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              <Button className="w-full h-12 rounded-2xl font-black bg-primary shadow-md" disabled={isLoading || phoneNumber.length < 10}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><ShieldCheck className="mr-2 h-4 w-4" /> 인증번호 받기</>}
+              <div className="space-y-2">
+                <Label htmlFor="pass" className="text-xs font-black text-muted-foreground ml-1">비밀번호</Label>
+                <Input 
+                  id="pass" 
+                  placeholder="비밀번호 입력" 
+                  type="password"
+                  className="h-12 rounded-2xl bg-muted/30 border-none focus-visible:ring-primary px-5 font-bold" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button className="w-full h-12 rounded-2xl font-black bg-primary shadow-md" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "로그인"}
+              </Button>
+              <Button 
+                type="button"
+                variant="ghost" 
+                className="w-full text-xs font-bold opacity-60" 
+                onClick={() => setLoginMode('otp')}
+              >
+                비밀번호를 모르시나요? 인증번호로 로그인
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyCode} className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-              <div className="space-y-2">
-                <Label htmlFor="code" className="text-xs font-black text-muted-foreground ml-1">인증코드 6자리</Label>
-                <div className="relative">
-                  <Input 
-                    id="code" 
-                    placeholder="000000" 
-                    className="h-12 rounded-2xl bg-muted/30 border-none focus-visible:ring-primary px-5 font-mono text-center tracking-[1em] text-lg font-black" 
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.substring(0, 6))}
-                    required
-                  />
-                  {timer > 0 && (
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-primary bg-primary/10 px-2 py-1 rounded-full">
-                      {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
-                    </span>
-                  )}
+            <div className="space-y-4 animate-in fade-in duration-300">
+              {!isCodeSent ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black text-muted-foreground ml-1">휴대폰 번호</Label>
+                    <Input 
+                      placeholder="01012345678" 
+                      className="h-12 rounded-2xl bg-muted/30 border-none px-5 font-bold" 
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                    />
+                  </div>
+                  <Button className="w-full h-12 rounded-2xl font-black bg-primary" onClick={handleSendCode} disabled={isLoading || phoneNumber.length < 10}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "인증번호 받기"}
+                  </Button>
                 </div>
-              </div>
-              <Button className="w-full h-12 rounded-2xl font-black bg-primary shadow-md" disabled={isLoading || verificationCode.length !== 6}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "인증 및 로그인"}
+              ) : (
+                <form onSubmit={handleVerifyCode} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black text-muted-foreground ml-1">인증코드 6자리</Label>
+                    <div className="relative">
+                      <Input 
+                        placeholder="000000" 
+                        className="h-12 rounded-2xl bg-muted/30 border-none px-5 font-mono text-center tracking-[1em] text-lg font-black" 
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.substring(0, 6))}
+                        required
+                      />
+                      {timer > 0 && (
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-primary bg-primary/10 px-2 py-1 rounded-full">
+                          {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button className="w-full h-12 rounded-2xl font-black bg-primary shadow-md" disabled={isLoading || verificationCode.length !== 6}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "인증 및 로그인"}
+                  </Button>
+                </form>
+              )}
+              <Button 
+                type="button"
+                variant="ghost" 
+                className="w-full text-xs font-bold opacity-60" 
+                onClick={() => { setLoginMode('password'); setIsCodeSent(false); }}
+              >
+                비밀번호 로그인으로 돌아가기
               </Button>
-              <Button variant="ghost" className="w-full text-xs font-bold opacity-60" onClick={() => setIsCodeSent(false)}>번호 다시 입력하기</Button>
-            </form>
+            </div>
           )}
         </CardContent>
 

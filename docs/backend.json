@@ -59,7 +59,7 @@
     }
   },
   "auth": {
-    "providers": ["phone"]
+    "providers": ["phone", "password"]
   },
   "firestore": {
     "/users/{userId}": {
