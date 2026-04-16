@@ -1,24 +1,18 @@
 
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Sword, 
   Flame, 
   Trophy, 
-  AlertTriangle, 
-  History, 
   Zap, 
-  Send,
-  Loader2,
-  Sparkles,
-  Bomb
+  Loader2
 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment } from "firebase/firestore"
@@ -43,15 +37,21 @@ export default function SwordGamePage() {
   const [messages, setMessages] = useState<GameMessage[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // 사용자 게임 프로필 쿼리 (별도 컬렉션으로 관리하여 순위 매기기 용이하게 함)
+  // 1. 실제 유저 프로필(닉네임) 가져오기
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null
+    return doc(db, "users", user.uid)
+  }, [user, db])
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
+
+  // 2. 사용자 게임 프로필 쿼리
   const profileRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "sword_game_profiles", user.uid)
   }, [user, db])
-
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
-  // 전체 순위 쿼리
+  // 3. 전체 순위 쿼리
   const rankingQuery = useMemoFirebase(() => {
     return query(collection(db, "sword_game_profiles"), orderBy("level", "desc"), limit(10))
   }, [db])
@@ -68,9 +68,10 @@ export default function SwordGamePage() {
   }, [messages])
 
   const currentLevel = profile?.level || 0
+  const userNickname = userData?.nickname || "학생"
 
   const handleEnhance = async () => {
-    if (!user || !profileRef || isEnhancing) return
+    if (!user || !profileRef || !userData || isEnhancing) return
     setIsEnhancing(true)
 
     const level = currentLevel
@@ -99,7 +100,7 @@ export default function SwordGamePage() {
     try {
       await setDoc(profileRef, {
         userId: user.uid,
-        nickname: user.displayName || "학생",
+        nickname: userNickname, // 실제 프로필 닉네임 사용
         level: nextLevel,
         maxLevel: Math.max(profile?.maxLevel || 0, nextLevel),
         totalAttempts: increment(1),
@@ -110,7 +111,7 @@ export default function SwordGamePage() {
         id: Math.random().toString(36).substr(2, 9),
         type: 'result',
         status: resultStatus,
-        nickname: user.displayName || "나",
+        nickname: userNickname, // 실제 프로필 닉네임 사용
         before: level,
         after: nextLevel,
         timestamp: new Date()
@@ -130,7 +131,7 @@ export default function SwordGamePage() {
     }
   }
 
-  if (isUserLoading || isProfileLoading) {
+  if (isUserLoading || isProfileLoading || isUserDataLoading) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -152,7 +153,7 @@ export default function SwordGamePage() {
                   </div>
                   <div>
                     <CardTitle className="text-xl font-black">검 강화 게임</CardTitle>
-                    <CardDescription className="text-xs font-bold text-primary/60">전설의 +15 검에 도전하세요!</CardDescription>
+                    <CardDescription className="text-xs font-bold text-primary/60">{userNickname}님의 전설 도전을 응원합니다!</CardDescription>
                   </div>
                 </div>
                 <Badge variant="outline" className="h-8 px-4 rounded-full border-primary/20 bg-background font-black text-primary">
@@ -165,8 +166,8 @@ export default function SwordGamePage() {
                 <ScrollArea className="flex-grow p-6" ref={scrollRef}>
                   <div className="space-y-4">
                     <div className="bg-primary/10 p-4 rounded-2xl border border-primary/10 text-xs font-bold text-primary leading-relaxed">
-                      📢 [시스템] 검 강화 게임에 오신 것을 환영합니다!<br/>
-                      - "강화" 버튼을 눌러 시도하세요.<br/>
+                      📢 [시스템] {userNickname}님, 검 강화 게임에 오신 것을 환영합니다!<br/>
+                      - "강화 시도" 버튼을 눌러 시도하세요.<br/>
                       - +5까지는 파괴 확률이 매우 낮습니다.<br/>
                       - +11부터는 성공보다 파괴 확률이 높아집니다!
                     </div>
