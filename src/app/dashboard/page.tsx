@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -60,7 +61,6 @@ export default function DashboardPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [weekDates, setWeekDates] = useState<Date[]>([])
 
-  const [showTutorial, setShowTutorial] = useState(false)
   const [showNotice, setShowNotice] = useState(false)
   const [showMigration, setShowMigration] = useState(false)
   const [isLinking, setIsLinking] = useState(false)
@@ -101,12 +101,6 @@ export default function DashboardPage() {
       if (!hasSeenNotice) setShowNotice(true)
     }
   }, [configData])
-
-  useEffect(() => {
-    if (userData && userData.hasCompletedTutorial === false) {
-      setShowTutorial(true)
-    }
-  }, [userData])
 
   useEffect(() => {
     const targetDate = addWeeks(new Date(), weekOffset)
@@ -430,11 +424,6 @@ export default function DashboardPage() {
                     <p className="text-[10px] font-bold text-muted-foreground text-right">- {fortuneData.author}</p>
                   </div>
                 ) : <p className="text-[10px] font-bold opacity-30 italic text-center">오늘의 명언이 아직 없습니다.</p>}
-                <Link href="/support" className="block mt-4">
-                  <Button variant="outline" className="w-full text-[10px] h-8 rounded-xl font-bold border-accent/20 text-accent hover:bg-accent/5">
-                    나도 명언 추천하기 <Sparkles className="h-3 w-3 ml-1.5" />
-                  </Button>
-                </Link>
              </CardContent>
           </Card>
         </div>
