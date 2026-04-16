@@ -13,7 +13,8 @@ import {
   Trophy, 
   Zap, 
   Loader2,
-  Coins
+  Coins,
+  Info
 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase"
 import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment, updateDoc } from "firebase/firestore"
@@ -38,7 +39,7 @@ export default function SwordGamePage() {
   const router = useRouter()
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [messages, setMessages] = useState<GameMessage[]>([])
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // 1. 실제 유저 프로필(닉네임, 포인트) 가져오기
   const userDocRef = useMemoFirebase(() => {
@@ -64,9 +65,10 @@ export default function SwordGamePage() {
     if (!isUserLoading && !user) router.push("/login")
   }, [user, isUserLoading, router])
 
+  // 자동 스크롤 로직
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages])
 
@@ -74,6 +76,34 @@ export default function SwordGamePage() {
   const userNickname = userData?.nickname || "학생"
   const userPoints = userData?.points || 0
   const ENHANCE_COST = 10
+
+  // 단계별 확률 계산 함수 (1단위)
+  const getRates = (level: number) => {
+    // 기본 성공 확률: 100%에서 시작하여 레벨당 감소
+    // +0~5는 매우 높음, 그 이후 가파르게 감소
+    let success = 100;
+    if (level < 5) success = 100 - (level * 5); // +0:100, +1:95, +2:90, +3:85, +4:80
+    else if (level < 10) success = 75 - (level - 5) * 7; // +5:75, +6:68, +7:61...
+    else if (level < 15) success = 40 - (level - 10) * 4; // +10:40, +11:36, +12:32...
+    else success = Math.max(5, 20 - (level - 15) * 2); // +15이후 최소 5%까지 수렴
+
+    // 파괴 확률: 레벨이 높을수록 증가 (최대 15% 캡)
+    let destroy = 0;
+    if (level >= 3) {
+      destroy = Math.min(15, Math.floor(level / 2));
+    }
+
+    // 유지 확률: 나머지
+    const fail = 100 - success - destroy;
+
+    return { 
+      success: Math.round(success), 
+      fail: Math.round(fail), 
+      destroy: Math.round(destroy) 
+    };
+  }
+
+  const currentRates = getRates(currentLevel);
 
   const handleEnhance = async () => {
     if (!user || !profileRef || !userData || !userDocRef || isEnhancing) return
@@ -104,32 +134,15 @@ export default function SwordGamePage() {
 
     const level = currentLevel
     const roll = Math.random() * 100
-    let successRate, failRate, destroyRate
-    
-    // 변경된 확률 설정 (파괴 확률 대폭 감소, 유지 확률 증가)
-    if (level <= 5) { 
-      successRate = 70; 
-      failRate = 28; 
-      destroyRate = 2; // 기존 5% -> 2%
-    }
-    else if (level <= 10) { 
-      successRate = 50; 
-      failRate = 45; 
-      destroyRate = 5; // 기존 15% -> 5%
-    }
-    else { 
-      successRate = 30; 
-      failRate = 60; 
-      destroyRate = 10; // 기존 30% -> 10%
-    }
+    const { success, fail, destroy } = getRates(level);
 
     let resultStatus: 'success' | 'fail' | 'destroy'
     let nextLevel = level
 
-    if (roll < successRate) {
+    if (roll < success) {
       resultStatus = 'success'
       nextLevel = level + 1
-    } else if (roll < successRate + failRate) {
+    } else if (roll < success + fail) {
       resultStatus = 'fail'
       nextLevel = level
     } else {
@@ -166,7 +179,7 @@ export default function SwordGamePage() {
       timestamp: new Date()
     }
 
-    setMessages(prev => [...prev.slice(-19), newMessage])
+    setMessages(prev => [...prev.slice(-49), newMessage]) // 로그 보관량 증가
     
     if (resultStatus === 'success') {
       toast({ title: "강화 성공!", description: `+${nextLevel} 검이 되었습니다! (+1)` })
@@ -215,14 +228,14 @@ export default function SwordGamePage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="h-[400px] flex flex-col bg-muted/20">
-                <ScrollArea className="flex-grow p-6" ref={scrollRef}>
+              <div className="h-[450px] flex flex-col bg-muted/20 relative">
+                <ScrollArea className="flex-grow p-6">
                   <div className="space-y-4">
                     <div className="bg-primary/10 p-4 rounded-2xl border border-primary/10 text-xs font-bold text-primary leading-relaxed">
                       📢 [시스템] {userNickname}님, 검 강화 게임에 오신 것을 환영합니다!<br/>
                       - 시도 시 <span className="underline">10포인트</span>가 소모됩니다.<br/>
-                      - 파괴 확률이 대폭 낮아졌습니다! 전설의 검을 노려보세요.<br/>
-                      - 실패 시 강화 수치가 유지됩니다.
+                      - 강화 단계가 높아질수록 확률이 점밀하게 변동합니다.<br/>
+                      - 행운이 함께하기를 바랍니다!
                     </div>
 
                     {messages.map((msg) => (
@@ -253,10 +266,32 @@ export default function SwordGamePage() {
                         )}
                       </div>
                     ))}
+                    {/* 자동 스크롤 타겟 */}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
                 
-                <div className="p-6 bg-card border-t flex flex-col gap-3">
+                <div className="p-6 bg-card border-t flex flex-col gap-4">
+                  <div className="flex justify-between items-center bg-muted/30 p-3 rounded-xl border border-dashed">
+                    <div className="flex items-center gap-2 text-[11px] font-black text-primary/60">
+                      <Info className="h-3 w-3" /> 다음 강화 정보 (+{currentLevel} → +{currentLevel + 1})
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] font-bold text-green-600 opacity-60">성공</span>
+                        <span className="text-xs font-black text-green-600">{currentRates.success}%</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] font-bold text-blue-600 opacity-60">유지</span>
+                        <span className="text-xs font-black text-blue-600">{currentRates.fail}%</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] font-bold text-destructive opacity-60">파괴</span>
+                        <span className="text-xs font-black text-destructive">{currentRates.destroy}%</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <Button 
                     onClick={handleEnhance} 
                     disabled={isEnhancing || userPoints < ENHANCE_COST}
@@ -271,21 +306,6 @@ export default function SwordGamePage() {
               </div>
             </CardContent>
           </Card>
-
-          <div className="grid grid-cols-3 gap-4">
-             <Card className="rounded-3xl border-none bg-green-500/5 p-4 text-center">
-               <p className="text-[10px] font-black text-green-600 uppercase mb-1">0 ~ 5단계</p>
-               <p className="text-[11px] font-bold">성공 70% | 파괴 2%</p>
-             </Card>
-             <Card className="rounded-3xl border-none bg-blue-500/5 p-4 text-center">
-               <p className="text-[10px] font-black text-blue-600 uppercase mb-1">6 ~ 10단계</p>
-               <p className="text-[11px] font-bold">성공 50% | 파괴 5%</p>
-             </Card>
-             <Card className="rounded-3xl border-none bg-destructive/5 p-4 text-center">
-               <p className="text-[10px] font-black text-destructive uppercase mb-1">11단계 +</p>
-               <p className="text-[11px] font-bold">성공 30% | 파괴 10%</p>
-             </Card>
-          </div>
         </div>
 
         {/* 순위표 */}
