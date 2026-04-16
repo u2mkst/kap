@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useMemo, useEffect, useState } from "react"
+import { useMemo, useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -16,7 +16,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog"
@@ -45,10 +44,13 @@ import {
   Send,
   PartyPopper,
   Edit3,
-  BellRing
+  BellRing,
+  Phone,
+  ShieldCheck
 } from "lucide-react"
-import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection } from "@/firebase"
+import { useUser, useDoc, useFirestore, useMemoFirebase, useCollection, useAuth } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, query, collection, orderBy, limit, setDoc, where } from "firebase/firestore"
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, linkWithPhoneNumber } from "firebase/auth"
 import { toast } from "@/hooks/use-toast"
 import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
@@ -58,6 +60,7 @@ import { initKakao, shareMealToKakao, shareTimetableToKakao, shareFortuneToKakao
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
+  const auth = useAuth()
   const db = useFirestore()
   const router = useRouter()
 
@@ -77,6 +80,15 @@ export default function DashboardPage() {
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
   const [showNotice, setShowNotice] = useState(false)
+  
+  // 번호 전환(Migration) 상태
+  const [showPhoneMigration, setShowPhoneMigration] = useState(false)
+  const [migrationStep, setMigrationStep] = useState<'input' | 'verify'>('input')
+  const [migrationPhone, setMigrationPhone] = useState("")
+  const [migrationCode, setMigrationCode] = useState("")
+  const [isMigrationLoading, setIsMigrationLoading] = useState(false)
+  const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null)
+  const confirmationResult = useRef<ConfirmationResult | null>(null)
 
   // 오늘의 문제 관련 상태
   const [userAnswer, setUserAnswer] = useState("")
@@ -101,17 +113,18 @@ export default function DashboardPage() {
   useEffect(() => {
     if (configData?.kakaoApiKey) initKakao(configData.kakaoApiKey);
     if (configData?.notice) {
-      // 대시보드 진입 시 공지가 있으면 팝업 띄우기
       const hasSeenNotice = sessionStorage.getItem(`notice_${configData.notice.substring(0, 10)}`)
-      if (!hasSeenNotice) {
-        setShowNotice(true)
-      }
+      if (!hasSeenNotice) setShowNotice(true)
     }
   }, [configData])
 
   useEffect(() => {
-    if (userData && userData.hasCompletedTutorial === false) setShowTutorial(true)
-  }, [userData])
+    if (userData) {
+      if (userData.hasCompletedTutorial === false) setShowTutorial(true)
+      // 기존 ufes ID 사용자 중 번호 정보가 없는 경우 팝업
+      if (!userData.phoneNumber && !isUserDataLoading) setShowPhoneMigration(true)
+    }
+  }, [userData, isUserDataLoading])
 
   useEffect(() => {
     const targetDate = addWeeks(new Date(), weekOffset)
@@ -122,17 +135,14 @@ export default function DashboardPage() {
 
   const fetchWeeklyData = async () => {
     if (!userData?.officeCode || !userData?.schoolCode || weekDates.length === 0) return;
-    
     setIsLoadingWeekly(true)
     try {
       const fromDate = format(weekDates[0], "yyyyMMdd")
       const toDate = format(weekDates[4], "yyyyMMdd")
-
       const [meals, table] = await Promise.all([
         getWeeklyMeals(userData.officeCode, userData.schoolCode, fromDate, toDate),
         getWeeklyTimetable(userData.officeCode, userData.schoolCode, fromDate, toDate, userData.grade, userData.classNum, userData.schoolType)
       ])
-      
       setWeeklyMeals(meals || [])
       setWeeklyTimetable(table || [])
     } catch (error) {
@@ -160,14 +170,12 @@ export default function DashboardPage() {
     return weeklyTimetable.find(t => t.date === today)?.timetable || ""
   }, [weeklyTimetable, todayStr])
 
-  // 오늘의 문제 쿼리
   const dailyProblemRef = useMemoFirebase(() => {
     if (!todayStr || !userData?.grade) return null
     return doc(db, "daily_problems", `${todayStr}_${userData.grade}`)
   }, [db, todayStr, userData?.grade])
   const { data: problemData } = useDoc(dailyProblemRef)
 
-  // 문제 풀이 여부 쿼리
   const solvedProblemRef = useMemoFirebase(() => {
     if (!user || !todayStr) return null
     return doc(db, "users", user.uid, "solved_problems", todayStr)
@@ -183,11 +191,8 @@ export default function DashboardPage() {
 
   const fortuneRef = useMemoFirebase(() => todayStr ? doc(db, "daily_fortunes", todayStr) : null, [db, todayStr])
   const personalFortuneRef = useMemoFirebase(() => (db && user && todayStr) ? doc(db, "users", user.uid, "personal_fortunes", todayStr) : null, [db, user, todayStr])
-  const attendanceHistoryQuery = useMemoFirebase(() => (db && user) ? query(collection(db, "users", user.uid, "attendance_logs"), orderBy("date", "desc")) : null, [db, user])
-
   const { data: fortuneData } = useDoc(fortuneRef)
   const { data: personalFortuneData } = useDoc(personalFortuneRef)
-  const { data: attendanceHistory } = useCollection(attendanceHistoryQuery)
 
   useEffect(() => {
     if (personalFortuneData?.score) {
@@ -201,7 +206,47 @@ export default function DashboardPage() {
       setTempComment(personalFortuneData.comment || "")
       return () => clearInterval(timer);
     }
-  }, [personalFortuneData?.score, personalFortuneData?.comment]);
+  }, [personalFortuneData?.score]);
+
+  // 번호 전환 로직
+  const handleStartMigration = async () => {
+    if (!migrationPhone.startsWith('010') || migrationPhone.length < 10) return
+    setIsMigrationLoading(true)
+    try {
+      if (!recaptchaVerifier.current) {
+        recaptchaVerifier.current = new RecaptchaVerifier(auth, 'recaptcha-migration', { size: 'invisible' })
+      }
+      const formatted = `+82${migrationPhone.substring(1)}`
+      const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current!)
+      confirmationResult.current = result
+      setMigrationStep('verify')
+      toast({ title: "인증번호 전송됨" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "전송 오류" })
+    } finally {
+      setIsMigrationLoading(false)
+    }
+  }
+
+  const handleCompleteMigration = async () => {
+    if (!confirmationResult.current || migrationCode.length !== 6) return
+    setIsMigrationLoading(true)
+    try {
+      const result = await confirmationResult.current.confirm(migrationCode)
+      if (result.user && userDocRef) {
+        await updateDoc(userDocRef, {
+          phoneNumber: `+82${migrationPhone.substring(1)}`,
+          updatedAt: serverTimestamp()
+        })
+        setShowPhoneMigration(false)
+        toast({ title: "인증 완료", description: "이제 휴대폰 번호로 로그인할 수 있습니다." })
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: "인증번호 오류" })
+    } finally {
+      setIsMigrationLoading(false)
+    }
+  }
 
   const handleGenerateLuckyScore = async () => {
     if (!user || !personalFortuneRef || personalFortuneData || isGeneratingLuck || !todayStr) return
@@ -212,107 +257,38 @@ export default function DashboardPage() {
     } finally { setIsGeneratingLuck(false) }
   }
 
-  const handleUpdateFortuneComment = async () => {
-    if (!personalFortuneRef || isUpdatingComment) return
-    setIsUpdatingComment(true)
-    try {
-      await updateDoc(personalFortuneRef, { comment: tempComment, updatedAt: serverTimestamp() })
-      toast({ title: "오늘의 한마디 저장 완료!" })
-    } finally { setIsUpdatingComment(false) }
-  }
-
   const handleAttendance = async () => {
     if (!user || !userData || !userDocRef || !todayStr) return
-    if (userData.lastAttendanceDate === todayStr) {
-      toast({ title: "이미 오늘 출석하셨습니다!" })
-      return
-    }
-
+    if (userData.lastAttendanceDate === todayStr) return
     setIsCheckingIn(true)
     try {
       const yesterdayStr = format(subDays(new Date(), 1), "yyyy-MM-dd")
       let newStreak = (userData.lastAttendanceDate === yesterdayStr) ? (userData.attendanceStreak || 0) + 1 : 1
       const points = configData?.pointConfig?.dailyAttendance || 100
-      let bonus = 0
-      if (newStreak === 7) bonus = configData?.pointConfig?.streak7 || 1000
-      else if (newStreak === 30) bonus = configData?.pointConfig?.streak30 || 5000
-
-      await setDoc(doc(db, "users", user.uid, "attendance_logs", todayStr), { date: todayStr, timestamp: serverTimestamp() })
       await updateDoc(userDocRef, {
-        points: increment(points + bonus),
+        points: increment(points),
         lastAttendanceDate: todayStr,
         attendanceStreak: newStreak,
         updatedAt: serverTimestamp()
       })
-      toast({ title: "출석 완료!", description: bonus > 0 ? `보너스 포함 ${points + bonus}P 지급!` : `${points}P 지급!` })
+      toast({ title: "출석 완료!" })
     } finally { setIsCheckingIn(false) }
   }
 
   const handleSolveProblem = async () => {
     if (!problemData || !userAnswer.trim() || !userDocRef || !solvedProblemRef) return
-    if (isProblemSolved) {
-      toast({ title: "이미 오늘 문제를 맞히셨습니다!" })
-      return
-    }
-    
     setIsSolving(true)
     try {
       if (userAnswer.trim() === problemData.answer) {
-        const reward = problemData.rewardPoints || configData?.pointConfig?.problemDefault || 100
-        
-        // 정답 기록 저장
-        await setDoc(solvedProblemRef, {
-          solved: true,
-          solvedAt: serverTimestamp()
-        })
-
-        // 포인트 지급
-        await updateDoc(userDocRef, {
-          points: increment(reward),
-          updatedAt: serverTimestamp()
-        })
-        
-        toast({ title: "정답입니다! 🎉", description: `${reward}P가 지급되었습니다.` })
+        const reward = problemData.rewardPoints || 100
+        await setDoc(solvedProblemRef, { solved: true, solvedAt: serverTimestamp() })
+        await updateDoc(userDocRef, { points: increment(reward), updatedAt: serverTimestamp() })
+        toast({ title: "정답입니다! 🎉" })
       } else {
-        toast({ variant: "destructive", title: "아쉬워요, 틀렸습니다. 😢", description: "다시 한 번 생각해보세요!" })
+        toast({ variant: "destructive", title: "틀렸습니다. 😢" })
       }
-    } finally {
-      setIsSolving(false)
-    }
+    } finally { setIsSolving(false) }
   }
-
-  const completeTutorial = async () => {
-    if (!userDocRef) return
-    await updateDoc(userDocRef, { hasCompletedTutorial: true, updatedAt: serverTimestamp() })
-    setShowTutorial(false)
-  }
-
-  const closeNotice = () => {
-    if (configData?.notice) {
-      sessionStorage.setItem(`notice_${configData.notice.substring(0, 10)}`, "true")
-    }
-    setShowNotice(false)
-  }
-
-  const handleShareMeal = (date: string, menu: string) => {
-    if (!userData?.schoolName) return;
-    shareMealToKakao(date, userData.schoolName, menu, configData?.kakaoApiKey);
-  };
-
-  const handleShareTimetable = (date: string, timetable: string) => {
-    if (!userData?.schoolName || !userData?.grade || !userData?.classNum) return;
-    shareTimetableToKakao(date, userData.schoolName, userData.grade, userData.classNum, timetable, configData?.kakaoApiKey);
-  };
-
-  const handleShareFortune = () => {
-    if (!personalFortuneData?.score || !userData?.nickname) return;
-    shareFortuneToKakao(personalFortuneData.score, userData.nickname, configData?.kakaoApiKey);
-  };
-
-  const handleShareQuote = () => {
-    if (!fortuneData?.fortuneText) return;
-    shareQuoteToKakao(fortuneData.fortuneText, fortuneData.author || "알 수 없음", configData?.kakaoApiKey);
-  };
 
   useEffect(() => {
     if (!isUserLoading && !user) router.push("/login")
@@ -320,118 +296,82 @@ export default function DashboardPage() {
 
   if (isUserLoading || isUserDataLoading || !user) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-        <div className="flex flex-col items-center gap-8 relative z-10">
-          <div className="relative group">
-            <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
-            <div className="relative h-24 w-24 rounded-[2rem] bg-card border border-primary/10 flex items-center justify-center shadow-2xl animate-float animate-glow">
-              <BookOpen className="h-12 w-12 text-primary animate-pulse-gentle" />
-            </div>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <h2 className="text-xl font-black tracking-tighter animate-shimmer-text">
-              KST HUB 로딩 중...
-            </h2>
-            <div className="flex gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
-              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
-              <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
-            </div>
-          </div>
-        </div>
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     )
   }
 
-  const tutorialSteps = [
-    { title: "환영합니다! 👋", description: "KST HUB에 오신 것을 환영해요.", icon: <Sparkles className="h-12 w-12 text-primary" /> },
-    { title: "출석 보상", description: "매일 출석하고 보너스 포인트를 받으세요.", icon: <CalendarDays className="h-12 w-12 text-primary" /> },
-    { title: "학교 정보", description: "오늘의 급식과 시간표를 한눈에!", icon: <Utensils className="h-12 w-12 text-primary" /> },
-    { title: "랭킹 도전", description: "포인트를 모아 1위에 도전하세요.", icon: <Trophy className="h-12 w-12 text-yellow-500" /> }
-  ]
-
-  const hasCheckedInToday = userData?.lastAttendanceDate === todayStr
-
-  const getSortedTable = (timetableStr: string) => {
-    if (!timetableStr) return [];
-    return timetableStr.split(',')
-      .map(t => t.trim())
-      .sort((a, b) => {
-        const pA = parseInt(a.split('교시')[0]) || 0;
-        const pB = parseInt(b.split('교시')[0]) || 0;
-        return pA - pB;
-      });
-  };
-
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-500">
-      <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-8 bg-card border-none">
-          <DialogHeader>
-            <DialogTitle>KST HUB 시작 가이드</DialogTitle>
-            <DialogDescription>앱의 주요 기능을 소개합니다.</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center text-center space-y-6">
-            <div className="p-4 rounded-[2rem] bg-primary/10">{tutorialSteps[tutorialStep].icon}</div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black">{tutorialSteps[tutorialStep].title}</h2>
-              <p className="text-sm font-bold text-muted-foreground">{tutorialSteps[tutorialStep].description}</p>
-            </div>
-            <div className="flex gap-2 w-full">
-              {tutorialStep > 0 && <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setTutorialStep(s => s - 1)}>이전</Button>}
-              <Button className="flex-[2] rounded-xl" onClick={() => tutorialStep < 3 ? setTutorialStep(s => s + 1) : completeTutorial()}>
-                {tutorialStep < 3 ? "다음" : "시작하기"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* 공지 팝업 다이얼로그 */}
-      <Dialog open={showNotice} onOpenChange={setShowNotice}>
+      <div id="recaptcha-migration"></div>
+      
+      {/* 휴대폰 인증 전환 팝업 */}
+      <Dialog open={showPhoneMigration} onOpenChange={() => {}}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-card">
-          <DialogHeader className="sr-only">
-            <DialogTitle>KST HUB 공지사항</DialogTitle>
-          </DialogHeader>
-          <div className="bg-primary/10 p-6 flex flex-col items-center gap-3">
-            <div className="p-3 bg-primary rounded-2xl shadow-lg">
-              <BellRing className="h-8 w-8 text-white animate-bounce" />
+          <div className="bg-primary/10 p-8 flex flex-col items-center gap-4">
+            <div className="p-4 bg-primary rounded-3xl shadow-lg">
+              <Phone className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-xl font-black text-primary">KST HUB 공지사항</h2>
+            <DialogTitle className="text-2xl font-black text-primary">인증 방식 변경 안내</DialogTitle>
+            <DialogDescription className="text-center font-bold text-primary/60">
+              KST HUB가 더 안전해졌습니다! <br/>
+              기존 'ufes' 아이디 대신 **휴대폰 번호**로 인증해 주세요.
+            </DialogDescription>
           </div>
-          <div className="p-8">
-            <p className="text-sm font-bold text-foreground leading-relaxed whitespace-pre-wrap text-center">
-              {configData?.notice}
-            </p>
-          </div>
-          <div className="p-6 pt-0">
-            <Button onClick={closeNotice} className="w-full rounded-2xl h-12 font-black bg-primary text-white shadow-md">
-              확인했습니다
-            </Button>
+          
+          <div className="p-8 space-y-6">
+            {migrationStep === 'input' ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-muted-foreground ml-1">본인의 휴대폰 번호</Label>
+                  <Input 
+                    placeholder="01012345678" 
+                    value={migrationPhone} 
+                    onChange={(e) => setMigrationPhone(e.target.value)}
+                    className="h-12 rounded-2xl bg-muted/30 border-none px-5 font-bold"
+                  />
+                </div>
+                <Button onClick={handleStartMigration} disabled={isMigrationLoading || migrationPhone.length < 10} className="w-full h-12 rounded-2xl font-black bg-primary">
+                  {isMigrationLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "인증번호 받기"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-muted-foreground ml-1">인증코드 6자리</Label>
+                  <Input 
+                    placeholder="000000" 
+                    value={migrationCode} 
+                    onChange={(e) => setMigrationCode(e.target.value.substring(0, 6))}
+                    className="h-12 rounded-2xl bg-muted/30 border-none px-5 font-mono text-center tracking-[1em] font-black"
+                  />
+                </div>
+                <Button onClick={handleCompleteMigration} disabled={isMigrationLoading || migrationCode.length !== 6} className="w-full h-12 rounded-2xl font-black bg-accent text-accent-foreground">
+                  {isMigrationLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "인증 완료 및 전환"}
+                </Button>
+                <Button variant="ghost" className="w-full text-xs" onClick={() => setMigrationStep('input')}>번호 다시 입력</Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
-        <div className="animate-in slide-in-from-left duration-700">
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter leading-tight text-primary">
-            {userData?.nickname || "학생"}님, <br className="sm:hidden" /> 반가워요!
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-primary">
+            {userData?.nickname || "학생"}님, 반갑습니다!
           </h1>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Badge variant="secondary" className="px-4 py-1.5 text-xs font-black rounded-full shadow-sm bg-card border-primary/10">
-              {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
-            </Badge>
-          </div>
+          <Badge variant="secondary" className="mt-2 px-4 py-1.5 rounded-full shadow-sm bg-card">
+            {userData?.schoolName || "학교 정보 없음"} {userData?.grade || '0'}학년 {userData?.classNum || '0'}반
+          </Badge>
         </div>
-        <Link href="/plants" className="w-full sm:w-auto block">
-          <Card className="bg-primary text-primary-foreground p-3 px-5 rounded-2xl flex items-center gap-3 shadow-xl border-none w-full sm:w-auto transform hover:scale-105 transition-transform cursor-pointer">
-            <div className="p-2 bg-primary-foreground/20 rounded-xl">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
+        <Link href="/plants">
+          <Card className="bg-primary text-primary-foreground p-4 rounded-3xl flex items-center gap-4 shadow-xl border-none transform hover:scale-105 transition-transform">
+            <Zap className="h-6 w-6" />
             <div>
-              <p className="text-[8px] opacity-80 uppercase font-black tracking-widest">보유 포인트</p>
-              <p className="text-lg font-black tabular-nums tracking-tight leading-none">{userData?.points?.toLocaleString() || 0} P</p>
+              <p className="text-[10px] font-black opacity-80">보유 포인트</p>
+              <p className="text-xl font-black tracking-tight">{userData?.points?.toLocaleString() || 0} P</p>
             </div>
           </Card>
         </Link>
@@ -439,342 +379,119 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-black flex items-center gap-2 text-foreground/80"><School className="h-6 w-6 text-primary" /> 학교 소식</h2>
-            <Dialog>
-              <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full font-bold" onClick={fetchWeeklyData}><Maximize2 className="h-3 w-3 mr-1" /> 자세히 보기</Button></DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-0 bg-card border-none shadow-2xl">
-                <DialogHeader className="p-6 border-b">
-                  <DialogTitle className="text-xl font-black">주간 정보 가이드</DialogTitle>
-                  <DialogDescription className="text-xs font-medium">이번 주 우리 학교의 급식과 시간표를 확인하세요.</DialogDescription>
-                </DialogHeader>
-                {weekDates.length >= 5 && (
-                  <div className="p-4 bg-muted/20 flex justify-between items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w - 1)} className="rounded-full h-10 w-10 p-0"><ChevronLeft /></Button>
-                    <span className="text-sm font-black text-primary">
-                      {format(weekDates[0], "yyyy.MM.dd")} ~ {format(weekDates[4], "MM.dd")}
-                    </span>
-                    <Button variant="ghost" size="sm" onClick={() => setWeekOffset(w => w + 1)} className="rounded-full h-10 w-10 p-0"><ChevronRight /></Button>
-                  </div>
-                )}
-                <div className="flex-grow overflow-y-auto p-6 pt-2">
-                  <Tabs defaultValue="meals">
-                    <TabsList className="w-full grid grid-cols-2 p-1 bg-muted/50 rounded-2xl mb-6">
-                      <TabsTrigger value="meals" className="rounded-xl font-black py-2">🍱 주간 급식</TabsTrigger>
-                      <TabsTrigger value="timetable" className="rounded-xl font-black py-2">📚 주간 시간표</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="meals" className="space-y-4">
-                      {weekDates.map((d, i) => {
-                        const dStr = format(d, "yyyyMMdd");
-                        const meal = weeklyMeals.find(m => m.date === dStr);
-                        return (
-                          <div key={i} className="p-5 bg-card border rounded-3xl flex justify-between items-start gap-4 transition-all hover:border-primary/30 group">
-                            <div className="flex-grow">
-                              <p className="text-xs font-black text-primary mb-3 bg-primary/5 w-fit px-3 py-1 rounded-full">{format(d, "MM/dd (E)", { locale: ko })}</p>
-                              <div className="flex flex-wrap gap-2">
-                                {meal ? meal.menu.split(',').map((m, idx) => (
-                                  <div key={idx} className="text-xs font-bold px-3 py-1.5 bg-muted/30 rounded-xl border border-transparent group-hover:border-primary/10 transition-colors">{m.trim()}</div>
-                                )) : <span className="text-sm font-bold opacity-30 italic py-2 px-1">등록된 급식 정보가 없습니다.</span>}
-                              </div>
-                            </div>
-                            {meal && <Button variant="ghost" size="icon" className="rounded-full mt-1 shrink-0" onClick={() => handleShareMeal(dStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
-                          </div>
-                        )
-                      })}
-                    </TabsContent>
-                    <TabsContent value="timetable" className="space-y-4">
-                      {weekDates.map((d, i) => {
-                        const dStr = format(d, "yyyyMMdd");
-                        const table = weeklyTimetable.find(t => t.date === dStr);
-                        const sorted = table ? getSortedTable(table.timetable) : [];
-                        return (
-                          <div key={i} className="p-5 bg-card border rounded-3xl transition-all hover:border-primary/30">
-                            <div className="flex justify-between items-center mb-4">
-                              <p className="text-xs font-black text-primary bg-primary/5 px-3 py-1 rounded-full">{format(d, "MM/dd (E)", { locale: ko })}</p>
-                              {table && <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleShareTimetable(dStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
-                            </div>
-                            <div className="space-y-2">
-                              {sorted.length > 0 ? sorted.map((t, idx) => {
-                                const [p, c] = t.split(':');
-                                return (
-                                  <div key={idx} className="flex items-center gap-4 text-xs font-bold p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
-                                    <span className="text-primary w-10 text-[10px] font-black">{p}</span>
-                                    <span className="text-foreground tracking-tight">{c}</span>
-                                  </div>
-                                )
-                              }) : <p className="col-span-full text-xs text-center py-6 font-bold opacity-30 italic">시간표 정보가 없습니다.</p>}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-card">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Utensils className="h-4 w-4 text-primary" /> 오늘 급식</CardTitle>
-                {todayMeal && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
-              </CardHeader>
-              <CardContent className="min-h-[140px]">
-                {isLoadingWeekly ? (
-                  <div className="flex flex-col justify-center items-center h-24 gap-2">
-                    <Loader2 className="animate-spin text-primary h-6 w-6" />
-                    <span className="text-[10px] font-bold text-muted-foreground">정보를 가져오는 중...</span>
-                  </div>
-                ) : todayMeal ? (
-                  <div className="grid gap-2">
-                    {todayMeal.split(',').map((m, i) => (
-                      <div key={i} className="px-4 py-2.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold text-black dark:text-white transition-all hover:bg-primary/10">{m.trim()}</div>
-                    ))}
-                  </div>
-                ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Utensils className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">급식 정보가 없습니다.</p></div>}
-              </CardContent>
-            </Card>
-            <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-card transition-all hover:shadow-md">
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> 오늘 시간표</CardTitle>
-                {todayTable && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4 text-foreground" /></Button>}
+                {todayMeal && <Button variant="ghost" size="icon" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4" /></Button>}
               </CardHeader>
               <CardContent>
-                {isLoadingWeekly ? (
-                  <div className="flex flex-col justify-center items-center h-24 gap-2">
-                    <Loader2 className="animate-spin text-primary h-6 w-6" />
-                    <span className="text-[10px] font-bold text-muted-foreground">정보를 가져오는 중...</span>
+                {todayMeal ? (
+                  <div className="grid gap-2">
+                    {todayMeal.split(',').map((m, i) => (
+                      <div key={i} className="px-4 py-2 bg-primary/5 rounded-2xl border border-primary/10 text-xs font-bold">{m.trim()}</div>
+                    ))}
                   </div>
-                ) : todayTable ? (
+                ) : <p className="text-xs font-bold opacity-30 italic text-center py-6">급식 정보가 없습니다.</p>}
+              </CardContent>
+            </Card>
+            
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-card">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> 오늘 시간표</CardTitle>
+                {todayTable && <Button variant="ghost" size="icon" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4" /></Button>}
+              </CardHeader>
+              <CardContent>
+                {todayTable ? (
                   <div className="space-y-2">
-                    {getSortedTable(todayTable).map((t, i) => {
-                      const [perio, content] = t.split(':');
+                    {todayTable.split(',').map((t, i) => {
+                      const [p, c] = t.split(':');
                       return (
-                        <div key={i} className="flex items-center gap-4 text-xs font-bold p-3 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/20 transition-all">
-                          <span className="text-primary w-10 text-[10px] font-black">{perio}</span>
-                          <span className="text-foreground tracking-tight">{content}</span>
+                        <div key={i} className="flex items-center gap-4 text-xs font-bold p-3 bg-muted/30 rounded-2xl">
+                          <span className="text-primary w-10 text-[10px] font-black">{p}</span>
+                          <span className="text-foreground">{c}</span>
                         </div>
                       )
                     })}
                   </div>
-                ) : <div className="flex flex-col items-center justify-center h-24 opacity-30"><Clock className="h-8 w-8 mb-2" /><p className="text-xs font-bold italic">시간표 정보가 없습니다.</p></div>}
+                ) : <p className="text-xs font-bold opacity-30 italic text-center py-6">시간표 정보가 없습니다.</p>}
               </CardContent>
             </Card>
           </div>
 
-          {/* 오늘의 도전 문제 섹션 */}
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:shadow-2xl">
-            <CardHeader className="pb-3 bg-primary/5 flex flex-row items-center justify-between border-b border-primary/10">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card">
+            <CardHeader className="bg-primary/5 flex flex-row items-center justify-between border-b">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl">
-                  <BrainCircuit className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base font-black">오늘의 도전 문제</CardTitle>
-                  <CardDescription className="text-[10px] font-bold">포인트를 획득할 기회!</CardDescription>
-                </div>
+                <BrainCircuit className="h-6 w-6 text-primary" />
+                <CardTitle className="text-base font-black">오늘의 도전 문제</CardTitle>
               </div>
-              {problemData && (
-                <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/10 text-primary font-black px-3 py-1">
-                  {problemData.rewardPoints || 100}P 지급
-                </Badge>
-              )}
             </CardHeader>
             <CardContent className="pt-6">
               {problemData ? (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Badge className="bg-accent text-accent-foreground font-black text-[10px] h-5 rounded-full">{problemData.topic}</Badge>
-                      <Badge variant="outline" className="font-black text-[10px] h-5 rounded-full border-primary/30">난이도: {problemData.difficulty}</Badge>
-                    </div>
-                    <h3 className="text-lg font-black leading-tight text-foreground">{problemData.title}</h3>
-                    <p className="text-sm font-bold text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/20 p-5 rounded-3xl border border-muted/30">
-                      {problemData.problemText}
-                    </p>
-                  </div>
-
+                <div className="space-y-4">
+                  <Badge className="bg-accent text-accent-foreground font-black">{problemData.topic}</Badge>
+                  <h3 className="text-lg font-black">{problemData.title}</h3>
+                  <p className="text-sm font-bold text-muted-foreground bg-muted/20 p-5 rounded-3xl">{problemData.problemText}</p>
                   {isProblemSolved ? (
-                    <div className="bg-primary/10 p-6 rounded-3xl flex flex-col items-center gap-2 animate-in zoom-in duration-500 border border-primary/20">
+                    <div className="bg-primary/10 p-6 rounded-3xl flex flex-col items-center gap-2 border border-primary/20">
                       <PartyPopper className="h-10 w-10 text-primary" />
                       <p className="text-base font-black text-primary">오늘의 문제 해결! 🎉</p>
-                      <p className="text-[10px] font-bold text-primary/60">내일 새로운 문제로 만나요 ✨</p>
                     </div>
                   ) : (
                     <div className="flex gap-2">
                       <Input 
-                        placeholder="정답을 입력하세요" 
+                        placeholder="정답 입력" 
                         value={userAnswer} 
                         onChange={(e) => setUserAnswer(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSolveProblem()}
-                        className="rounded-2xl h-12 bg-muted/30 border-none px-5 font-bold focus-visible:ring-primary"
+                        className="rounded-2xl h-12 bg-muted/30 border-none font-bold"
                       />
-                      <Button onClick={handleSolveProblem} disabled={isSolving || !userAnswer.trim()} className="h-12 rounded-2xl px-6 font-black bg-primary text-white shadow-md">
-                        {isSolving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Send className="h-4 w-4 mr-2" /> 제출</>}
+                      <Button onClick={handleSolveProblem} disabled={isSolving} className="h-12 rounded-2xl px-6 font-black bg-primary">
+                        제출
                       </Button>
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-30 text-center">
-                  <BrainCircuit className="h-12 w-12" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-black italic">오늘 등록된 문제가 없습니다.</p>
-                    <p className="text-[10px] font-bold">선생님이 준비 중이에요!</p>
-                  </div>
-                </div>
-              )}
+              ) : <p className="text-center py-10 opacity-30 italic font-black">등록된 문제가 없습니다.</p>}
             </CardContent>
           </Card>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-black flex items-center gap-2"><CalendarCheck className="h-4 w-4 text-primary" /> 출석 체크</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center bg-muted/30 p-3 rounded-2xl">
-                  <span className="text-xs font-bold text-muted-foreground">연속 <span className="text-primary font-black text-base">{userData?.attendanceStreak || 0}일째</span> 출석 중 🔥</span>
-                  {hasCheckedInToday && <CheckCircle2 className="h-6 w-6 text-primary animate-in zoom-in" />}
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleAttendance} disabled={hasCheckedInToday || isCheckingIn} className="flex-grow rounded-2xl font-black h-12 shadow-md">
-                    {hasCheckedInToday ? "오늘 출석 완료 ✨" : "오늘의 출석 체크"}
-                  </Button>
-                  <Dialog>
-                    <DialogTrigger asChild><Button variant="outline" size="icon" className="rounded-2xl h-12 w-12 border-muted hover:bg-muted/50"><History className="h-5 w-5" /></Button></DialogTrigger>
-                    <DialogContent className="rounded-[2.5rem] max-w-fit p-0 overflow-hidden border-none shadow-2xl bg-card mx-4">
-                      <DialogHeader className="p-6 border-b bg-card">
-                        <DialogTitle className="text-lg font-black flex items-center gap-2 text-primary"><History className="h-5 w-5" /> 출석 히스토리</DialogTitle>
-                        <DialogDescription className="text-xs font-medium">성실함이 쌓여가는 멋진 기록입니다.</DialogDescription>
-                      </DialogHeader>
-                      <div className="p-2 flex flex-col items-center bg-card">
-                        <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[320px]">
-                          <Calendar 
-                            renderDay={(date) => {
-                              const dStr = format(date, "yyyy-MM-dd");
-                              const isAttended = attendanceHistory?.some(l => l.date === dStr);
-                              if (isAttended) return <div className="h-1 w-1 rounded-full bg-primary" />;
-                              return null;
-                            }} 
-                          />
-                        </div>
-                        <div className="flex gap-4 mt-4 mb-4 text-[10px] font-black opacity-60">
-                          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary" /> 출석 완료</div>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-4 w-4 text-primary" /> 오늘의 명언</CardTitle>
-                {fortuneData && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleShareQuote}>
-                    <Share2 className="h-4 w-4 text-foreground" />
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="text-center py-6 flex flex-col items-center justify-center h-full min-h-[140px] px-6">
-                <div className="relative">
-                  <Quote className="absolute -top-4 -left-4 h-8 w-8 text-primary/5 rotate-180" />
-                  <p className="text-sm italic font-black text-foreground/80 leading-relaxed z-10 relative">"{fortuneData?.fortuneText || "꿈을 향해 한 걸음 더 나아가는 하루 되세요!"}"</p>
-                  <Quote className="absolute -bottom-4 -right-4 h-8 w-8 text-primary/5" />
-                </div>
-                {fortuneData?.author && <p className="text-[10px] font-black mt-5 text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">- {fortuneData.author}</p>}
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         <div className="md:col-span-4 space-y-6">
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card overflow-hidden transition-all hover:-translate-y-1">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-card">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-5 w-5 text-green-500" /> 오늘의 행운 점수</CardTitle>
-              {personalFortuneData && (
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleShareFortune}>
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              )}
+              <CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-5 w-5 text-green-500" /> 행운 점수</CardTitle>
+              {personalFortuneData && <Button variant="ghost" size="icon" onClick={() => shareFortuneToKakao(personalFortuneData.score, userData.nickname, configData?.kakaoApiKey)}><Share2 className="h-4 w-4" /></Button>}
             </CardHeader>
             <CardContent className="p-6">
               {personalFortuneData ? (
-                <div className="space-y-5">
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <span className="text-4xl font-black text-primary tracking-tighter">{displayScore}</span>
-                      <span className="text-sm font-black text-primary/60 ml-1">점</span>
-                    </div>
-                    <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 text-primary text-[10px] font-black py-1 px-3 mb-1">
-                      {personalFortuneData.score >= 90 ? "최고의 하루! ✨" : personalFortuneData.score >= 75 ? "좋은 느낌! 👍" : "보통이에요 🙂"}
-                    </Badge>
-                  </div>
-                  <div className="relative">
-                    <Progress value={displayScore} className="h-3 bg-muted rounded-full" />
-                    <div className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-transparent via-background/20 to-transparent animate-shimmer" />
-                  </div>
-                  
-                  {/* 행운 점수 한마디 수정 인터페이스 */}
-                  <div className="pt-4 border-t border-muted space-y-2">
-                    <Label className="text-[10px] font-black opacity-50 uppercase tracking-widest flex items-center gap-1">
-                      <Edit3 className="h-3 w-3" /> 오늘의 한마디
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="오늘의 다짐을 적어보세요" 
-                        value={tempComment} 
-                        onChange={(e) => setTempComment(e.target.value)}
-                        className="rounded-xl h-10 bg-muted/30 border-none text-xs font-bold focus-visible:ring-primary"
-                      />
-                      <Button 
-                        size="icon" 
-                        onClick={handleUpdateFortuneComment}
-                        disabled={isUpdatingComment || tempComment === personalFortuneData.comment}
-                        className="h-10 w-10 shrink-0 rounded-xl bg-primary text-white"
-                      >
-                        {isUpdatingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
+                <div className="space-y-4 text-center">
+                  <span className="text-5xl font-black text-primary">{displayScore}</span>
+                  <Progress value={displayScore} className="h-3 rounded-full" />
+                  <p className="text-xs font-bold text-muted-foreground">{personalFortuneData.comment || "오늘의 한마디를 남겨보세요!"}</p>
                 </div>
               ) : (
-                <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="w-full rounded-2xl h-12 font-black bg-accent text-accent-foreground hover:bg-accent/90 shadow-md">
-                  {isGeneratingLuck ? <Loader2 className="h-5 w-5 animate-spin" /> : "내 행운 점수 확인하기 🍀"}
+                <Button onClick={handleGenerateLuckyScore} disabled={isGeneratingLuck} className="w-full h-12 rounded-2xl font-black bg-accent text-accent-foreground">
+                  행운 확인 🍀
                 </Button>
               )}
             </CardContent>
           </Card>
+
           <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
             <CardHeader className="border-b bg-muted/10 py-4"><CardTitle className="text-sm font-black flex items-center gap-2"><Trophy className="h-5 w-5 text-yellow-500" /> 랭킹 TOP 10</CardTitle></CardHeader>
-            <CardContent className="p-4 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+            <CardContent className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
               {topUsers?.map((u, i) => (
                 <div key={i} className={cn(
-                  "flex justify-between items-center p-3.5 rounded-2xl text-xs font-bold transition-all", 
-                  u.id === user?.uid ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]" : "bg-muted/30 hover:bg-muted/50"
+                  "flex justify-between items-center p-3 rounded-2xl text-xs font-bold transition-all", 
+                  u.id === user?.uid ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted/30"
                 )}>
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black", 
-                      i === 0 ? "bg-yellow-400 text-yellow-900" : 
-                      i === 1 ? "bg-slate-300 text-slate-700" : 
-                      i === 2 ? "bg-orange-300 text-orange-800" : "bg-muted-foreground/20 text-muted-foreground"
-                    )}>{i+1}</span>
-                    <span className="tracking-tight">{u.nickname}</span>
-                  </div>
-                  <span className={cn("font-black tabular-nums", u.id === user?.uid ? "text-primary-foreground" : "text-primary")}>{u.points.toLocaleString()} P</span>
+                  <span>{i+1}. {u.nickname}</span>
+                  <span className="font-black">{u.points.toLocaleString()} P</span>
                 </div>
               ))}
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      <div className="mt-12 flex flex-col items-center gap-2 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        <Badge variant="outline" className="px-6 py-2.5 text-xs font-black rounded-full shadow-sm bg-primary/5 text-primary border-primary/20 flex items-center gap-2">
-          <Users className="h-4 w-4" /> 우리 학교 학생: {schoolUsers?.length || 0}명
-        </Badge>
-        <p className="text-[10px] font-bold text-muted-foreground opacity-50">KST HUB와 함께 성장하는 친구들</p>
       </div>
     </div>
   )

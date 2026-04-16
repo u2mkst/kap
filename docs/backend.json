@@ -8,7 +8,8 @@
       "description": "Represents a user profile in the KST HUB academy.",
       "properties": {
         "id": { "type": "string" },
-        "username": { "type": "string" },
+        "phoneNumber": { "type": "string", "description": "User's verified phone number." },
+        "username": { "type": "string", "description": "Legacy ufes ID (optional)." },
         "nickname": { "type": "string" },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
@@ -29,7 +30,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "username", "nickname", "points", "schoolType"]
+      "required": ["id", "phoneNumber", "nickname", "points", "schoolType"]
     },
     "Friend": {
       "title": "Friend",
@@ -38,7 +39,7 @@
       "properties": {
         "friendId": { "type": "string" },
         "nickname": { "type": "string" },
-        "username": { "type": "string" },
+        "phoneNumber": { "type": "string" },
         "addedAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -58,7 +59,7 @@
     }
   },
   "auth": {
-    "providers": ["password"]
+    "providers": ["phone"]
   },
   "firestore": {
     "/users/{userId}": {

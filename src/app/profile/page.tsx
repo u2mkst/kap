@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -18,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { User, School, ChevronLeft, Fingerprint, BadgeCheck, Loader2, Users, GraduationCap, Search, AlertTriangle, BookOpen } from "lucide-react"
+import { User, School, ChevronLeft, Phone, BadgeCheck, Loader2, Search, AlertTriangle, BookOpen } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { doc, updateDoc, serverTimestamp, collection, deleteDoc } from "firebase/firestore"
 import { deleteUser } from "firebase/auth"
@@ -85,21 +86,9 @@ export default function ProfilePage() {
     try {
       const results = await searchSchool(query)
       setSchoolResults(results || [])
-    } catch (e) {
-      console.error(e)
     } finally {
       setIsSearching(false)
     }
-  }
-
-  const selectSchool = (s: any) => {
-    setFormData({
-      ...formData,
-      schoolName: s.SCHUL_NM,
-      officeCode: s.ATPT_OFCDC_SC_CODE,
-      schoolCode: s.SD_SCHUL_CODE
-    })
-    setSchoolResults([])
   }
 
   const handleUpdate = () => {
@@ -114,27 +103,12 @@ export default function ProfilePage() {
     if (!user || !userDocRef) return
     setIsDeleting(true)
     try {
-      // 1. Firestore 데이터 삭제
       await deleteDoc(userDocRef)
-      // 2. Auth 계정 삭제
       await deleteUser(user)
-      toast({ title: "회원 탈퇴 완료", description: "그동안 이용해주셔서 감사합니다." })
+      toast({ title: "회원 탈퇴 완료" })
       router.push("/")
     } catch (e: any) {
-      console.error(e)
-      if (e.code === 'auth/requires-recent-login') {
-        toast({ 
-          variant: "destructive", 
-          title: "탈퇴 실패", 
-          description: "보안을 위해 다시 로그인 후 즉시 탈퇴를 진행해 주세요." 
-        })
-      } else {
-        toast({ 
-          variant: "destructive", 
-          title: "탈퇴 처리 중 오류", 
-          description: "잠시 후 다시 시도해 주세요." 
-        })
-      }
+      toast({ variant: "destructive", title: "탈퇴 실패", description: "다시 로그인 후 시도해 주세요." })
     } finally {
       setIsDeleting(false)
     }
@@ -142,33 +116,15 @@ export default function ProfilePage() {
 
   if (isUserLoading || isUserDataLoading) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-        <div className="flex flex-col items-center gap-8 relative z-10">
-          <div className="relative group">
-            <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
-            <div className="relative h-24 w-24 rounded-[2rem] bg-card border border-primary/10 flex items-center justify-center shadow-2xl animate-float animate-glow">
-              <User className="h-12 w-12 text-primary animate-pulse-gentle" />
-            </div>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <h2 className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent animate-shimmer-text">
-              회원 정보 로딩 중...
-            </h2>
-            <div className="flex gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
-              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
-              <div className="h-2 w-2 rounded-full bg-primary animate-bounce" />
-            </div>
-          </div>
-        </div>
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl animate-in fade-in duration-500">
-      <Button variant="ghost" onClick={() => router.back()} className="mb-6 rounded-full font-bold hover:bg-muted">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-6 rounded-full font-bold">
         <ChevronLeft className="mr-2 h-4 w-4" /> 뒤로 가기
       </Button>
 
@@ -177,130 +133,68 @@ export default function ProfilePage() {
           <User className="h-8 w-8" />
         </div>
         <div>
-          <h1 className="text-3xl font-black font-headline tracking-tight text-primary">마이페이지</h1>
-          <p className="text-muted-foreground text-sm font-bold">개인 정보 및 학교 정보를 관리합니다.</p>
+          <h1 className="text-3xl font-black font-headline text-primary">마이페이지</h1>
+          <p className="text-muted-foreground text-sm font-bold">내 정보를 관리합니다.</p>
         </div>
       </div>
 
       <div className="space-y-6">
         <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-lg font-black flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" /> 기본 정보
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-lg font-black flex items-center gap-2"><Phone className="h-5 w-5 text-primary" /> 인증 정보</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 opacity-70 text-xs font-bold"><Fingerprint className="h-4 w-4" /> 아이디 (변경 불가)</Label>
-              <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-2xl border border-dashed">
-                <span className="font-mono text-sm font-bold text-muted-foreground">{userData?.username}</span>
+              <Label className="text-xs font-bold opacity-70">로그인 휴대폰 번호</Label>
+              <div className="flex items-center gap-2 p-4 bg-muted/30 rounded-2xl border border-dashed">
+                <span className="font-black text-sm text-primary">{userData?.phoneNumber || "정보 없음"}</span>
                 <BadgeCheck className="h-4 w-4 text-primary ml-auto" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold ml-1">닉네임</Label>
-              <Input value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} className="bg-background rounded-xl h-11" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold ml-1">성</Label>
-                <Input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} className="bg-background rounded-xl h-11" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold ml-1">이름</Label>
-                <Input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} className="bg-background rounded-xl h-11" />
-              </div>
+              <Label className="text-xs font-bold ml-1">라운지 닉네임</Label>
+              <Input value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} className="rounded-xl h-11 bg-background" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-lg font-black flex items-center gap-2">
-              <School className="h-5 w-5 text-primary" /> 학교 및 선생님
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-lg font-black flex items-center gap-2"><School className="h-5 w-5 text-primary" /> 학교 정보</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs font-bold ml-1">담당 선생님</Label>
-              <Select value={formData.teacherId} onValueChange={(val) => setFormData({...formData, teacherId: val})}>
-                <SelectTrigger className="bg-background rounded-xl h-11"><SelectValue placeholder="선택" /></SelectTrigger>
-                <SelectContent>
-                  {teachers?.map(t => <SelectItem key={t.id} value={t.id} className="rounded-lg">{t.name} 선생님</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold ml-1">학교급</Label>
-              <Select value={formData.schoolType} onValueChange={(val) => setFormData({...formData, schoolType: val})}>
-                <SelectTrigger className="bg-background rounded-xl h-11"><SelectValue placeholder="선택" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="초등학교" className="rounded-lg">초등학교</SelectItem>
-                  <SelectItem value="중학교" className="rounded-lg">중학교</SelectItem>
-                  <SelectItem value="고등학교" className="rounded-lg">고등학교</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 relative">
-              <Label className="text-xs font-bold ml-1">학교 검색</Label>
-              <div className="relative">
-                <Input value={formData.schoolName} onChange={(e) => handleSchoolSearch(e.target.value)} placeholder="학교 이름" className="bg-background rounded-xl h-11 pr-10" />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Search className="h-4 w-4 text-muted-foreground" />}
-                </div>
-              </div>
+              <Label className="text-xs font-bold ml-1">학교 이름 검색</Label>
+              <Input value={formData.schoolName} onChange={(e) => handleSchoolSearch(e.target.value)} className="rounded-xl h-11 bg-background" />
               {schoolResults.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-card border rounded-2xl shadow-xl max-h-40 overflow-y-auto animate-in fade-in zoom-in-95">
+                <div className="bg-card border rounded-2xl shadow-xl mt-1 max-h-40 overflow-y-auto">
                   {schoolResults.map((s, i) => (
-                    <div key={i} className="p-3 text-xs font-bold hover:bg-muted cursor-pointer border-b last:border-none" onClick={() => selectSchool(s)}>
-                      {s.SCHUL_NM} <span className="opacity-50 text-[10px]">({s.LCTN_SC_NM})</span>
-                    </div>
+                    <div key={i} className="p-3 text-xs font-bold hover:bg-muted cursor-pointer" onClick={() => {
+                      setFormData({...formData, schoolName: s.SCHUL_NM, officeCode: s.ATPT_OFCDC_SC_CODE, schoolCode: s.SD_SCHUL_CODE})
+                      setSchoolResults([])
+                    }}>{s.SCHUL_NM}</div>
                   ))}
                 </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold ml-1">학년</Label>
-                <Input value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} className="bg-background rounded-xl h-11" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold ml-1">반</Label>
-                <Input value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} className="bg-background rounded-xl h-11" />
-              </div>
+              <Input placeholder="학년" value={formData.grade} onChange={(e) => setFormData({...formData, grade: e.target.value})} className="rounded-xl h-11 bg-background" />
+              <Input placeholder="반" value={formData.classNum} onChange={(e) => setFormData({...formData, classNum: e.target.value})} className="rounded-xl h-11 bg-background" />
             </div>
           </CardContent>
         </Card>
 
-        <Button onClick={handleUpdate} disabled={isLoading || isDeleting} className="w-full bg-primary h-14 text-lg font-black text-primary-foreground rounded-2xl shadow-lg active:scale-[0.98] transition-all">
-          {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "변경 사항 저장"}
+        <Button onClick={handleUpdate} disabled={isLoading} className="w-full bg-primary h-14 text-lg font-black rounded-2xl shadow-lg">
+          {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "변경 사항 저장"}
         </Button>
 
         <div className="pt-8 flex justify-center">
           <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-destructive font-bold text-xs opacity-50 hover:opacity-100 hover:bg-destructive/5 rounded-full px-4">
-                회원 탈퇴
-              </Button>
-            </AlertDialogTrigger>
+            <AlertDialogTrigger asChild><Button variant="ghost" className="text-destructive font-bold text-xs opacity-50">회원 탈퇴</Button></AlertDialogTrigger>
             <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl bg-card">
               <AlertDialogHeader>
-                <AlertDialogTitle className="font-black text-xl flex items-center gap-2">
-                  <AlertTriangle className="h-6 w-6 text-destructive" /> 정말 탈퇴하시겠습니까?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="font-bold text-sm leading-relaxed text-muted-foreground">
-                  탈퇴 시 모든 포인트, 출석 기록, 개인 정보가 영구적으로 삭제되며 복구할 수 없습니다. 
-                  계속하시겠습니까?
-                </AlertDialogDescription>
+                <AlertDialogTitle className="font-black text-xl">정말 탈퇴하시겠습니까?</AlertDialogTitle>
+                <AlertDialogDescription className="font-bold">모든 데이터가 삭제되며 복구할 수 없습니다.</AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className="gap-2">
-                <AlertDialogCancel className="rounded-xl font-bold border-none bg-muted hover:bg-muted/80">취소</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={handleDeleteAccount}
-                  className="rounded-xl font-black bg-destructive text-white hover:bg-destructive/90"
-                >
-                  탈퇴하기
-                </AlertDialogAction>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl font-bold">취소</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAccount} className="rounded-xl font-black bg-destructive">탈퇴하기</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
