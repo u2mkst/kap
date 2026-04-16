@@ -13,7 +13,8 @@ import {
   UserCircle,
   Sun,
   Moon,
-  Trophy
+  Trophy,
+  Zap
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -36,6 +37,7 @@ const navItems = [
   { name: "홈", href: "/dashboard", icon: Home },
   { name: "나의 정원", href: "/plants", icon: Sprout },
   { name: "스포츠", href: "/sports", icon: Trophy },
+  { name: "강화 게임", href: "/games/sword", icon: Zap },
   { name: "라운지", href: "/lounge", icon: Gamepad2 },
 ]
 

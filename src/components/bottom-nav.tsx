@@ -4,7 +4,7 @@
 import { useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Sprout, Gamepad2, UserCircle, Trophy } from "lucide-react"
+import { Home, Sprout, Gamepad2, UserCircle, Trophy, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
 
@@ -16,10 +16,10 @@ export function BottomNav() {
 
   const items = [
     { name: "홈", href: "/dashboard", icon: Home },
+    { name: "강화", href: "/games/sword", icon: Zap },
     { name: "정원", href: "/plants", icon: Sprout },
     { name: "스포츠", href: "/sports", icon: Trophy },
     { name: "라운지", href: "/lounge", icon: Gamepad2 },
-    { name: "프로필", href: "/profile", icon: UserCircle },
   ]
 
   return (

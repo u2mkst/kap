@@ -12,16 +12,16 @@
         "nickname": { "type": "string" },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
-        "schoolType": { "type": "string", "enum": ["초등학교", "중학교", "고등학교"], "description": "Type of school for NEIS API integration." },
+        "schoolType": { "type": "string", "enum": ["초등학교", "중학교", "고등학교"] },
         "schoolName": { "type": "string" },
-        "officeCode": { "type": "string", "description": "ATPT_OFCDC_SC_CODE for NEIS API" },
-        "schoolCode": { "type": "string", "description": "SD_SCHUL_CODE for NEIS API" },
+        "officeCode": { "type": "string" },
+        "schoolCode": { "type": "string" },
         "grade": { "type": "string" },
         "classNum": { "type": "string" },
-        "teacherId": { "type": "string", "description": "The ID of the assigned teacher." },
+        "teacherId": { "type": "string" },
         "points": { "type": "number" },
         "theme": { "type": "string", "enum": ["light", "dark"], "default": "light" },
-        "lastAttendanceDate": { "type": "string", "description": "YYYY-MM-DD of the last check-in." },
+        "lastAttendanceDate": { "type": "string" },
         "attendanceStreak": { "type": "number", "default": 0 },
         "hasCompletedTutorial": { "type": "boolean", "default": false },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -29,10 +29,23 @@
       },
       "required": ["id", "username", "nickname", "points", "schoolType"]
     },
+    "SwordGameProfile": {
+      "title": "SwordGameProfile",
+      "type": "object",
+      "description": "User's progress in the Sword Enhancement Game.",
+      "properties": {
+        "userId": { "type": "string" },
+        "nickname": { "type": "string" },
+        "level": { "type": "number", "default": 0 },
+        "maxLevel": { "type": "number", "default": 0 },
+        "totalAttempts": { "type": "number", "default": 0 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "nickname", "level"]
+    },
     "AttendanceLog": {
       "title": "AttendanceLog",
       "type": "object",
-      "description": "Log of a single day check-in.",
       "properties": {
         "date": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
@@ -42,11 +55,10 @@
     "UserFortune": {
       "title": "UserFortune",
       "type": "object",
-      "description": "Daily lucky score for a specific user.",
       "properties": {
         "id": { "type": "string" },
         "score": { "type": "number" },
-        "comment": { "type": "string", "description": "User's custom message for the day." },
+        "comment": { "type": "string" },
         "date": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -55,21 +67,19 @@
     "Plant": {
       "title": "Plant",
       "type": "object",
-      "description": "Virtual plant grown by a student using points.",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "plantName": { "type": "string" },
         "plantType": { "type": "string" },
         "growthStage": { "type": "string", "enum": ["Seed", "Sprout", "Sapling", "Mature"] },
-        "pointsInvested": { "type": "number", "description": "Total points spent on this plant (100 points = 1 action)." },
-        "targetSprout": { "type": "number", "description": "Actions needed to reach Sprout stage." },
-        "targetSapling": { "type": "number", "description": "Total actions needed to reach Sapling stage." },
-        "targetMature": { "type": "number", "description": "Total actions needed to reach Mature stage." },
+        "pointsInvested": { "type": "number" },
+        "targetSprout": { "type": "number" },
+        "targetSapling": { "type": "number" },
+        "targetMature": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "plantName", "growthStage", "pointsInvested", "targetSprout", "targetSapling", "targetMature"]
+      }
     },
     "Teacher": {
       "title": "Teacher",
@@ -77,10 +87,8 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "vote": { "type": "number" },
-        "imageUrl": { "type": "string" }
-      },
-      "required": ["name", "vote"]
+        "vote": { "type": "number" }
+      }
     },
     "Inquiry": {
       "title": "Inquiry",
@@ -88,63 +96,7 @@
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
-        "userNickname": { "type": "string" },
-        "subject": { "type": "string" },
-        "message": { "type": "string" },
-        "reply": { "type": "string" },
-        "status": { "type": "string", "enum": ["open", "replied"] },
-        "isRead": { "type": "boolean", "default": false },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "subject", "message", "status"]
-    },
-    "QuoteSuggestion": {
-      "title": "QuoteSuggestion",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "userNickname": { "type": "string" },
-        "fortuneText": { "type": "string" },
-        "author": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "fortuneText", "status"]
-    },
-    "DailyProblem": {
-      "title": "DailyProblem",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "date": { "type": "string" },
-        "grade": { "type": "string" },
-        "title": { "type": "string" },
-        "topic": { "type": "string" },
-        "difficulty": { "type": "string" },
-        "problemText": { "type": "string" },
-        "answer": { "type": "string" },
-        "rewardPoints": { "type": "number" }
-      },
-      "required": ["date", "grade", "title", "problemText", "answer"]
-    },
-    "AppMetadata": {
-      "title": "AppMetadata",
-      "type": "object",
-      "properties": {
-        "notice": { "type": "string" },
-        "adminSecret": { "type": "string", "description": "Secret code to claim admin role." },
-        "kakaoApiKey": { "type": "string", "description": "JavaScript key for Kakao Share API." },
-        "pointConfig": {
-          "type": "object",
-          "properties": {
-            "dailyAttendance": { "type": "number", "default": 100 },
-            "streak7": { "type": "number", "default": 1000 },
-            "streak30": { "type": "number", "default": 5000 },
-            "problemDefault": { "type": "number", "default": 100 }
-          }
-        }
+        "status": { "type": "string", "enum": ["open", "replied"] }
       }
     }
   },
@@ -156,41 +108,13 @@
       "schema": { "$ref": "#/backend/entities/User" },
       "description": "User profiles."
     },
-    "/users/{userId}/personal_fortunes/{date}": {
-      "schema": { "$ref": "#/backend/entities/UserFortune" },
-      "description": "User's individual daily luck records."
+    "/users/{userId}/games/sword": {
+      "schema": { "$ref": "#/backend/entities/SwordGameProfile" },
+      "description": "User's sword enhancement state."
     },
-    "/users/{userId}/solved_problems/{date}": {
-      "schema": { "type": "object", "properties": { "solved": { "type": "boolean" }, "solvedAt": { "type": "string", "format": "date-time" } } },
-      "description": "Daily problem completion records per user."
-    },
-    "/users/{userId}/attendance_logs/{date}": {
-      "schema": { "$ref": "#/backend/entities/AttendanceLog" },
-      "description": "User's daily attendance logs."
-    },
-    "/users/{userId}/plants/{plantId}": {
-      "schema": { "$ref": "#/backend/entities/Plant" },
-      "description": "User's virtual plants."
-    },
-    "/teachers/{teacherId}": {
-      "schema": { "$ref": "#/backend/entities/Teacher" },
-      "description": "Teachers for popularity vote and assignment."
-    },
-    "/metadata/config": {
-      "schema": { "$ref": "#/backend/entities/AppMetadata" },
-      "description": "Global app configurations like notices and secrets."
-    },
-    "/daily_problems/{problemId}": {
-      "schema": { "$ref": "#/backend/entities/DailyProblem" },
-      "description": "Daily academic problems categorized by grade."
-    },
-    "/inquiries/{inquiryId}": {
-      "schema": { "$ref": "#/backend/entities/Inquiry" },
-      "description": "Student inquiries and admin replies."
-    },
-    "/quote_suggestions/{suggestionId}": {
-      "schema": { "$ref": "#/backend/entities/QuoteSuggestion" },
-      "description": "User suggested quotes for the day."
+    "/game_leaderboards/sword": {
+      "schema": { "type": "object" },
+      "description": "Collection to query all sword game profiles for ranking."
     }
   }
 }
