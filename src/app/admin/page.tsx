@@ -14,15 +14,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Calendar } from "@/components/ui/calendar"
 import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-  DialogFooter
-} from "@/components/ui/dialog"
-import { 
   ShieldAlert, 
   Trash2, 
   Loader2, 
@@ -38,16 +29,11 @@ import {
   RefreshCw,
   Edit2,
   Settings2,
-  BookOpen,
   PlusCircle,
   CalendarPlus,
   ArrowRight,
-  CheckCircle2,
-  XCircle,
-  Sparkles,
   KeyRound,
   ShieldCheck,
-  CalendarRange,
   History
 } from "lucide-react"
 import { 
@@ -77,11 +63,6 @@ export default function AdminPage() {
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"))
   const [claimCode, setClaimSecret] = useState("")
 
-  // 명언 승인 선택 상태
-  const [selectedQuoteForApprove, setSelectedQuoteForApprove] = useState<any>(null)
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
-
-  // 단일 문제 등록 상태
   const [singleProblem, setSingleProblem] = useState({
     date: format(new Date(), "yyyy-MM-dd"),
     grade: "1",
@@ -93,14 +74,12 @@ export default function AdminPage() {
     rewardPoints: 100
   })
 
-  // 단일 명언 등록 상태
   const [singleFortune, setSingleFortune] = useState({
     date: format(new Date(), "yyyy-MM-dd"),
     fortuneText: "",
     author: ""
   })
 
-  // 관리자 권한 확인 (실시간 리스너)
   const adminRef = useMemoFirebase(() => {
     if (!user?.uid) return null
     return doc(db, "roles_admin", user.uid)
@@ -108,16 +87,13 @@ export default function AdminPage() {
 
   const { data: isAdminDoc, isLoading: isAdminLoading } = useDoc(adminRef)
   
-  // 실제 관리자 권한이 확정된 상태
   const isActuallyAdmin = useMemo(() => {
     return !!user && !!isAdminDoc && isAdminLoading === false;
   }, [user, isAdminDoc, isAdminLoading]);
 
-  // 시스템 설정 데이터
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
-  // 관리자 전용 데이터 쿼리 - 권한 확정 시에만 활성화
   const teachersQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
     return query(collection(db, "teachers"), orderBy("vote", "desc"))
@@ -135,12 +111,6 @@ export default function AdminPage() {
     return query(collection(db, "inquiries"), orderBy("createdAt", "desc"), limit(100))
   }, [db, isActuallyAdmin])
   const { data: inquiries } = useCollection(inquiriesQuery)
-
-  const quoteSuggestionsQuery = useMemoFirebase(() => {
-    if (!isActuallyAdmin) return null
-    return query(collection(db, "quote_suggestions"), orderBy("createdAt", "desc"))
-  }, [db, isActuallyAdmin])
-  const { data: quoteSuggestions } = useCollection(quoteSuggestionsQuery)
 
   const adminDocsQuery = useMemoFirebase(() => {
     if (!isActuallyAdmin) return null
@@ -175,7 +145,6 @@ export default function AdminPage() {
   const [teacherName, setTeacherName] = useState("")
   const [noticeText, setNoticeText] = useState("")
   const [adminSecretCode, setAdminSecretCode] = useState("")
-  const [kakaoApiKey, setKakaoApiKey] = useState("")
   const [bulkProblemText, setBulkProblemText] = useState("")
   const [bulkFortuneText, setBulkFortuneText] = useState("")
 
@@ -191,7 +160,6 @@ export default function AdminPage() {
     if (configData) {
       setNoticeText(configData.notice || "")
       setAdminSecretCode(configData.adminSecret || "ufes-admin-777")
-      setKakaoApiKey(configData.kakaoApiKey || "")
       if (configData.pointConfig) {
         setPointsConfig({
           dailyAttendance: configData.pointConfig.dailyAttendance || 100,
@@ -230,7 +198,7 @@ export default function AdminPage() {
       vote: 0, 
       createdAt: serverTimestamp() 
     }, { merge: true })
-    toast({ title: "교사 등록 요청 완료" })
+    toast({ title: "교사 등록 완료" })
     setTeacherName("")
     setIsSaving(false)
   }
@@ -249,7 +217,7 @@ export default function AdminPage() {
     teachers.forEach(t => {
       updateDocumentNonBlocking(doc(db, "teachers", t.id), { vote: 0, updatedAt: serverTimestamp() })
     })
-    toast({ title: "투표 초기화 요청 완료" })
+    toast({ title: "투표 초기화 완료" })
     setIsSaving(false)
   }
 
@@ -268,7 +236,6 @@ export default function AdminPage() {
     setDocumentNonBlocking(configRef, { 
       notice: noticeText, 
       adminSecret: adminSecretCode,
-      kakaoApiKey: kakaoApiKey,
       pointConfig: pointsConfig
     }, { merge: true })
     toast({ title: "저장 완료" })
@@ -311,33 +278,6 @@ export default function AdminPage() {
     toast({ title: "문의가 삭제되었습니다." })
   }
 
-  const handleApproveQuoteAction = (targetDate: string) => {
-    if (!selectedQuoteForApprove) return
-    setIsSaving(true)
-    
-    // 1. 해당 날짜의 명언으로 등록
-    setDocumentNonBlocking(doc(db, "daily_fortunes", targetDate), {
-      date: targetDate,
-      fortuneText: selectedQuoteForApprove.fortuneText,
-      author: selectedQuoteForApprove.author || selectedQuoteForApprove.userNickname,
-      updatedAt: serverTimestamp()
-    }, { merge: true })
-
-    // 2. 추천 상태 업데이트
-    updateDocumentNonBlocking(doc(db, "quote_suggestions", selectedQuoteForApprove.id), { status: "approved" })
-    
-    toast({ title: "명언 승인 및 등록 완료!", description: `${targetDate}의 명언으로 반영되었습니다.` })
-    setIsApproveDialogOpen(false)
-    setSelectedQuoteForApprove(null)
-    setIsSaving(false)
-  }
-
-  const handleRejectQuote = (id: string) => {
-    if (!confirm("이 추천을 거절하시겠습니까?")) return
-    updateDocumentNonBlocking(doc(db, "quote_suggestions", id), { status: "rejected" })
-    toast({ title: "추천 거절 완료" })
-  }
-
   const handleCleanupOldData = () => {
     if (!confirm("2일 전의 모든 운세와 문제 기록을 삭제하시겠습니까?")) return
     setIsSaving(true)
@@ -345,7 +285,6 @@ export default function AdminPage() {
     const thresholdDate = subDays(new Date(), 2)
     let deleteCount = 0
 
-    // 문제 삭제
     allProblems?.forEach(p => {
       const pDate = parseISO(p.date)
       if (isValid(pDate) && isBefore(pDate, thresholdDate)) {
@@ -354,7 +293,6 @@ export default function AdminPage() {
       }
     })
 
-    // 명언 삭제
     allFortunes?.forEach(f => {
       const fDate = parseISO(f.date)
       if (isValid(fDate) && isBefore(fDate, thresholdDate)) {
@@ -365,18 +303,6 @@ export default function AdminPage() {
 
     toast({ title: "데이터 정리 완료", description: `${deleteCount}개의 오래된 데이터가 삭제되었습니다.` })
     setIsSaving(false)
-  }
-
-  const handleDeleteAllInquiries = () => {
-    if (!inquiries || inquiries.length === 0) return
-    if (!confirm(`정말 ${inquiries.length}개의 모든 문의를 삭제하시겠습니까?`)) return
-    
-    inquiries.forEach(iq => {
-      if (iq.id) {
-        deleteDocumentNonBlocking(doc(db, "inquiries", iq.id))
-      }
-    })
-    toast({ title: "전체 삭제 완료" })
   }
 
   const handleBulkProblems = () => {
@@ -450,42 +376,6 @@ export default function AdminPage() {
     setIsSaving(false)
   }
 
-  const setNextDayForProblem = () => {
-    if (!allProblems || allProblems.length === 0) return;
-    const sortedDates = allProblems
-      .map(p => p.date)
-      .filter((d): d is string => !!d && typeof d === 'string' && d.length >= 10)
-      .sort();
-    
-    if (sortedDates.length === 0) return;
-    const lastDateStr = sortedDates[sortedDates.length - 1];
-    try {
-      const nextDate = addDays(parseISO(lastDateStr), 1);
-      setSingleProblem(prev => ({ ...prev, date: format(nextDate, "yyyy-MM-dd") }));
-      toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  const setNextDayForFortune = () => {
-    if (!allFortunes || allFortunes.length === 0) return;
-    const sortedDates = allFortunes
-      .map(f => f.date)
-      .filter((d): d is string => !!d && typeof d === 'string' && d.length >= 10)
-      .sort();
-    
-    if (sortedDates.length === 0) return;
-    const lastDateStr = sortedDates[sortedDates.length - 1];
-    try {
-      const nextDate = addDays(parseISO(lastDateStr), 1);
-      setSingleFortune(prev => ({ ...prev, date: format(nextDate, "yyyy-MM-dd") }));
-      toast({ title: "날짜가 다음 날로 설정되었습니다.", description: `대상 날짜: ${format(nextDate, "yyyy-MM-dd")}` });
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   const handleBulkFortunes = () => {
     if (!bulkFortuneText.trim()) return
     setIsSaving(true)
@@ -513,37 +403,14 @@ export default function AdminPage() {
     setIsSaving(false)
   }
 
-  const getDayData = (day: Date) => {
-    const dStr = format(day, "yyyy-MM-dd")
-    const hasProblem = allProblems?.some(p => p.date === dStr)
-    const hasFortune = allFortunes?.some(f => f.date === dStr)
-    return { hasProblem, hasFortune }
-  }
-
-  const getLastRegisteredDate = () => {
-    if (!allFortunes || allFortunes.length === 0) return format(new Date(), "yyyy-MM-dd")
-    const validDates = allFortunes
-      .map(f => f.date)
-      .filter((d): d is string => !!d && typeof d === 'string' && d.length >= 10)
-      .sort()
-    
-    if (validDates.length === 0) return format(new Date(), "yyyy-MM-dd")
-    return validDates[validDates.length - 1]
-  }
-
-  // 로딩 상태 처리
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-sm font-black text-muted-foreground">관리자 권한 확인 중...</p>
-        </div>
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     )
   }
 
-  // 관리자 권한이 없을 경우 인증 화면 표시
   if (!isActuallyAdmin) {
     return (
       <div className="container mx-auto px-4 h-[calc(100vh-120px)] flex items-center justify-center">
@@ -553,47 +420,16 @@ export default function AdminPage() {
               <KeyRound className="h-8 w-8 text-white" />
             </div>
             <CardTitle className="text-2xl font-black text-primary">관리자 인증</CardTitle>
-            <CardDescription className="text-xs font-bold text-primary/60">
-              이 페이지는 관리자 전용입니다. <br/>관리자 인증 코드를 입력해 주세요.
-            </CardDescription>
+            <CardDescription className="text-xs font-bold text-primary/60">관리자 인증 코드를 입력해 주세요.</CardDescription>
           </CardHeader>
           <CardContent className="p-8 space-y-6">
-            <div className="space-y-2">
-              <Label className="text-xs font-black text-muted-foreground ml-1">인증 코드 (Secret Code)</Label>
-              <Input 
-                type="password" 
-                placeholder="코드를 입력하세요" 
-                value={claimCode} 
-                onChange={(e) => setClaimSecret(e.target.value)}
-                className="h-12 rounded-2xl bg-muted/30 border-none focus-visible:ring-primary font-mono text-center tracking-widest"
-              />
-            </div>
-            <Button 
-              onClick={handleClaimAdmin} 
-              disabled={isSaving || !claimCode.trim()} 
-              className="w-full h-12 rounded-2xl font-black bg-primary text-white shadow-md hover:bg-primary/90 transition-all active:scale-95"
-            >
-              {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ShieldCheck className="h-5 w-5 mr-2" /> 관리자 권한 획득</>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              onClick={() => router.push("/dashboard")} 
-              className="w-full rounded-2xl h-10 text-xs font-bold text-muted-foreground"
-            >
-              대시보드로 돌아가기
-            </Button>
+            <Input type="password" placeholder="코드를 입력하세요" value={claimCode} onChange={(e) => setClaimSecret(e.target.value)} className="h-12 rounded-2xl bg-muted/30 border-none text-center tracking-widest" />
+            <Button onClick={handleClaimAdmin} disabled={isSaving || !claimCode.trim()} className="w-full h-12 rounded-2xl font-black bg-primary">관리자 권한 획득</Button>
+            <Button variant="ghost" onClick={() => router.push("/dashboard")} className="w-full rounded-2xl h-10 text-xs font-bold text-muted-foreground">대시보드로 돌아가기</Button>
           </CardContent>
         </Card>
       </div>
     )
-  }
-
-  const problemExample = `2024-03-25|1|다항식의 덧셈|수학|중|x^2 + 2x + 1 을 x+1로 나누면?|x+1|150\n2024-03-25|2|삼각함수 기초|수학|상|sin(pi/2)의 값은?|1|200`
-  const fortuneExample = `2024-03-25|천재는 1%의 영감과 99%의 노력으로 이루어진다|토마스 에디슨\n2024-03-26|실패는 성공의 어머니이다|토마스 에디슨`
-
-  const copyExample = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({ title: "예시가 복사되었습니다." })
   }
 
   return (
@@ -604,9 +440,8 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="inquiry">
-        <TabsList className="grid w-full grid-cols-8 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
+        <TabsList className="grid w-full grid-cols-7 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
           <TabsTrigger value="inquiry" className="rounded-xl font-bold text-xs"><MessageSquare className="h-3 w-3 mr-1" /> 문의</TabsTrigger>
-          <TabsTrigger value="quote_requests" className="rounded-xl font-bold text-xs"><Sparkles className="h-3 w-3 mr-1" /> 추천</TabsTrigger>
           <TabsTrigger value="users" className="rounded-xl font-bold text-xs">학생</TabsTrigger>
           <TabsTrigger value="points" className="rounded-xl font-bold text-xs"><Coins className="h-3 w-3 mr-1" /> 포인트</TabsTrigger>
           <TabsTrigger value="bulk" className="rounded-xl font-bold text-xs">등록/현황</TabsTrigger>
@@ -616,17 +451,6 @@ export default function AdminPage() {
         </TabsList>
 
         <TabsContent value="inquiry">
-          <div className="flex justify-end mb-4">
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={handleDeleteAllInquiries}
-              disabled={!inquiries || inquiries.length === 0}
-              className="rounded-full font-black text-[10px] h-8"
-            >
-              <Eraser className="h-3 w-3 mr-1" /> 전체 문의 삭제
-            </Button>
-          </div>
           <div className="space-y-4">
             {inquiries?.map((iq) => (
               <Card key={iq.id} className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
@@ -638,156 +462,22 @@ export default function AdminPage() {
                       </Badge>
                       <span className="text-[10px] font-bold text-muted-foreground">{iq.userNickname} 학생</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground font-medium">{iq.createdAt?.toDate?.().toLocaleString() || "방금 전"}</span>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteInquiry(iq.id)} className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteInquiry(iq.id)} className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                   <div className="text-sm">
                     <p className="font-black mb-1 text-primary">Q: {iq.subject}</p>
-                    <p className="opacity-80 whitespace-pre-wrap leading-relaxed font-bold bg-muted/20 p-4 rounded-2xl">{iq.message}</p>
+                    <p className="opacity-80 whitespace-pre-wrap font-bold bg-muted/20 p-4 rounded-2xl">{iq.message}</p>
                   </div>
                   <div className="flex gap-2 items-start">
-                    <Textarea 
-                      className="min-h-[80px] text-xs bg-muted/20 rounded-2xl border-none focus-visible:ring-primary" 
-                      placeholder="답변 내용을 입력하세요..." 
-                      defaultValue={iq.reply} 
-                      onChange={(e) => setReplyText({ ...replyText, [iq.id]: e.target.value })} 
-                    />
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleSendReply(iq.id)} 
-                      disabled={isSaving}
-                      className="font-black rounded-2xl px-5 h-[80px] bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "답변"}
-                    </Button>
+                    <Textarea className="min-h-[80px] text-xs bg-muted/20 rounded-2xl border-none" placeholder="답변 내용을 입력하세요..." defaultValue={iq.reply} onChange={(e) => setReplyText({ ...replyText, [iq.id]: e.target.value })} />
+                    <Button size="sm" onClick={() => handleSendReply(iq.id)} disabled={isSaving} className="font-black rounded-2xl px-5 h-[80px] bg-primary">답변</Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            {(!inquiries || inquiries.length === 0) && (
-              <div className="text-center py-20 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20">
-                <p className="text-xs text-muted-foreground font-bold italic">처리할 문의가 없습니다.</p>
-              </div>
-            )}
           </div>
-        </TabsContent>
-
-        <TabsContent value="quote_requests">
-          <div className="space-y-4">
-            <h2 className="text-sm font-black flex items-center gap-2 mb-4"><Sparkles className="h-4 w-4 text-accent" /> 학생들이 추천한 명언 목록</h2>
-            {quoteSuggestions?.map((s) => (
-              <Card key={s.id} className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-                <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                  <div className="space-y-2 flex-grow">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={s.status === "pending" ? "destructive" : "secondary"} className="text-[10px] font-black rounded-full">
-                        {s.status === "pending" ? "대기중" : s.status === "approved" ? "승인됨" : "거절됨"}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] font-bold rounded-full">추천: {s.userNickname} 학생</Badge>
-                      <span className="text-[10px] text-muted-foreground">{s.createdAt?.toDate?.().toLocaleString()}</span>
-                    </div>
-                    <p className="text-sm font-black text-primary leading-relaxed italic">"{s.fortuneText}"</p>
-                    <p className="text-xs font-bold text-muted-foreground">- {s.author}</p>
-                  </div>
-                  {s.status === "pending" && (
-                    <div className="flex gap-2 shrink-0">
-                      <Button 
-                        size="sm" 
-                        onClick={() => {
-                          setSelectedQuoteForApprove(s)
-                          setIsApproveDialogOpen(true)
-                        }} 
-                        disabled={isSaving}
-                        className="bg-accent text-accent-foreground rounded-xl font-black text-xs"
-                      >
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> 승인
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleRejectQuote(s.id)}
-                        className="text-destructive hover:bg-destructive/10 rounded-xl font-black text-xs"
-                      >
-                        <XCircle className="h-3 w-3 mr-1" /> 거절
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-            {(!quoteSuggestions || quoteSuggestions.length === 0) && (
-              <div className="text-center py-20 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20">
-                <p className="text-xs text-muted-foreground font-bold italic">명언 추천 내역이 없습니다.</p>
-              </div>
-            )}
-          </div>
-
-          {/* 명언 승인 날짜 선택 다이얼로그 */}
-          <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-            <DialogContent className="rounded-[2.5rem] max-w-sm bg-card border-none shadow-2xl">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-black text-primary">명언 등록 날짜 선택</DialogTitle>
-                <DialogDescription className="text-xs font-bold opacity-60">추천된 명언을 언제 게시할까요?</DialogDescription>
-              </DialogHeader>
-              <div className="py-6 space-y-4">
-                <div className="p-4 bg-muted/30 rounded-2xl">
-                  <p className="text-[11px] font-black text-primary mb-1">선택된 명언</p>
-                  <p className="text-xs font-bold italic opacity-80 leading-relaxed">"{selectedQuoteForApprove?.fortuneText}"</p>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="h-14 rounded-2xl border-2 hover:bg-primary/5 hover:border-primary flex items-center justify-between px-6"
-                    onClick={() => handleApproveQuoteAction(format(new Date(), "yyyy-MM-dd"))}
-                  >
-                    <div className="text-left">
-                      <p className="font-black text-sm">오늘 등록</p>
-                      <p className="text-[10px] opacity-50">{format(new Date(), "yyyy-MM-dd")}</p>
-                    </div>
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                  </Button>
-
-                  <Button 
-                    variant="outline" 
-                    className="h-14 rounded-2xl border-2 hover:bg-accent/5 hover:border-accent flex items-center justify-between px-6"
-                    onClick={() => {
-                      try {
-                        const lastStr = getLastRegisteredDate()
-                        const nextDate = addDays(parseISO(lastStr), 1)
-                        handleApproveQuoteAction(format(nextDate, "yyyy-MM-dd"))
-                      } catch (e) {
-                        toast({ variant: "destructive", title: "날짜 계산 오류" })
-                      }
-                    }}
-                  >
-                    <div className="text-left">
-                      <p className="font-black text-sm">다음 등록 가능일</p>
-                      <p className="text-[10px] opacity-50">
-                        {(() => {
-                          try {
-                            const lastStr = getLastRegisteredDate()
-                            const nextDate = addDays(parseISO(lastStr), 1)
-                            return format(nextDate, "yyyy-MM-dd")
-                          } catch (e) {
-                            return "날짜 계산 중..."
-                          }
-                        })()}
-                      </p>
-                    </div>
-                    <CalendarPlus className="h-5 w-5 text-accent" />
-                  </Button>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsApproveDialogOpen(false)} className="rounded-xl w-full">취소</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </TabsContent>
 
         <TabsContent value="users">
@@ -804,46 +494,25 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent className="space-y-2 p-4">
               {allUsers?.filter(u => selectedTeacherFilter === "all" || u.teacherId === selectedTeacherFilter).map((u) => (
-                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-muted/30 rounded-2xl text-[11px] hover:bg-muted/50 transition-all gap-3">
+                <div key={u.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-2xl text-[11px]">
                   <div className="flex items-center gap-3">
                     <span className="font-black text-sm">{u.nickname}</span>
                     <span className="opacity-60 font-bold">{u.schoolName} {u.grade}학년</span>
                   </div>
-                  <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="flex items-center gap-2 bg-card/50 p-1.5 rounded-xl border border-primary/10 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-card/50 p-1.5 rounded-xl border">
                       <Coins className="h-3 w-3 text-primary" />
-                      <Input 
-                        type="number" 
-                        defaultValue={u.points} 
-                        onChange={(e) => setTempPoints({ ...tempPoints, [u.id]: parseInt(e.target.value) })}
-                        className="w-20 h-7 text-[10px] border-none bg-transparent font-black text-primary p-0 text-right focus-visible:ring-0" 
-                      />
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-6 w-6 rounded-lg text-primary hover:bg-primary/10"
-                        onClick={() => {
-                           const newPoints = tempPoints[u.id]
-                           if (newPoints === undefined || isNaN(newPoints)) return
-                           setIsSaving(true)
-                           updateDocumentNonBlocking(doc(db, "users", u.id), { points: newPoints, updatedAt: serverTimestamp() })
-                           toast({ title: "포인트 수정 요청 완료" })
-                           setIsSaving(false)
-                        }}
-                        disabled={isSaving || tempPoints[u.id] === undefined}
-                      >
-                        <Save className="h-3 w-3" />
-                      </Button>
+                      <Input type="number" defaultValue={u.points} onChange={(e) => setTempPoints({ ...tempPoints, [u.id]: parseInt(e.target.value) })} className="w-20 h-7 text-[10px] border-none bg-transparent font-black text-right p-0" />
+                      <Button size="icon" variant="ghost" className="h-6 w-6 rounded-lg text-primary" onClick={() => {
+                        const newPoints = tempPoints[u.id]
+                        if (newPoints === undefined || isNaN(newPoints)) return
+                        setIsSaving(true)
+                        updateDocumentNonBlocking(doc(db, "users", u.id), { points: newPoints, updatedAt: serverTimestamp() })
+                        toast({ title: "포인트 수정 완료" })
+                        setIsSaving(false)
+                      }} disabled={isSaving || tempPoints[u.id] === undefined}><Save className="h-3 w-3" /></Button>
                     </div>
-                    <div className="flex items-center gap-2 ml-2">
-                      <span className="opacity-60 font-bold">Admin</span>
-                      <Switch 
-                        checked={adminIds.includes(u.id)} 
-                        onCheckedChange={() => handleToggleAdmin(u.id, adminIds.includes(u.id))} 
-                        disabled={u.id === user?.uid} 
-                        className="scale-75"
-                      />
-                    </div>
+                    <Switch checked={adminIds.includes(u.id)} onCheckedChange={() => handleToggleAdmin(u.id, adminIds.includes(u.id))} disabled={u.id === user?.uid} className="scale-75" />
                   </div>
                 </div>
               ))}
@@ -852,448 +521,72 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="points">
-          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-            <CardHeader className="border-b pb-4">
-              <CardTitle className="text-sm font-black flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-primary" /> 시스템 포인트 지급액 설정
-              </CardTitle>
-              <CardDescription className="text-xs">학생들이 활동 시 지급되는 포인트 양을 조절합니다.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">일일 출석 기본 포인트</Label>
-                  <Input 
-                    type="number" 
-                    value={pointsConfig.dailyAttendance} 
-                    onChange={(e) => setPointsConfig({...pointsConfig, dailyAttendance: parseInt(e.target.value)})}
-                    className="rounded-xl bg-background"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">7일 연속 출석 보너스</Label>
-                  <Input 
-                    type="number" 
-                    value={pointsConfig.streak7} 
-                    onChange={(e) => setPointsConfig({...pointsConfig, streak7: parseInt(e.target.value)})}
-                    className="rounded-xl bg-background"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">30일 연속 출석 보너스</Label>
-                  <Input 
-                    type="number" 
-                    value={pointsConfig.streak30} 
-                    onChange={(e) => setPointsConfig({...pointsConfig, streak30: parseInt(e.target.value)})}
-                    className="rounded-xl bg-background"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">일일 문제 기본 보상 (개별 설정 없을 때)</Label>
-                  <Input 
-                    type="number" 
-                    value={pointsConfig.problemDefault} 
-                    onChange={(e) => setPointsConfig({...pointsConfig, problemDefault: parseInt(e.target.value)})}
-                    className="rounded-xl bg-background"
-                  />
-                </div>
-              </div>
-              <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-primary text-primary-foreground">
-                포인트 설정 저장
-              </Button>
-            </CardContent>
+          <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-6">
+            <CardHeader><CardTitle className="text-sm font-black">시스템 포인트 설정</CardTitle></CardHeader>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-1"><Label className="text-xs font-bold">일일 출석</Label><Input type="number" value={pointsConfig.dailyAttendance} onChange={(e) => setPointsConfig({...pointsConfig, dailyAttendance: parseInt(e.target.value)})} /></div>
+              <div className="space-y-1"><Label className="text-xs font-bold">7일 연속</Label><Input type="number" value={pointsConfig.streak7} onChange={(e) => setPointsConfig({...pointsConfig, streak7: parseInt(e.target.value)})} /></div>
+              <div className="space-y-1"><Label className="text-xs font-bold">30일 연속</Label><Input type="number" value={pointsConfig.streak30} onChange={(e) => setPointsConfig({...pointsConfig, streak30: parseInt(e.target.value)})} /></div>
+              <div className="space-y-1"><Label className="text-xs font-bold">문제 기본</Label><Input type="number" value={pointsConfig.problemDefault} onChange={(e) => setPointsConfig({...pointsConfig, problemDefault: parseInt(e.target.value)})} /></div>
+            </div>
+            <Button onClick={handleUpdateConfig} disabled={isSaving} className="w-full rounded-2xl h-11 bg-primary">설정 저장</Button>
           </Card>
         </TabsContent>
 
         <TabsContent value="bulk">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-             <div className="md:col-span-7 space-y-6">
-                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-                  <CardHeader className="border-b pb-4">
-                    <CardTitle className="text-sm font-black flex items-center gap-2">
-                      <PlusCircle className="h-4 w-4 text-primary" /> 오늘의 문제 직접 등록
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold">대상 날짜</Label>
-                        <div className="flex gap-1">
-                          <Input 
-                            type="date" 
-                            value={singleProblem.date} 
-                            onChange={(e) => setSingleProblem({...singleProblem, date: e.target.value})} 
-                            className="rounded-xl h-9 text-xs"
-                          />
-                          <Button variant="outline" size="icon" onClick={setNextDayForProblem} className="h-9 w-9 shrink-0 rounded-xl" title="마지막 등록일 다음 날로 설정">
-                            <CalendarPlus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold">대상 학년</Label>
-                        <Select value={singleProblem.grade} onValueChange={(v) => setSingleProblem({...singleProblem, grade: v})}>
-                          <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1학년</SelectItem>
-                            <SelectItem value="2">2학년</SelectItem>
-                            <SelectItem value="3">3학년</SelectItem>
-                            <SelectItem value="4">4학년</SelectItem>
-                            <SelectItem value="5">5학년</SelectItem>
-                            <SelectItem value="6">6학년</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold">문제 제목</Label>
-                      <Input 
-                        placeholder="예: 다항식의 연산 기초" 
-                        value={singleProblem.title} 
-                        onChange={(e) => setSingleProblem({...singleProblem, title: e.target.value})} 
-                        className="rounded-xl h-9 text-xs"
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold">토픽</Label>
-                        <Input value={singleProblem.topic} onChange={(e) => setSingleProblem({...singleProblem, topic: e.target.value})} className="rounded-xl h-9 text-xs" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold">난이도</Label>
-                        <Select value={singleProblem.difficulty} onValueChange={(v) => setSingleProblem({...singleProblem, difficulty: v})}>
-                          <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="하">하</SelectItem>
-                            <SelectItem value="중">중</SelectItem>
-                            <SelectItem value="상">상</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold">보상 포인트</Label>
-                        <Input type="number" value={singleProblem.rewardPoints} onChange={(e) => setSingleProblem({...singleProblem, rewardPoints: parseInt(e.target.value)})} className="rounded-xl h-9 text-xs" />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold">문제 내용</Label>
-                      <Textarea 
-                        placeholder="문제 본문을 입력하세요..." 
-                        value={singleProblem.problemText} 
-                        onChange={(e) => setSingleProblem({...singleProblem, problemText: e.target.value})} 
-                        className="rounded-xl min-h-[80px] text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold">정답</Label>
-                      <Input 
-                        placeholder="정답 입력" 
-                        value={singleProblem.answer} 
-                        onChange={(e) => setSingleProblem({...singleProblem, answer: e.target.value})} 
-                        className="rounded-xl h-9 text-xs"
-                      />
-                    </div>
-                    <Button onClick={handleSingleProblemSave} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-primary text-white">
-                      문제 등록하기
-                    </Button>
-                  </CardContent>
-                </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-4">
+                <CardHeader><CardTitle className="text-sm font-black">문제 개별 등록</CardTitle></CardHeader>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="date" value={singleProblem.date} onChange={(e) => setSingleProblem({...singleProblem, date: e.target.value})} className="rounded-xl h-9 text-xs" />
+                  <Select value={singleProblem.grade} onValueChange={(v) => setSingleProblem({...singleProblem, grade: v})}><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1학년</SelectItem><SelectItem value="2">2학년</SelectItem><SelectItem value="3">3학년</SelectItem></SelectContent></Select>
+                </div>
+                <Input placeholder="제목" value={singleProblem.title} onChange={(e) => setSingleProblem({...singleProblem, title: e.target.value})} className="rounded-xl h-9 text-xs" />
+                <Textarea placeholder="문제 내용" value={singleProblem.problemText} onChange={(e) => setSingleProblem({...singleProblem, problemText: e.target.value})} className="rounded-xl min-h-[60px] text-xs" />
+                <Input placeholder="정답" value={singleProblem.answer} onChange={(e) => setSingleProblem({...singleProblem, answer: e.target.value})} className="rounded-xl h-9 text-xs" />
+                <Button onClick={handleSingleProblemSave} disabled={isSaving} className="w-full rounded-xl h-9 bg-primary">등록</Button>
+             </Card>
 
-                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-                  <CardHeader className="border-b pb-4">
-                    <CardTitle className="text-sm font-black flex items-center gap-2">
-                      <Quote className="h-4 w-4 text-accent" /> 오늘의 명언 직접 등록
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold">대상 날짜</Label>
-                      <div className="flex gap-1">
-                        <Input 
-                          type="date" 
-                          value={singleFortune.date} 
-                          onChange={(e) => setSingleFortune({...singleFortune, date: e.target.value})} 
-                          className="rounded-xl h-9 text-xs"
-                        />
-                        <Button variant="outline" size="icon" onClick={setNextDayForFortune} className="h-9 w-9 shrink-0 rounded-xl" title="마지막 등록일 다음 날로 설정">
-                          <CalendarPlus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold">명언 내용</Label>
-                      <Textarea 
-                        placeholder="오늘의 명언 내용을 입력하세요..." 
-                        value={singleFortune.fortuneText} 
-                        onChange={(e) => setSingleFortune({...singleFortune, fortuneText: e.target.value})} 
-                        className="rounded-xl min-h-[80px] text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold">작성자 (선택사항)</Label>
-                      <Input 
-                        placeholder="예: 알버트 아인슈타인" 
-                        value={singleFortune.author} 
-                        onChange={(e) => setSingleFortune({...singleFortune, author: e.target.value})} 
-                        className="rounded-xl h-9 text-xs"
-                      />
-                    </div>
-                    <Button onClick={handleSingleFortuneSave} disabled={isSaving} className="w-full rounded-2xl h-11 font-black bg-accent text-white">
-                      명언 등록하기
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-                  <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">데이터 일괄 등록 (Bulk)</CardTitle></CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <BrainCircuit className="h-4 w-4 text-primary" />
-                            <Label className="text-xs font-bold">일일 문제 일괄 등록</Label>
-                          </div>
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => copyExample(problemExample)}><Copy className="h-3 w-3 mr-1" /> 예시 복사</Button>
-                        </div>
-                        <Textarea 
-                          placeholder="날짜|학년|제목|토픽|난이도|문제내용|정답|지급포인트" 
-                          value={bulkProblemText} 
-                          onChange={(e) => setBulkProblemText(e.target.value)} 
-                          className="rounded-2xl min-h-[120px] text-[11px] font-mono leading-relaxed bg-muted/20 border-none" 
-                        />
-                        <Button onClick={handleBulkProblems} disabled={isSaving || !bulkProblemText.trim()} className="w-full rounded-2xl font-black h-11 bg-primary text-primary-foreground">문제 일괄 등록</Button>
-                      </div>
-                      
-                      <div className="space-y-2 pt-6 border-t">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <Quote className="h-4 w-4 text-accent" />
-                            <Label className="text-xs font-bold">오늘의 명언 일괄 등록</Label>
-                          </div>
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => copyExample(fortuneExample)}><Copy className="h-3 w-3 mr-1" /> 예시 복사</Button>
-                        </div>
-                        <Textarea 
-                          placeholder="날짜|명언내용|작성자" 
-                          value={bulkFortuneText} 
-                          onChange={(e) => setBulkFortuneText(e.target.value)} 
-                          className="rounded-2xl min-h-[100px] text-[11px] font-mono leading-relaxed bg-muted/20 border-none" 
-                        />
-                        <Button onClick={handleBulkFortunes} disabled={isSaving || !bulkFortuneText.trim()} className="w-full rounded-2xl font-black h-11 bg-accent text-accent-foreground">명언 일괄 등록</Button>
-                      </div>
-                  </CardContent>
-                </Card>
-             </div>
-             
-             <div className="md:col-span-5 space-y-6">
-                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-black flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4 text-primary" /> 데이터 현황 달력
-                    </CardTitle>
-                    <CardDescription className="text-[10px]">날짜 클릭 시 해당 날짜의 등록 정보를 확인합니다.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center">
-                    <div className="bg-card rounded-3xl border flex justify-center overflow-hidden w-full max-w-[320px]">
-                      <Calendar
-                        onDateClick={(d) => {
-                          const dStr = format(d, "yyyy-MM-dd")
-                          setSelectedDate(dStr)
-                        }}
-                        renderDay={(date) => {
-                          const { hasProblem, hasFortune } = getDayData(date)
-                          return (
-                            <div className="flex gap-0.5 justify-center mt-1">
-                              {hasProblem && <div className="h-1 w-1 rounded-full bg-primary" />}
-                              {hasFortune && <div className="h-1 w-1 rounded-full bg-[#67C4DA]" />}
-                            </div>
-                          )
-                        }}
-                      />
-                    </div>
-                    <div className="flex gap-4 mt-4 text-[10px] font-bold">
-                      <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-primary" /> 문제 등록됨</div>
-                      <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-[#67C4DA]" /> 명언 등록됨</div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* 선택한 날짜의 데이터 상세 뷰 */}
-                <Card className="border-none shadow-md bg-card rounded-3xl overflow-hidden animate-in fade-in zoom-in duration-300">
-                  <CardHeader className="bg-muted/30 pb-3">
-                    <CardTitle className="text-sm font-black flex items-center gap-2">
-                      <ArrowRight className="h-4 w-4 text-primary" /> {selectedDate} 현황
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black opacity-50 uppercase tracking-widest">등록된 문제 ({problemsOnSelectedDate.length})</Label>
-                      {problemsOnSelectedDate.length > 0 ? (
-                        <div className="grid gap-2">
-                          {problemsOnSelectedDate.map(p => (
-                            <div key={p.id} className="p-3 bg-muted/20 rounded-xl border border-border/50">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="outline" className="text-[9px] h-4">{p.grade}학년</Badge>
-                                <span className="text-[11px] font-black truncate">{p.title}</span>
-                              </div>
-                              <p className="text-[10px] opacity-70 line-clamp-1">{p.problemText}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] font-bold opacity-30 italic py-2 text-center">등록된 문제가 없습니다.</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2 pt-2 border-t">
-                      <Label className="text-[10px] font-black opacity-50 uppercase tracking-widest">등록된 명언</Label>
-                      {fortuneOnSelectedDate ? (
-                        <div className="p-3 bg-accent/5 rounded-xl border border-accent/20">
-                          <p className="text-[11px] font-bold italic leading-relaxed">"{fortuneOnSelectedDate.fortuneText}"</p>
-                          <p className="text-[9px] font-black text-accent mt-1 text-right">- {fortuneOnSelectedDate.author}</p>
-                        </div>
-                      ) : (
-                        <p className="text-[10px] font-bold opacity-30 italic py-2 text-center">등록된 명언이 없습니다.</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-black flex items-center gap-2">
-                      <Info className="h-3 w-3" /> 일괄 등록 형식 가이드
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-3 bg-muted/30 rounded-2xl">
-                      <p className="text-[10px] font-black mb-1">문제 ( | 로 구분 )</p>
-                      <code className="text-[9px] block text-primary font-mono leading-relaxed">날짜|학년|제목|토픽|난이도|문제|정답|포인트</code>
-                    </div>
-                    <div className="p-3 bg-muted/30 rounded-2xl">
-                      <p className="text-[10px] font-black mb-1">명언 ( | 로 구분 )</p>
-                      <code className="text-[9px] block text-accent font-mono leading-relaxed">날짜|명언내용|작성자</code>
-                    </div>
-                  </CardContent>
-                </Card>
-             </div>
+             <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-4">
+                <CardHeader><CardTitle className="text-sm font-black">데이터 현황 ({selectedDate})</CardTitle></CardHeader>
+                <Calendar onDateClick={(d) => setSelectedDate(format(d, "yyyy-MM-dd"))} />
+                <div className="p-3 bg-muted/30 rounded-xl space-y-2">
+                  <p className="text-[10px] font-black">문제: {problemsOnSelectedDate.length}개</p>
+                  <p className="text-[10px] font-black">명언: {fortuneOnSelectedDate ? "등록됨" : "없음"}</p>
+                </div>
+             </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="vote">
-          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-             <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-               <div>
-                 <CardTitle className="text-sm font-black">선생님 투표 관리</CardTitle>
-                 <CardDescription className="text-[10px]">투표수 수정 및 결과 초기화가 가능합니다.</CardDescription>
-               </div>
-               <Button variant="destructive" size="sm" onClick={handleResetAllVotes} disabled={isSaving} className="rounded-full font-black text-[10px] h-8">
-                 <RefreshCw className="h-3 w-3 mr-1" /> 결과 초기화
-               </Button>
-             </CardHeader>
-             <CardContent className="p-6 space-y-4">
-                <div className="flex gap-2">
-                  <input placeholder="선생님 성함" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} className="rounded-2xl bg-background border px-4 h-10 w-full" />
-                  <Button onClick={handleAddTeacher} className="rounded-2xl font-black bg-primary text-primary-foreground">추가</Button>
-                </div>
-                <div className="grid gap-2">
-                  {teachers?.map(t => (
-                    <div key={t.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-muted/30 rounded-2xl gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-sm">{t.name}</span>
-                        <Badge variant="outline" className="text-[9px] h-4">현재 {t.vote}표</Badge>
-                      </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                        <div className="flex items-center gap-1 bg-card/50 p-1 rounded-xl border">
-                          <Edit2 className="h-3 w-3 ml-1 text-muted-foreground" />
-                          <Input 
-                            type="number" 
-                            defaultValue={t.vote} 
-                            onChange={(e) => setTempVotes({ ...tempVotes, [t.id]: parseInt(e.target.value) })}
-                            className="w-16 h-7 text-[10px] border-none bg-transparent font-black text-right p-0 focus-visible:ring-0" 
-                          />
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-6 w-6 rounded-lg text-primary"
-                            onClick={() => handleUpdateVoteCount(t.id)}
-                            disabled={isSaving || tempVotes[t.id] === undefined}
-                          >
-                            <Save className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTeacher(t.id)} className="h-8 w-8 text-destructive rounded-full hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-             </CardContent>
+          <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-4">
+             <div className="flex gap-2">
+               <input placeholder="선생님 성함" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} className="rounded-2xl border px-4 h-10 w-full" />
+               <Button onClick={handleAddTeacher} className="rounded-2xl bg-primary">추가</Button>
+             </div>
+             <div className="grid gap-2">
+               {teachers?.map(t => (
+                 <div key={t.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-2xl">
+                   <span className="font-black text-sm">{t.name} ({t.vote}표)</span>
+                   <Button variant="ghost" size="icon" onClick={() => handleDeleteTeacher(t.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                 </div>
+               ))}
+             </div>
           </Card>
         </TabsContent>
 
         <TabsContent value="notice">
-          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-            <CardHeader className="border-b pb-4">
-              <CardTitle className="text-sm font-black">실시간 공지 사항</CardTitle>
-              <CardDescription className="text-xs">여기에 작성한 내용은 대시보드 진입 시 팝업으로 나타납니다.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <Textarea 
-                value={noticeText} 
-                onChange={(e) => setNoticeText(e.target.value)} 
-                className="rounded-2xl min-h-[120px] bg-background" 
-                placeholder="학생들에게 보여줄 공지 내용을 입력하세요..." 
-              />
-              <Button onClick={handleUpdateConfig} className="w-full rounded-2xl font-black h-11 bg-primary text-primary-foreground">공지 업데이트</Button>
-            </CardContent>
+          <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-4">
+            <Textarea value={noticeText} onChange={(e) => setNoticeText(e.target.value)} className="rounded-2xl min-h-[120px]" placeholder="공지 내용 입력..." />
+            <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 bg-primary">공지 업데이트</Button>
           </Card>
         </TabsContent>
 
         <TabsContent value="config">
-          <div className="grid gap-6">
-            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-              <CardHeader className="border-b pb-4"><CardTitle className="text-sm font-black">시스템 설정</CardTitle></CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-muted-foreground">관리자 인증 코드</Label>
-                  <Input type="password" value={adminSecretCode} onChange={(e) => setAdminSecretCode(e.target.value)} className="rounded-2xl h-11 bg-background" />
-                </div>
-                <div className="space-y-2 pt-4 border-t">
-                  <Label className="text-xs font-bold text-muted-foreground">카카오 JavaScript 키</Label>
-                  <Input type="text" value={kakaoApiKey} onChange={(e) => setKakaoApiKey(e.target.value)} className="rounded-2xl h-11 bg-background" />
-                </div>
-                <Button onClick={handleUpdateConfig} className="w-full rounded-2xl h-11 font-black bg-destructive text-white">전체 설정 저장</Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-md bg-card rounded-3xl overflow-hidden border-2 border-destructive/20">
-              <CardHeader className="bg-destructive/5 pb-4">
-                <CardTitle className="text-sm font-black flex items-center gap-2 text-destructive">
-                  <Eraser className="h-4 w-4" /> 시스템 최적화 및 청소
-                </CardTitle>
-                <CardDescription className="text-[10px] font-bold">오래된 데이터를 정리하여 성능을 개선합니다.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-2xl">
-                  <History className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-black">2일 전 기록 삭제</p>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      오늘 날짜 기준 2일 전보다 오래된 모든 **운세(Fortune)** 및 **문제(Problem)** 데이터를 삭제합니다. <br/>
-                      이 작업은 취소할 수 없으니 주의해 주세요.
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleCleanupOldData} 
-                  disabled={isSaving}
-                  className="w-full h-12 rounded-2xl font-black shadow-lg hover:shadow-destructive/20 active:scale-95 transition-all"
-                >
-                  {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Trash2 className="h-5 w-5 mr-2" /> 오래된 데이터 정리하기 (2일 이상)</>}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-4">
+             <Label className="text-xs font-bold">시스템 데이터 정리</Label>
+             <Button variant="destructive" onClick={handleCleanupOldData} disabled={isSaving} className="w-full h-12 rounded-2xl font-black">2일 이상 된 데이터 삭제</Button>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

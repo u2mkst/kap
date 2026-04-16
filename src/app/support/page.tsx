@@ -23,7 +23,6 @@ export default function SupportPage() {
   
   const [isSending, setIsSending] = useState(false)
   
-  // 1:1 문의 상태
   const [subject, setSubject] = useState("")
   const [message, setMessage] = useState("")
 
@@ -75,11 +74,6 @@ export default function SupportPage() {
         }))
       })
       .finally(() => setIsSending(false))
-  }
-
-  const handleMarkAsRead = (inquiryId: string) => {
-    if (!db) return
-    updateDocumentNonBlocking(doc(db, "inquiries", inquiryId), { isRead: true })
   }
 
   if (isUserLoading) {

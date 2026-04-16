@@ -32,7 +32,6 @@ import {
   Edit3,
   Sparkles,
   ShieldCheck,
-  Smartphone,
   ArrowRight
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from "@/firebase"
@@ -65,7 +64,6 @@ export default function DashboardPage() {
   const [showMigration, setShowMigration] = useState(false)
   const [isLinking, setIsLinking] = useState(false)
   
-  // 오늘의 문제 관련 상태
   const [userAnswer, setUserAnswer] = useState("")
   const [isSolving, setIsSolving] = useState(false)
 
@@ -79,7 +77,6 @@ export default function DashboardPage() {
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
-  // 소셜 로그인 여부 확인 및 마이그레이션 팝업 트리거
   useEffect(() => {
     if (!isUserLoading && user && !user.isAnonymous) {
       const socialProviders = ['google.com', 'oidc.naver', 'naver.com'];
@@ -429,7 +426,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 소셜 로그인 마이그레이션 안내 다이얼로그 */}
       <Dialog open={showMigration} onOpenChange={(o) => {
         if (!o) sessionStorage.setItem('migration_dismissed', 'true');
         setShowMigration(o);

@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from "react"
-import { MessageSquarePlus, Send, Loader2, CheckCircle2, MessageCircle } from "lucide-react"
+import { MessageCircle, Send, Loader2, MessageSquarePlus } from "lucide-react"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,7 +25,6 @@ export function FloatingInquiry() {
   const [isSending, setIsSending] = useState(false)
   const [open, setOpen] = useState(false)
 
-  // 1:1 문의 상태
   const [subject, setSubject] = useState("")
   const [message, setMessage] = useState("")
 
@@ -35,7 +34,6 @@ export function FloatingInquiry() {
   }, [user?.uid, db])
   const { data: userData } = useDoc(userDocRef)
 
-  // 읽지 않은 답변 쿼리
   const unreadRepliesQuery = useMemoFirebase(() => {
     if (!user?.uid) return null
     return query(
