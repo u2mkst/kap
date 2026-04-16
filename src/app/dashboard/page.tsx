@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -13,7 +13,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog"
 import { 
   Utensils, 
@@ -28,8 +29,10 @@ import {
   Send,
   PartyPopper,
   Edit3,
-  BookOpen,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Smartphone,
+  ArrowRight
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, setDoc } from "firebase/firestore"
@@ -37,6 +40,7 @@ import { toast } from "@/hooks/use-toast"
 import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
 import { initKakao, shareMealToKakao, shareTimetableToKakao, shareFortuneToKakao, shareQuoteToKakao } from "@/lib/kakao-share"
+import { linkAccountWithGoogle, linkAccountWithNaver } from "@/firebase/non-blocking-login"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -58,6 +62,8 @@ export default function DashboardPage() {
 
   const [showTutorial, setShowTutorial] = useState(false)
   const [showNotice, setShowNotice] = useState(false)
+  const [showMigration, setShowMigration] = useState(false)
+  const [isLinking, setIsLinking] = useState(false)
   
   // 오늘의 문제 관련 상태
   const [userAnswer, setUserAnswer] = useState("")
@@ -72,6 +78,21 @@ export default function DashboardPage() {
 
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
+
+  // 소셜 로그인 여부 확인 및 마이그레이션 팝업 트리거
+  useEffect(() => {
+    if (!isUserLoading && user && !user.isAnonymous) {
+      const socialProviders = ['google.com', 'oidc.naver', 'naver.com'];
+      const hasSocial = user.providerData.some(p => socialProviders.includes(p.providerId));
+      
+      if (!hasSocial) {
+        const dismissed = sessionStorage.getItem('migration_dismissed');
+        if (!dismissed) {
+          setShowMigration(true);
+        }
+      }
+    }
+  }, [user, isUserLoading]);
 
   useEffect(() => {
     if (configData?.kakaoApiKey) initKakao(configData.kakaoApiKey);
@@ -203,6 +224,22 @@ export default function DashboardPage() {
         toast({ variant: "destructive", title: "틀렸습니다. 😢" })
       }
     } finally { setIsSolving(false) }
+  }
+
+  const handleLinkSocial = async (type: 'google' | 'naver') => {
+    if (!user || isLinking) return;
+    setIsLinking(true);
+    try {
+      if (type === 'google') await linkAccountWithGoogle(user);
+      else await linkAccountWithNaver(user);
+      
+      toast({ title: "소셜 계정 연결 성공!", description: "이제 소셜 버튼으로 간편하게 로그인하세요." });
+      setShowMigration(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "연결 실패", description: e.message });
+    } finally {
+      setIsLinking(false);
+    }
   }
 
   const handleShareMeal = (date: string, menu: string) => {
@@ -402,6 +439,52 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* 소셜 로그인 마이그레이션 안내 다이얼로그 */}
+      <Dialog open={showMigration} onOpenChange={(o) => {
+        if (!o) sessionStorage.setItem('migration_dismissed', 'true');
+        setShowMigration(o);
+      }}>
+        <DialogContent className="rounded-[2.5rem] border-none shadow-2xl bg-card max-w-md">
+          <DialogHeader className="text-center">
+            <div className="mx-auto mb-4 h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <ShieldCheck className="h-8 w-8 text-primary" />
+            </div>
+            <DialogTitle className="text-2xl font-black text-primary">소셜 계정 전환 안내</DialogTitle>
+            <DialogDescription className="text-xs font-bold leading-relaxed pt-2">
+              KST HUB가 더 안전한 로그인을 위해 구글/네이버 로그인을 도입했습니다! <br/>
+              <b>기존 데이터(포인트, 정원 등)는 그대로 유지됩니다.</b> <br/>
+              지금 바로 소셜 계정을 연결하고 간편하게 로그인하세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-6">
+            <Button 
+              onClick={() => handleLinkSocial('google')} 
+              disabled={isLinking}
+              className="w-full h-12 rounded-2xl font-black bg-white text-black border-2 border-gray-100 hover:bg-gray-50 flex items-center justify-center gap-3"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c1.61-1.48 2.53-3.66 2.53-6.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              구글 계정 연결하기
+            </Button>
+            <Button 
+              onClick={() => handleLinkSocial('naver')} 
+              disabled={isLinking}
+              className="w-full h-12 rounded-2xl font-black bg-[#03C75A] text-white hover:bg-[#02b350] flex items-center justify-center gap-3"
+            >
+              <span className="text-xl font-bold">N</span>
+              네이버 계정 연결하기
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => {
+              sessionStorage.setItem('migration_dismissed', 'true');
+              setShowMigration(false);
+            }} className="w-full text-[10px] font-bold text-muted-foreground">
+              나중에 하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
