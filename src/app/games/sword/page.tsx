@@ -12,12 +12,15 @@ import {
   Flame, 
   Trophy, 
   Zap, 
-  Loader2
+  Loader2,
+  Coins
 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment, updateDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 type GameMessage = {
   id: string;
@@ -37,7 +40,7 @@ export default function SwordGamePage() {
   const [messages, setMessages] = useState<GameMessage[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // 1. 실제 유저 프로필(닉네임) 가져오기
+  // 1. 실제 유저 프로필(닉네임, 포인트) 가져오기
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "users", user.uid)
@@ -69,19 +72,56 @@ export default function SwordGamePage() {
 
   const currentLevel = profile?.level || 0
   const userNickname = userData?.nickname || "학생"
+  const userPoints = userData?.points || 0
+  const ENHANCE_COST = 10
 
   const handleEnhance = async () => {
-    if (!user || !profileRef || !userData || isEnhancing) return
+    if (!user || !profileRef || !userData || !userDocRef || isEnhancing) return
+    
+    // 포인트 체크
+    if (userPoints < ENHANCE_COST) {
+      toast({
+        variant: "destructive",
+        title: "포인트 부족!",
+        description: "강화에는 10포인트가 필요합니다. 학습을 통해 포인트를 모아보세요!"
+      })
+      return
+    }
+
     setIsEnhancing(true)
+
+    // 포인트 선차감 (비동기)
+    updateDoc(userDocRef, {
+      points: increment(-ENHANCE_COST),
+      updatedAt: serverTimestamp()
+    }).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { points: userPoints - ENHANCE_COST }
+      }))
+    })
 
     const level = currentLevel
     const roll = Math.random() * 100
     let successRate, failRate, destroyRate
     
-    // 확률 설정
-    if (level <= 5) { successRate = 70; failRate = 25; destroyRate = 5; }
-    else if (level <= 10) { successRate = 50; failRate = 35; destroyRate = 15; }
-    else { successRate = 30; failRate = 40; destroyRate = 30; }
+    // 변경된 확률 설정 (파괴 확률 대폭 감소, 유지 확률 증가)
+    if (level <= 5) { 
+      successRate = 70; 
+      failRate = 28; 
+      destroyRate = 2; // 기존 5% -> 2%
+    }
+    else if (level <= 10) { 
+      successRate = 50; 
+      failRate = 45; 
+      destroyRate = 5; // 기존 15% -> 5%
+    }
+    else { 
+      successRate = 30; 
+      failRate = 60; 
+      destroyRate = 10; // 기존 30% -> 10%
+    }
 
     let resultStatus: 'success' | 'fail' | 'destroy'
     let nextLevel = level
@@ -97,38 +137,46 @@ export default function SwordGamePage() {
       nextLevel = 0
     }
 
-    try {
-      await setDoc(profileRef, {
-        userId: user.uid,
-        nickname: userNickname, // 실제 프로필 닉네임 사용
-        level: nextLevel,
-        maxLevel: Math.max(profile?.maxLevel || 0, nextLevel),
-        totalAttempts: increment(1),
-        updatedAt: serverTimestamp()
-      }, { merge: true })
-
-      const newMessage: GameMessage = {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'result',
-        status: resultStatus,
-        nickname: userNickname, // 실제 프로필 닉네임 사용
-        before: level,
-        after: nextLevel,
-        timestamp: new Date()
-      }
-
-      setMessages(prev => [...prev.slice(-19), newMessage])
-      
-      if (resultStatus === 'success') {
-        toast({ title: "강화 성공!", description: `+${nextLevel} 검이 되었습니다!` })
-      } else if (resultStatus === 'destroy') {
-        toast({ variant: "destructive", title: "파괴됨!", description: "검이 가루가 되었습니다..." })
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setIsEnhancing(false)
+    const gameData = {
+      userId: user.uid,
+      nickname: userNickname,
+      level: nextLevel,
+      maxLevel: Math.max(profile?.maxLevel || 0, nextLevel),
+      totalAttempts: increment(1),
+      updatedAt: serverTimestamp()
     }
+
+    // 게임 데이터 업데이트
+    setDoc(profileRef, gameData, { merge: true })
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: profileRef.path,
+          operation: 'write',
+          requestResourceData: gameData
+        }))
+      })
+
+    const newMessage: GameMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'result',
+      status: resultStatus,
+      nickname: userNickname,
+      before: level,
+      after: nextLevel,
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev.slice(-19), newMessage])
+    
+    if (resultStatus === 'success') {
+      toast({ title: "강화 성공!", description: `+${nextLevel} 검이 되었습니다! (+1)` })
+    } else if (resultStatus === 'fail') {
+      toast({ title: "강화 실패 (유지)", description: "강화 수치가 변하지 않았습니다. (현상 유지)" })
+    } else if (resultStatus === 'destroy') {
+      toast({ variant: "destructive", title: "파괴됨!", description: "검이 가루가 되었습니다... (+0 초기화)" })
+    }
+
+    setIsEnhancing(false)
   }
 
   if (isUserLoading || isProfileLoading || isUserDataLoading) {
@@ -153,12 +201,17 @@ export default function SwordGamePage() {
                   </div>
                   <div>
                     <CardTitle className="text-xl font-black">검 강화 게임</CardTitle>
-                    <CardDescription className="text-xs font-bold text-primary/60">{userNickname}님의 전설 도전을 응원합니다!</CardDescription>
+                    <CardDescription className="text-xs font-bold text-primary/60">{userNickname}님의 도전을 응원합니다! (회당 10P)</CardDescription>
                   </div>
                 </div>
-                <Badge variant="outline" className="h-8 px-4 rounded-full border-primary/20 bg-background font-black text-primary">
-                  현재: +{currentLevel}
-                </Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge variant="outline" className="h-7 px-3 rounded-full border-primary/20 bg-background font-black text-primary">
+                    현재: +{currentLevel}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
+                    <Coins className="h-3 w-3" /> {userPoints.toLocaleString()}P 보유
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -167,9 +220,9 @@ export default function SwordGamePage() {
                   <div className="space-y-4">
                     <div className="bg-primary/10 p-4 rounded-2xl border border-primary/10 text-xs font-bold text-primary leading-relaxed">
                       📢 [시스템] {userNickname}님, 검 강화 게임에 오신 것을 환영합니다!<br/>
-                      - "강화 시도" 버튼을 눌러 시도하세요.<br/>
-                      - +5까지는 파괴 확률이 매우 낮습니다.<br/>
-                      - +11부터는 성공보다 파괴 확률이 높아집니다!
+                      - 시도 시 <span className="underline">10포인트</span>가 소모됩니다.<br/>
+                      - 파괴 확률이 대폭 낮아졌습니다! 전설의 검을 노려보세요.<br/>
+                      - 실패 시 강화 수치가 유지됩니다.
                     </div>
 
                     {messages.map((msg) => (
@@ -183,11 +236,11 @@ export default function SwordGamePage() {
                           </div>
                         )}
                         {msg.status === 'fail' && (
-                          <div className="bg-yellow-500/10 p-4 rounded-2xl border border-yellow-500/20">
-                            <p className="text-xs font-black text-yellow-600 mb-1">🛡️ [강화 결과]</p>
+                          <div className="bg-blue-500/10 p-4 rounded-2xl border border-blue-500/20">
+                            <p className="text-xs font-black text-blue-600 mb-1">🛡️ [강화 결과]</p>
                             <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
                             <p className="text-[11px] font-bold">현재 강화: +{msg.before} → +{msg.after}</p>
-                            <p className="text-[11px] font-black text-yellow-600">결과: ❌ 변화 없음 (실패)</p>
+                            <p className="text-[11px] font-black text-blue-600">결과: 💠 현상 유지 (실패)</p>
                           </div>
                         )}
                         {msg.status === 'destroy' && (
@@ -195,7 +248,7 @@ export default function SwordGamePage() {
                             <p className="text-xs font-black text-destructive mb-1">💥 [강화 결과]</p>
                             <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
                             <p className="text-[11px] font-bold">현재 강화: +{msg.before} → +0</p>
-                            <p className="text-[11px] font-black text-destructive">결과: 💀 파괴됨!</p>
+                            <p className="text-[11px] font-black text-destructive">결과: 💀 파괴됨 (초기화)!</p>
                           </div>
                         )}
                       </div>
@@ -203,14 +256,17 @@ export default function SwordGamePage() {
                   </div>
                 </ScrollArea>
                 
-                <div className="p-6 bg-card border-t flex gap-3">
+                <div className="p-6 bg-card border-t flex flex-col gap-3">
                   <Button 
                     onClick={handleEnhance} 
-                    disabled={isEnhancing}
-                    className="flex-grow h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-white shadow-xl active:scale-95 transition-all"
+                    disabled={isEnhancing || userPoints < ENHANCE_COST}
+                    className="w-full h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-white shadow-xl active:scale-95 transition-all"
                   >
-                    {isEnhancing ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Flame className="mr-2 h-5 w-5" /> 강화 시도</>}
+                    {isEnhancing ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Flame className="mr-2 h-5 w-5" /> 강화 시도 (10P)</>}
                   </Button>
+                  {userPoints < ENHANCE_COST && (
+                    <p className="text-[10px] text-center text-destructive font-bold">포인트가 부족합니다.</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -219,15 +275,15 @@ export default function SwordGamePage() {
           <div className="grid grid-cols-3 gap-4">
              <Card className="rounded-3xl border-none bg-green-500/5 p-4 text-center">
                <p className="text-[10px] font-black text-green-600 uppercase mb-1">0 ~ 5단계</p>
-               <p className="text-xs font-bold">성공 70%</p>
+               <p className="text-[11px] font-bold">성공 70% | 파괴 2%</p>
              </Card>
-             <Card className="rounded-3xl border-none bg-yellow-500/5 p-4 text-center">
-               <p className="text-[10px] font-black text-yellow-600 uppercase mb-1">6 ~ 10단계</p>
-               <p className="text-xs font-bold">성공 50%</p>
+             <Card className="rounded-3xl border-none bg-blue-500/5 p-4 text-center">
+               <p className="text-[10px] font-black text-blue-600 uppercase mb-1">6 ~ 10단계</p>
+               <p className="text-[11px] font-bold">성공 50% | 파괴 5%</p>
              </Card>
              <Card className="rounded-3xl border-none bg-destructive/5 p-4 text-center">
                <p className="text-[10px] font-black text-destructive uppercase mb-1">11단계 +</p>
-               <p className="text-xs font-bold">성공 30%</p>
+               <p className="text-[11px] font-bold">성공 30% | 파괴 10%</p>
              </Card>
           </div>
         </div>
