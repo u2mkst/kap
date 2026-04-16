@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot } from 'firebase/firestore';
+import { Firestore, doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
@@ -90,7 +90,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => unsubscribe(); 
   }, [auth]); 
 
-  // Persistent Theme Effect
+  // Online Status & Persistent Theme Effect
   useEffect(() => {
     if (!userAuthState.user || !firestore) {
       document.documentElement.classList.remove('dark');
@@ -98,7 +98,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     }
 
     const userRef = doc(firestore, 'users', userAuthState.user.uid);
-    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+
+    // Set online status
+    updateDoc(userRef, {
+      isOnline: true,
+      lastSeen: serverTimestamp()
+    }).catch(() => {});
+
+    // Listen for theme
+    const unsubscribeTheme = onSnapshot(userRef, (snapshot) => {
       const data = snapshot.data();
       if (data?.theme === 'dark') {
         document.documentElement.classList.add('dark');
@@ -107,7 +115,21 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     });
 
-    return () => unsubscribe();
+    // Handle offline on unmount/unload
+    const setOffline = () => {
+      updateDoc(userRef, {
+        isOnline: false,
+        lastSeen: serverTimestamp()
+      }).catch(() => {});
+    };
+
+    window.addEventListener('beforeunload', setOffline);
+
+    return () => {
+      unsubscribeTheme();
+      window.removeEventListener('beforeunload', setOffline);
+      setOffline();
+    };
   }, [userAuthState.user, firestore]);
 
   // Memoize the context value

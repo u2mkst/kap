@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
 import { 
   Sword, 
   Flame, 
@@ -14,11 +16,15 @@ import {
   Zap, 
   Loader2,
   Coins,
-  Info,
-  ArrowDownCircle
+  UserPlus,
+  Users,
+  Search,
+  UserMinus,
+  Circle,
+  MessageSquare
 } from "lucide-react"
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase"
-import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment, updateDoc } from "firebase/firestore"
+import { doc, setDoc, serverTimestamp, query, collection, orderBy, limit, increment, updateDoc, where, getDocs, deleteDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { errorEmitter } from "@/firebase/error-emitter"
@@ -26,7 +32,7 @@ import { FirestorePermissionError } from "@/firebase/errors"
 
 type GameMessage = {
   id: string;
-  type: 'system' | 'result';
+  type: 'result';
   status: 'success' | 'fail' | 'decrease' | 'destroy';
   nickname: string;
   before: number;
@@ -41,32 +47,59 @@ export default function SwordGamePage() {
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [messages, setMessages] = useState<GameMessage[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Friend System States
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<any[]>([])
 
-  // 1. 실제 유저 프로필(닉네임, 포인트) 가져오기
+  // 1. 유저 프로필
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "users", user.uid)
   }, [user, db])
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
 
-  // 2. 사용자 게임 프로필 쿼리
+  // 2. 사용자 게임 프로필
   const profileRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "sword_game_profiles", user.uid)
   }, [user, db])
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
-  // 3. 전체 순위 쿼리
+  // 3. 전체 순위
   const rankingQuery = useMemoFirebase(() => {
     return query(collection(db, "sword_game_profiles"), orderBy("level", "desc"), limit(10))
   }, [db])
   const { data: rankings } = useCollection(rankingQuery)
 
+  // 4. 친구 목록
+  const friendsQuery = useMemoFirebase(() => {
+    if (!user) return null
+    return collection(db, "users", user.uid, "friends")
+  }, [user, db])
+  const { data: friendsList } = useCollection(friendsQuery)
+
+  // 5. 온라인 친구들을 위한 상세 유저 정보 쿼리 (실시간)
+  const usersQuery = useMemoFirebase(() => {
+    return collection(db, "users")
+  }, [db])
+  const { data: allUsers } = useCollection(usersQuery)
+
+  const friendsWithStatus = (friendsList || []).map(f => {
+    const userDetail = allUsers?.find(u => u.id === f.friendId)
+    const gameProfile = rankings?.find(r => r.userId === f.friendId) || { level: 0 }
+    return {
+      ...f,
+      isOnline: userDetail?.isOnline || false,
+      level: gameProfile.level || 0
+    }
+  }).sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0))
+
   useEffect(() => {
     if (!isUserLoading && !user) router.push("/login")
   }, [user, isUserLoading, router])
 
-  // 자동 스크롤 로직
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
@@ -78,7 +111,6 @@ export default function SwordGamePage() {
   const userPoints = userData?.points || 0
   const ENHANCE_COST = 10
 
-  // 단계별 정밀 확률 계산 함수
   const getRates = (level: number) => {
     let success = 100;
     let decrease = 0;
@@ -87,15 +119,13 @@ export default function SwordGamePage() {
     if (level === 0) {
       success = 100;
     } else if (level < 5) {
-      // 1~4단계: 성공 위주, 하락/파괴 매우 낮음
-      success = 95 - (level * 8); // +1:87, +2:79, +3:71, +4:63
-      decrease = level + 1; // +1:2, +2:3, +3:4, +4:5
-      destroy = Math.floor(level / 2); // +1:0, +2:1, +3:1, +4:2
+      success = 95 - (level * 8); 
+      decrease = level + 1; 
+      destroy = Math.floor(level / 2); 
     } else {
-      // 5단계 이상: 성공률 급감, 하락률 급증
-      success = Math.max(5, 50 - (level - 5) * 6); // +5:50, +6:44... 점진적 감소
-      decrease = Math.min(40, 20 + (level - 5) * 4); // +5:20, +6:24... 최대 40%
-      destroy = Math.min(20, 5 + (level - 5) * 2); // +5:5, +6:7... 최대 20%
+      success = Math.max(5, 50 - (level - 5) * 6); 
+      decrease = Math.min(40, 20 + (level - 5) * 4); 
+      destroy = Math.min(20, 5 + (level - 5) * 2); 
     }
 
     const fail = Math.max(0, 100 - success - decrease - destroy);
@@ -114,25 +144,19 @@ export default function SwordGamePage() {
     if (!user || !profileRef || !userData || !userDocRef || isEnhancing) return
     
     if (userPoints < ENHANCE_COST) {
-      toast({
-        variant: "destructive",
-        title: "포인트 부족!",
-        description: "강화에는 10포인트가 필요합니다. 학습을 통해 포인트를 모아보세요!"
-      })
+      toast({ variant: "destructive", title: "포인트 부족!", description: "학습을 통해 포인트를 모아보세요!" })
       return
     }
 
     setIsEnhancing(true)
 
-    // 포인트 선차감
     updateDoc(userDocRef, {
       points: increment(-ENHANCE_COST),
       updatedAt: serverTimestamp()
-    }).catch(async (err) => {
+    }).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: userDocRef.path,
-        operation: 'update',
-        requestResourceData: { points: userPoints - ENHANCE_COST }
+        operation: 'update'
       }))
     })
 
@@ -167,7 +191,7 @@ export default function SwordGamePage() {
     }
 
     setDoc(profileRef, gameData, { merge: true })
-      .catch(async (err) => {
+      .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: profileRef.path,
           operation: 'write',
@@ -186,18 +210,51 @@ export default function SwordGamePage() {
     }
 
     setMessages(prev => [...prev.slice(-49), newMessage])
-    
-    if (resultStatus === 'success') {
-      toast({ title: "강화 성공!", description: `+${nextLevel} 검이 되었습니다! 🎉` })
-    } else if (resultStatus === 'fail') {
-      toast({ title: "강화 실패 (유지)", description: "강화 수치가 변하지 않았습니다. 💠" })
-    } else if (resultStatus === 'decrease') {
-      toast({ variant: "destructive", title: "수치 하락! 📉", description: `강화 단계가 떨어졌습니다. (+${nextLevel})` })
-    } else if (resultStatus === 'destroy') {
-      toast({ variant: "destructive", title: "파괴됨!", description: "검이 가루가 되었습니다... 💀" })
-    }
-
     setIsEnhancing(false)
+  }
+
+  // 친구 검색 로직
+  const handleSearchFriend = async () => {
+    if (!searchQuery.trim()) return
+    setIsSearching(true)
+    try {
+      // 닉네임 또는 아이디로 검색
+      const qNick = query(collection(db, "users"), where("nickname", "==", searchQuery.trim()))
+      const qId = query(collection(db, "users"), where("username", "==", searchQuery.trim()))
+      
+      const [resNick, resId] = await Promise.all([getDocs(qNick), getDocs(qId)])
+      const results: any[] = []
+      resNick.forEach(doc => results.push({ id: doc.id, ...doc.data() }))
+      resId.forEach(doc => {
+        if (!results.find(r => r.id === doc.id)) results.push({ id: doc.id, ...doc.data() })
+      })
+      
+      setSearchResults(results.filter(r => r.id !== user?.uid))
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const handleAddFriend = async (friend: any) => {
+    if (!user) return
+    const friendRef = doc(db, "users", user.uid, "friends", friend.id)
+    await setDoc(friendRef, {
+      friendId: friend.id,
+      nickname: friend.nickname,
+      username: friend.username,
+      addedAt: serverTimestamp()
+    })
+    toast({ title: "친구 추가 완료!", description: `${friend.nickname}님과 친구가 되었습니다.` })
+    setSearchResults([])
+    setSearchQuery("")
+  }
+
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!user) return
+    await deleteDoc(doc(db, "users", user.uid, "friends", friendId))
+    toast({ title: "친구 삭제 완료" })
   }
 
   if (isUserLoading || isProfileLoading || isUserDataLoading) {
@@ -209,8 +266,10 @@ export default function SwordGamePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row gap-6">
+    <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-500">
+      <div className="flex flex-col lg:flex-row gap-6">
+        
+        {/* 메인 게임 영역 */}
         <div className="flex-grow space-y-6">
           <Card className="border-none shadow-2xl bg-card rounded-[2.5rem] overflow-hidden">
             <CardHeader className="bg-primary/5 p-6 border-b border-primary/10">
@@ -221,7 +280,7 @@ export default function SwordGamePage() {
                   </div>
                   <div>
                     <CardTitle className="text-xl font-black">검 강화 게임</CardTitle>
-                    <CardDescription className="text-xs font-bold text-primary/60">{userNickname}님의 도전을 응원합니다! (회당 10P)</CardDescription>
+                    <CardDescription className="text-xs font-bold text-primary/60">{userNickname}님의 도전! (회당 10P)</CardDescription>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
@@ -239,46 +298,37 @@ export default function SwordGamePage() {
                 <ScrollArea className="flex-grow p-6">
                   <div className="space-y-4">
                     <div className="bg-primary/10 p-4 rounded-2xl border border-primary/10 text-xs font-bold text-primary leading-relaxed">
-                      📢 [시스템] {userNickname}님, 검 강화 게임에 오신 것을 환영합니다!<br/>
-                      - 시도 시 <span className="underline">10포인트</span>가 소모됩니다.<br/>
-                      - 5단계부터는 <span className="text-orange-600">수치 하락</span> 위험이 증가합니다.<br/>
-                      - 행운이 함께하기를 바랍니다!
+                      📢 [시스템] {userNickname}님, 환영합니다!<br/>
+                      - 10포인트 소모 | 5단계부터 하락 위험!<br/>
+                      - 친구들의 강화 소식을 실시간으로 확인해보세요.
                     </div>
 
                     {messages.map((msg) => (
                       <div key={msg.id} className="animate-in slide-in-from-bottom-2 duration-300">
-                        {msg.status === 'success' && (
-                          <div className="bg-green-500/10 p-4 rounded-2xl border border-green-500/20">
-                            <p className="text-xs font-black text-green-600 mb-1">🔥 [강화 결과]</p>
-                            <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
-                            <p className="text-[11px] font-bold">현재 강화: +{msg.before} → +{msg.after}</p>
-                            <p className="text-[11px] font-black text-green-600">결과: ✅ 성공!</p>
-                          </div>
-                        )}
-                        {msg.status === 'fail' && (
-                          <div className="bg-blue-500/10 p-4 rounded-2xl border border-blue-500/20">
-                            <p className="text-xs font-black text-blue-600 mb-1">🛡️ [강화 결과]</p>
-                            <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
-                            <p className="text-[11px] font-bold">현재 강화: +{msg.before} → +{msg.after}</p>
-                            <p className="text-[11px] font-black text-blue-600">결과: 💠 현상 유지 (실패)</p>
-                          </div>
-                        )}
-                        {msg.status === 'decrease' && (
-                          <div className="bg-orange-500/10 p-4 rounded-2xl border border-orange-500/20">
-                            <p className="text-xs font-black text-orange-600 mb-1">📉 [강화 결과]</p>
-                            <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
-                            <p className="text-[11px] font-bold">현재 강화: +{msg.before} → +{msg.after}</p>
-                            <p className="text-[11px] font-black text-orange-600">결과: ⚠️ 하락!</p>
-                          </div>
-                        )}
-                        {msg.status === 'destroy' && (
-                          <div className="bg-destructive/10 p-4 rounded-2xl border border-destructive/20">
-                            <p className="text-xs font-black text-destructive mb-1">💥 [강화 결과]</p>
-                            <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
-                            <p className="text-[11px] font-bold">현재 강화: +{msg.before} → +0</p>
-                            <p className="text-[11px] font-black text-destructive">결과: 💀 파괴됨 (초기화)!</p>
-                          </div>
-                        )}
+                        <div className={cn(
+                          "p-4 rounded-2xl border",
+                          msg.status === 'success' ? "bg-green-500/10 border-green-500/20" :
+                          msg.status === 'fail' ? "bg-blue-500/10 border-blue-500/20" :
+                          msg.status === 'decrease' ? "bg-orange-500/10 border-orange-500/20" :
+                          "bg-destructive/10 border-destructive/20"
+                        )}>
+                          <p className={cn("text-xs font-black mb-1", 
+                            msg.status === 'success' ? "text-green-600" :
+                            msg.status === 'fail' ? "text-blue-600" :
+                            msg.status === 'decrease' ? "text-orange-600" : "text-destructive"
+                          )}>
+                            {msg.status === 'success' ? '🔥 [성공]' : 
+                             msg.status === 'fail' ? '🛡️ [유지]' : 
+                             msg.status === 'decrease' ? '📉 [하락]' : '💥 [파괴]'}
+                          </p>
+                          <p className="text-[11px] font-bold">닉네임: {msg.nickname}</p>
+                          <p className="text-[11px] font-bold">강화: +{msg.before} → +{msg.after}</p>
+                          <p className="text-[11px] font-black">
+                            결과: {msg.status === 'success' ? '✅ 대성공!' : 
+                                   msg.status === 'fail' ? '💠 변화 없음' : 
+                                   msg.status === 'decrease' ? '⚠️ 수치 하락' : '💀 초기화'}
+                          </p>
+                        </div>
                       </div>
                     ))}
                     <div ref={messagesEndRef} />
@@ -287,29 +337,12 @@ export default function SwordGamePage() {
                 
                 <div className="p-6 bg-card border-t flex flex-col gap-4">
                   <div className="bg-muted/30 p-3 rounded-xl border border-dashed grid grid-cols-4 gap-2 text-center">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-green-600 opacity-60">성공</span>
-                      <span className="text-xs font-black text-green-600">{currentRates.success}%</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-blue-600 opacity-60">유지</span>
-                      <span className="text-xs font-black text-blue-600">{currentRates.fail}%</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-orange-600 opacity-60">하락</span>
-                      <span className="text-xs font-black text-orange-600">{currentRates.decrease}%</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-destructive opacity-60">파괴</span>
-                      <span className="text-xs font-black text-destructive">{currentRates.destroy}%</span>
-                    </div>
+                    <div className="flex flex-col"><span className="text-[9px] font-bold text-green-600 opacity-60">성공</span><span className="text-xs font-black text-green-600">{currentRates.success}%</span></div>
+                    <div className="flex flex-col"><span className="text-[9px] font-bold text-blue-600 opacity-60">유지</span><span className="text-xs font-black text-blue-600">{currentRates.fail}%</span></div>
+                    <div className="flex flex-col"><span className="text-[9px] font-bold text-orange-600 opacity-60">하락</span><span className="text-xs font-black text-orange-600">{currentRates.decrease}%</span></div>
+                    <div className="flex flex-col"><span className="text-[9px] font-bold text-destructive opacity-60">파괴</span><span className="text-xs font-black text-destructive">{currentRates.destroy}%</span></div>
                   </div>
-
-                  <Button 
-                    onClick={handleEnhance} 
-                    disabled={isEnhancing || userPoints < ENHANCE_COST}
-                    className="w-full h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-white shadow-xl active:scale-95 transition-all"
-                  >
+                  <Button onClick={handleEnhance} disabled={isEnhancing || userPoints < ENHANCE_COST} className="w-full h-14 rounded-2xl font-black text-lg bg-primary shadow-xl active:scale-95 transition-all">
                     {isEnhancing ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Flame className="mr-2 h-5 w-5" /> 강화 시도 (10P)</>}
                   </Button>
                 </div>
@@ -318,35 +351,106 @@ export default function SwordGamePage() {
           </Card>
         </div>
 
-        <div className="w-full md:w-72 space-y-6">
-          <Card className="border-none shadow-xl bg-card rounded-[2rem] overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-black flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-yellow-500" /> 강화 순위
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-2">
-              {rankings?.map((r, i) => (
-                <div key={r.id} className={cn(
-                  "flex justify-between items-center p-3 rounded-xl text-xs font-bold transition-all",
-                  r.id === user?.uid ? "bg-primary text-white scale-105" : "bg-muted/30"
-                )}>
-                  <div className="flex items-center gap-2">
-                    <span className="opacity-50">#{i + 1}</span>
-                    <span className="truncate max-w-[80px]">{r.nickname}</span>
+        {/* 사이드바: 친구 & 순위 */}
+        <div className="w-full lg:w-80 space-y-6">
+          <Tabs defaultValue="friends">
+            <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-muted/50 p-1 mb-4">
+              <TabsTrigger value="friends" className="rounded-xl font-bold text-xs"><Users className="h-3 w-3 mr-1" /> 친구</TabsTrigger>
+              <TabsTrigger value="ranking" className="rounded-xl font-bold text-xs"><Trophy className="h-3 w-3 mr-1" /> 순위</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="friends" className="space-y-4 m-0">
+              <Card className="border-none shadow-xl bg-card rounded-[2rem] overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-black flex items-center gap-2">친구 관리</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="아이디 또는 닉네임" 
+                      value={searchQuery} 
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchFriend()}
+                      className="h-9 text-xs rounded-xl bg-muted/30 border-none"
+                    />
+                    <Button size="icon" onClick={handleSearchFriend} disabled={isSearching} className="h-9 w-9 rounded-xl shrink-0"><Search className="h-4 w-4" /></Button>
                   </div>
-                  <Badge variant={r.level >= 10 ? "destructive" : "secondary"} className="h-5 rounded-full text-[10px] font-black">
-                    +{r.level}
-                  </Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+
+                  {searchResults.length > 0 && (
+                    <div className="bg-primary/5 p-3 rounded-2xl space-y-2 border border-primary/10 animate-in zoom-in-95">
+                      <p className="text-[10px] font-black text-primary px-1">검색 결과</p>
+                      {searchResults.map(res => (
+                        <div key={res.id} className="flex items-center justify-between bg-card p-2 rounded-xl shadow-sm border border-primary/5">
+                          <span className="text-xs font-bold">{res.nickname}</span>
+                          <Button size="sm" onClick={() => handleAddFriend(res)} className="h-7 rounded-lg text-[10px] font-black"><UserPlus className="h-3 w-3 mr-1" /> 추가</Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2 pr-2">
+                      {friendsWithStatus.map(f => (
+                        <div key={f.friendId} className="group flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <div className="h-8 w-8 bg-card rounded-full border flex items-center justify-center font-black text-xs">
+                                {f.nickname[0]}
+                              </div>
+                              <div className={cn(
+                                "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background",
+                                f.isOnline ? "bg-green-500" : "bg-gray-400"
+                              )} />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black">{f.nickname}</span>
+                              <span className="text-[9px] font-bold text-primary">+{f.level} 검 보유</span>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleRemoveFriend(f.friendId)}
+                            className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                          >
+                            <UserMinus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                      {friendsWithStatus.length === 0 && (
+                        <p className="text-center py-10 text-[10px] font-bold text-muted-foreground italic">아직 친구가 없습니다.</p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="ranking" className="space-y-4 m-0">
+              <Card className="border-none shadow-xl bg-card rounded-[2rem] overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-black flex items-center gap-2 text-yellow-500"><Trophy className="h-4 w-4" /> 강화 TOP 10</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-2">
+                  {rankings?.map((r, i) => (
+                    <div key={r.id} className={cn(
+                      "flex justify-between items-center p-3 rounded-2xl text-xs font-bold transition-all",
+                      r.userId === user?.uid ? "bg-primary text-white scale-105" : "bg-muted/30"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <span className="opacity-50">#{i + 1}</span>
+                        <span className="truncate max-w-[80px]">{r.nickname}</span>
+                      </div>
+                      <Badge variant={r.level >= 10 ? "destructive" : "secondary"} className="h-5 rounded-full text-[10px] font-black">+{r.level}</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
 
           <Card className="border-none shadow-xl bg-card rounded-[2rem] p-6 text-center space-y-3">
-             <div className="mx-auto h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-               <Zap className="h-6 w-6 text-accent" />
-             </div>
+             <div className="mx-auto h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center"><Zap className="h-6 w-6 text-accent" /></div>
              <div className="space-y-1">
                <p className="text-[10px] font-black opacity-40 uppercase">나의 최고 기록</p>
                <p className="text-2xl font-black text-primary">+{profile?.maxLevel || 0}</p>

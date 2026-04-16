@@ -21,6 +21,8 @@
         "teacherId": { "type": "string" },
         "points": { "type": "number" },
         "theme": { "type": "string", "enum": ["light", "dark"], "default": "light" },
+        "isOnline": { "type": "boolean", "default": false },
+        "lastSeen": { "type": "string", "format": "date-time" },
         "lastAttendanceDate": { "type": "string" },
         "attendanceStreak": { "type": "number", "default": 0 },
         "hasCompletedTutorial": { "type": "boolean", "default": false },
@@ -28,6 +30,17 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "username", "nickname", "points", "schoolType"]
+    },
+    "Friend": {
+      "title": "Friend",
+      "type": "object",
+      "description": "A simplified reference to a friend.",
+      "properties": {
+        "friendId": { "type": "string" },
+        "nickname": { "type": "string" },
+        "username": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      }
     },
     "SwordGameProfile": {
       "title": "SwordGameProfile",
@@ -42,62 +55,6 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "nickname", "level"]
-    },
-    "AttendanceLog": {
-      "title": "AttendanceLog",
-      "type": "object",
-      "properties": {
-        "date": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["date"]
-    },
-    "UserFortune": {
-      "title": "UserFortune",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "score": { "type": "number" },
-        "comment": { "type": "string" },
-        "date": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["score", "date"]
-    },
-    "Plant": {
-      "title": "Plant",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "plantName": { "type": "string" },
-        "plantType": { "type": "string" },
-        "growthStage": { "type": "string", "enum": ["Seed", "Sprout", "Sapling", "Mature"] },
-        "pointsInvested": { "type": "number" },
-        "targetSprout": { "type": "number" },
-        "targetSapling": { "type": "number" },
-        "targetMature": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Teacher": {
-      "title": "Teacher",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "vote": { "type": "number" }
-      }
-    },
-    "Inquiry": {
-      "title": "Inquiry",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "status": { "type": "string", "enum": ["open", "replied"] }
-      }
     }
   },
   "auth": {
@@ -108,13 +65,17 @@
       "schema": { "$ref": "#/backend/entities/User" },
       "description": "User profiles."
     },
+    "/users/{userId}/friends/{friendId}": {
+      "schema": { "$ref": "#/backend/entities/Friend" },
+      "description": "User's friend list."
+    },
     "/users/{userId}/games/sword": {
       "schema": { "$ref": "#/backend/entities/SwordGameProfile" },
       "description": "User's sword enhancement state."
     },
-    "/game_leaderboards/sword": {
-      "schema": { "type": "object" },
-      "description": "Collection to query all sword game profiles for ranking."
+    "/sword_game_profiles/{profileId}": {
+      "schema": { "$ref": "#/backend/entities/SwordGameProfile" },
+      "description": "Global sword game profiles for ranking."
     }
   }
 }

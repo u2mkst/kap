@@ -28,8 +28,9 @@ service cloud.firestore {
 
     // 2. 유저 프로필 및 하위 데이터
     match /users/{userId} {
+      // 다른 유저 검색 및 친구 상태 확인을 위해 제한적 list/get 허용
       allow list: if isAuthenticated();
-      allow get: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
+      allow get: if isAuthenticated();
       allow write: if isAuthenticated() && (request.auth.uid == userId || isUserAdmin());
       
       match /{allSubcollections=**} {
