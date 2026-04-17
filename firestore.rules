@@ -29,31 +29,15 @@ service cloud.firestore {
       allow update, delete: if isUserAdmin();
     }
 
-    // 2. 유저 프로필 및 하위 데이터
+    // 2. 유저 프로필 및 하위 데이터 (재귀적 규칙 적용)
     match /users/{userId} {
-      allow get: if isAuthenticated();
-      allow list: if isAuthenticated(); 
+      allow get, list: if isAuthenticated();
       allow write: if isOwner(userId) || isUserAdmin();
-    }
 
-    // 하위 컬렉션들에 대한 명시적 규칙 (권한 오류 방지)
-    match /users/{userId}/friends/{friendId} {
-      allow read, write: if isOwner(userId) || isUserAdmin();
-    }
-    match /users/{userId}/invites/{inviteId} {
-      allow read, write: if isOwner(userId) || isUserAdmin();
-    }
-    match /users/{userId}/games/{gameId} {
-      allow read, write: if isOwner(userId) || isUserAdmin();
-    }
-    match /users/{userId}/solved_problems/{problemId} {
-      allow read, write: if isOwner(userId) || isUserAdmin();
-    }
-    match /users/{userId}/personal_fortunes/{fortuneId} {
-      allow read, write: if isOwner(userId) || isUserAdmin();
-    }
-    match /users/{userId}/plants/{plantId} {
-      allow read, write: if isOwner(userId) || isUserAdmin();
+      // 모든 하위 컬렉션(friends, invites, plants, games 등)에 대한 소유자 권한 보장
+      match /{allSubpaths=**} {
+        allow read, write: if isOwner(userId) || isUserAdmin();
+      }
     }
 
     // 3. 검 강화 게임 전체 데이터 조회 (순위용)
@@ -71,7 +55,7 @@ service cloud.firestore {
       }
     }
 
-    // 5. 선생님 및 메타데이터
+    // 5. 선생님 및 메타데이터 (공개 읽기 허용)
     match /teachers/{teacherId} {
       allow read: if true; 
       allow write: if isUserAdmin();
