@@ -20,7 +20,9 @@ import {
   Coins,
   Save,
   MessageSquare,
-  KeyRound
+  KeyRound,
+  Quote,
+  LayoutDashboard
 } from "lucide-react"
 import { 
   useFirestore, 
@@ -57,6 +59,12 @@ export default function AdminPage() {
     problemText: "",
     answer: "",
     rewardPoints: 100
+  })
+
+  const [quoteForm, setQuoteForm] = useState({
+    date: format(new Date(), "yyyy-MM-dd"),
+    fortuneText: "",
+    author: ""
   })
 
   const adminRef = useMemoFirebase(() => {
@@ -263,6 +271,20 @@ export default function AdminPage() {
     setIsSaving(false)
   }
 
+  const handleSaveQuote = () => {
+    if (!quoteForm.date || !quoteForm.fortuneText) {
+      toast({ variant: "destructive", title: "날짜와 명언 내용을 입력해주세요." })
+      return
+    }
+    setIsSaving(true)
+    setDocumentNonBlocking(doc(db, "daily_fortunes", quoteForm.date), {
+      ...quoteForm,
+      updatedAt: serverTimestamp()
+    }, { merge: true })
+    toast({ title: "명언 등록 완료!" })
+    setIsSaving(false)
+  }
+
   if (isUserLoading || isAdminLoading || !isMounted) {
     return (
       <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-background">
@@ -300,13 +322,14 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="inquiry">
-        <TabsList className="grid w-full grid-cols-6 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
-          <TabsTrigger value="inquiry" className="rounded-xl font-bold text-xs"><MessageSquare className="h-3 w-3 mr-1" /> 문의</TabsTrigger>
-          <TabsTrigger value="users" className="rounded-xl font-bold text-xs">학생</TabsTrigger>
-          <TabsTrigger value="points" className="rounded-xl font-bold text-xs"><Coins className="h-3 w-3 mr-1" /> 포인트</TabsTrigger>
-          <TabsTrigger value="bulk" className="rounded-xl font-bold text-xs">등록/현황</TabsTrigger>
-          <TabsTrigger value="vote" className="rounded-xl font-bold text-xs">투표</TabsTrigger>
-          <TabsTrigger value="config" className="rounded-xl font-bold text-xs">설정</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-7 mb-6 bg-muted/50 p-1 rounded-2xl overflow-hidden">
+          <TabsTrigger value="inquiry" className="rounded-xl font-bold text-[10px]"><MessageSquare className="h-3 w-3 mr-1" /> 문의</TabsTrigger>
+          <TabsTrigger value="users" className="rounded-xl font-bold text-[10px]">학생</TabsTrigger>
+          <TabsTrigger value="points" className="rounded-xl font-bold text-[10px]"><Coins className="h-3 w-3 mr-1" /> 포인트</TabsTrigger>
+          <TabsTrigger value="bulk" className="rounded-xl font-bold text-[10px]">문제/현황</TabsTrigger>
+          <TabsTrigger value="fortune" className="rounded-xl font-bold text-[10px]"><Quote className="h-3 w-3 mr-1" /> 명언</TabsTrigger>
+          <TabsTrigger value="vote" className="rounded-xl font-bold text-[10px]">투표</TabsTrigger>
+          <TabsTrigger value="config" className="rounded-xl font-bold text-[10px]">설정</TabsTrigger>
         </TabsList>
 
         <TabsContent value="inquiry">
@@ -414,6 +437,36 @@ export default function AdminPage() {
                 </div>
              </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="fortune">
+          <Card className="border-none shadow-sm bg-card rounded-3xl p-6 space-y-4">
+            <CardHeader>
+              <CardTitle className="text-sm font-black flex items-center gap-2">
+                <Quote className="h-4 w-4 text-primary" /> 오늘의 명언 관리
+              </CardTitle>
+              <CardDescription className="text-xs font-bold">날짜별로 학생들에게 보여줄 명언을 등록하세요.</CardDescription>
+            </CardHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black ml-1">날짜</Label>
+                  <Input type="date" value={quoteForm.date} onChange={(e) => setQuoteForm({...quoteForm, date: e.target.value})} className="rounded-xl h-10" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black ml-1">저자 (생략 가능)</Label>
+                  <Input placeholder="예: 알버트 아인슈타인" value={quoteForm.author} onChange={(e) => setQuoteForm({...quoteForm, author: e.target.value})} className="rounded-xl h-10" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black ml-1">명언 내용</Label>
+                <Textarea placeholder="학생들에게 힘이 되는 한마디를 적어주세요." value={quoteForm.fortuneText} onChange={(e) => setQuoteForm({...quoteForm, fortuneText: e.target.value})} className="rounded-xl min-h-[100px]" />
+              </div>
+              <Button onClick={handleSaveQuote} disabled={isSaving} className="w-full h-12 rounded-2xl font-black bg-primary">
+                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : "명언 저장하기"}
+              </Button>
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="vote">

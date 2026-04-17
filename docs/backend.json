@@ -46,6 +46,18 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
+    "DailyFortune": {
+      "title": "DailyFortune",
+      "type": "object",
+      "description": "Daily quotes/fortunes managed by admin.",
+      "properties": {
+        "date": { "type": "string" },
+        "fortuneText": { "type": "string" },
+        "author": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "fortuneText"]
+    },
     "Friend": {
       "title": "Friend",
       "type": "object",
@@ -126,6 +138,10 @@
     "/game_sessions/{sessionId}/messages/{msgId}": {
       "schema": { "type": "object" },
       "description": "Messages/Logs within a session."
+    },
+    "/daily_fortunes/{date}": {
+      "schema": { "$ref": "#/backend/entities/DailyFortune" },
+      "description": "Daily quotes/fortunes."
     }
   }
 }
