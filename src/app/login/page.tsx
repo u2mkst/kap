@@ -22,46 +22,56 @@ export default function LoginPage() {
     const checkUserAndRedirect = async () => {
       if (!isUserLoading && user && !user.isAnonymous) {
         setIsLoading(true)
-        const userDoc = await getDoc(doc(db, "users", user.uid))
-        if (!userDoc.exists()) {
-          router.push("/signup")
-        } else {
-          router.push("/dashboard")
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid))
+          if (!userDoc.exists()) {
+            router.push("/signup")
+          } else {
+            router.push("/dashboard")
+          }
+        } finally {
+          setIsLoading(false)
         }
-        setIsLoading(false)
       }
     }
     checkUserAndRedirect()
   }, [user, isUserLoading, router, db])
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     if (isLoading) return
     setIsLoading(true)
     try {
-      initiateGoogleSignIn(auth)
-      // initiateGoogleSignIn 내부에서 catch 처리를 하므로 
-      // 여기서는 상태 해제 시간을 넉넉히 둡니다. (인증 완료 시 리다이렉트됨)
-      setTimeout(() => setIsLoading(false), 3000)
+      await initiateGoogleSignIn(auth)
     } catch (error) {
+      // initiateGoogleSignIn 내부에서 toast 처리됨
+    } finally {
       setIsLoading(false)
     }
   }
 
-  const handleNaverLogin = () => {
+  const handleNaverLogin = async () => {
     if (isLoading) return
     setIsLoading(true)
     try {
-      initiateNaverSignIn(auth)
-      setTimeout(() => setIsLoading(false), 3000)
+      await initiateNaverSignIn(auth)
     } catch (error) {
+      // initiateNaverSignIn 내부에서 toast 처리됨
+    } finally {
       setIsLoading(false)
     }
   }
 
-  const handleGuestLogin = () => {
-    initiateAnonymousSignIn(auth)
-    toast({ title: "게스트 모드", description: "강화 게임 체험을 시작합니다." })
-    router.push("/games/sword")
+  const handleGuestLogin = async () => {
+    setIsLoading(true)
+    try {
+      await initiateAnonymousSignIn(auth)
+      toast({ title: "게스트 모드", description: "강화 게임 체험을 시작합니다." })
+      router.push("/games/sword")
+    } catch (error) {
+      // error handled in helper
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (isUserLoading) {

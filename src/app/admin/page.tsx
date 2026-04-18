@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -34,7 +33,7 @@ import {
   updateDocumentNonBlocking,
   setDocumentNonBlocking
 } from "@/firebase"
-import { doc, serverTimestamp, query, orderBy, collection, limit } from "firebase/firestore"
+import { doc, serverTimestamp, query, orderBy, collection, limit, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { format, subDays, isBefore, parseISO, isValid } from "date-fns"
 
@@ -145,36 +144,43 @@ export default function AdminPage() {
     }
   }, [configData])
 
-  const handleClaimAdmin = () => {
+  const handleClaimAdmin = async () => {
     if (!user) return
     const secret = adminSecretCode || "ufes-admin-777"
     if (claimCode === secret) {
       setIsSaving(true)
-      const targetRef = doc(db, "roles_admin", user.uid);
-      setDocumentNonBlocking(targetRef, {
-        addedAt: serverTimestamp(),
-        claimed: true,
-        nickname: user.displayName || "관리자"
-      }, { merge: true })
-      toast({ title: "관리자 권한 획득 성공!", description: "이제 모든 관리 기능을 사용할 수 있습니다." })
-      setIsSaving(false)
+      try {
+        await setDoc(doc(db, "roles_admin", user.uid), {
+          addedAt: serverTimestamp(),
+          claimed: true,
+          nickname: user.displayName || "관리자"
+        }, { merge: true })
+        toast({ title: "관리자 권한 획득 성공!", description: "이제 모든 관리 기능을 사용할 수 있습니다." })
+      } catch (e) {
+        toast({ variant: "destructive", title: "권한 획득 실패" })
+      } finally {
+        setIsSaving(false)
+      }
     } else {
       toast({ variant: "destructive", title: "인증 코드가 틀렸습니다." })
     }
   }
 
-  const handleAddTeacher = () => {
+  const handleAddTeacher = async () => {
     if (!teacherName.trim()) return
     setIsSaving(true)
-    const newRef = doc(collection(db, "teachers"))
-    setDocumentNonBlocking(newRef, { 
-      name: teacherName, 
-      vote: 0, 
-      createdAt: serverTimestamp() 
-    }, { merge: true })
-    toast({ title: "교사 등록 완료" })
-    setTeacherName("")
-    setIsSaving(false)
+    try {
+      const newRef = doc(collection(db, "teachers"))
+      await setDoc(newRef, { 
+        name: teacherName, 
+        vote: 0, 
+        createdAt: serverTimestamp() 
+      })
+      toast({ title: "교사 등록 완료" })
+      setTeacherName("")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleDeleteTeacher = (id: string) => {
@@ -183,16 +189,19 @@ export default function AdminPage() {
     toast({ title: "삭제 완료" })
   }
 
-  const handleUpdateConfig = () => {
+  const handleUpdateConfig = async () => {
     if (!configRef) return
     setIsSaving(true)
-    setDocumentNonBlocking(configRef, { 
-      notice: noticeText, 
-      adminSecret: adminSecretCode,
-      pointConfig: pointsConfig
-    }, { merge: true })
-    toast({ title: "저장 완료" })
-    setIsSaving(false)
+    try {
+      await setDoc(configRef, { 
+        notice: noticeText, 
+        adminSecret: adminSecretCode,
+        pointConfig: pointsConfig
+      }, { merge: true })
+      toast({ title: "저장 완료" })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleToggleAdmin = (userId: string, isCurrentlyAdmin: boolean) => {
@@ -250,7 +259,7 @@ export default function AdminPage() {
     setIsSaving(false)
   }
 
-  const handleSingleProblemSave = () => {
+  const handleSingleProblemSave = async () => {
     const { date, grade, title, problemText, answer } = singleProblem
     if (!date || !grade || !title || !problemText || !answer) {
       toast({ variant: "destructive", title: "모든 칸을 채워주세요." })
@@ -258,31 +267,39 @@ export default function AdminPage() {
     }
 
     setIsSaving(true)
-    const problemId = `${date}_${grade}`
-    setDocumentNonBlocking(doc(db, "daily_problems", problemId), {
-      ...singleProblem,
-      id: problemId,
-      rewardPoints: Number(singleProblem.rewardPoints),
-      updatedAt: serverTimestamp()
-    }, { merge: true })
-    
-    toast({ title: "문제 등록 완료!" })
-    setSingleProblem({ ...singleProblem, title: "", problemText: "", answer: "" })
-    setIsSaving(false)
+    try {
+      const problemId = `${date}_${grade}`
+      await setDoc(doc(db, "daily_problems", problemId), {
+        ...singleProblem,
+        id: problemId,
+        rewardPoints: Number(singleProblem.rewardPoints),
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+      
+      toast({ title: "문제 등록 완료!" })
+      setSingleProblem({ ...singleProblem, title: "", problemText: "", answer: "" })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleSaveQuote = () => {
+  const handleSaveQuote = async () => {
     if (!quoteForm.date || !quoteForm.fortuneText) {
       toast({ variant: "destructive", title: "날짜와 명언 내용을 입력해주세요." })
       return
     }
     setIsSaving(true)
-    setDocumentNonBlocking(doc(db, "daily_fortunes", quoteForm.date), {
-      ...quoteForm,
-      updatedAt: serverTimestamp()
-    }, { merge: true })
-    toast({ title: "명언 등록 완료!" })
-    setIsSaving(false)
+    try {
+      await setDoc(doc(db, "daily_fortunes", quoteForm.date), {
+        ...quoteForm,
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+      toast({ title: "명언 등록 완료!" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "저장 실패" })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (isUserLoading || isAdminLoading || !isMounted) {
