@@ -33,8 +33,9 @@ function handleAuthError(error: any) {
       description = "브라우저 설정에서 팝업 차단을 해제해 주세요.";
       break;
     case 'auth/unauthorized-domain':
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : '현재 도메인';
       title = "승인되지 않은 도메인";
-      description = "Firebase 콘솔 > Auth > Settings에서 현재 도메인을 '승인된 도메인'에 추가해야 합니다.";
+      description = `Firebase 콘솔 > Auth > Settings에서 '${currentDomain}'을 승인된 도메인에 추가해야 합니다.`;
       break;
     case 'auth/operation-not-allowed':
       title = "인증 제공자 미활성화";
