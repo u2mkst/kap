@@ -35,7 +35,7 @@ function handleAuthError(error: any) {
     case 'auth/unauthorized-domain':
       const currentDomain = typeof window !== 'undefined' ? window.location.hostname : '현재 도메인';
       title = "승인되지 않은 도메인";
-      description = `Firebase 콘솔 > Auth > Settings에서 '${currentDomain}'을 승인된 도메인에 추가해야 합니다.`;
+      description = `Firebase 콘솔에서 '${currentDomain}'을 승인된 도메인에 추가해야 합니다. 설정을 마쳤다면 1~2분 정도 기다린 후 다시 시도해 주세요.`;
       break;
     case 'auth/operation-not-allowed':
       title = "인증 제공자 미활성화";
@@ -82,7 +82,6 @@ export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
 
 /** 네이버 로그인 (OIDC 설정 필요) */
 export async function initiateNaverSignIn(authInstance: Auth): Promise<void> {
-  // Firebase 콘솔에서 'oidc.naver'라는 ID로 Provider가 설정되어 있어야 합니다.
   const provider = new OAuthProvider('oidc.naver');
   try {
     await signInWithPopup(authInstance, provider);
