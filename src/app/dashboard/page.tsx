@@ -32,15 +32,20 @@ import {
   Edit3,
   Sparkles,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  CalendarDays,
+  ChevronRight,
+  ExternalLink
 } from "lucide-react"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, increment, serverTimestamp, setDoc } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { getWeeklyMeals, getWeeklyTimetable } from "@/lib/neis-api"
 import { format, startOfWeek, addDays, addWeeks, subDays } from "date-fns"
+import { ko } from "date-fns/locale"
 import { initKakao, shareMealToKakao, shareTimetableToKakao, shareFortuneToKakao, shareQuoteToKakao } from "@/lib/kakao-share"
 import { linkAccountWithGoogle, linkAccountWithNaver } from "@/firebase/non-blocking-login"
+import { cn } from "@/lib/utils"
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
@@ -67,6 +72,10 @@ export default function DashboardPage() {
   const [userAnswer, setUserAnswer] = useState("")
   const [isSolving, setIsSolving] = useState(false)
 
+  // 주간 상세 보기 상태
+  const [isWeeklyDetailOpen, setIsWeeklyDetailOpen] = useState(false)
+  const [detailType, setDetailType] = useState<'meal' | 'timetable'>('meal')
+
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "users", user.uid)
@@ -77,7 +86,6 @@ export default function DashboardPage() {
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
-  // 소셜 계정 연결 안내 팝업 로직
   useEffect(() => {
     if (!isUserLoading && user && !user.isAnonymous) {
       const socialProviders = ['google.com', 'oidc.naver', 'naver.com'];
@@ -291,7 +299,12 @@ export default function DashboardPage() {
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-card">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Utensils className="h-4 w-4 text-primary" /> 오늘 급식</CardTitle>
-                {todayMeal && <Button variant="ghost" size="icon" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4" /></Button>}
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="text-[10px] h-8 font-black text-primary hover:bg-primary/5 rounded-xl px-2" onClick={() => { setDetailType('meal'); setIsWeeklyDetailOpen(true); }}>
+                    주간 전체보기 <ChevronRight className="h-3 w-3 ml-0.5" />
+                  </Button>
+                  {todayMeal && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleShareMeal(todayStr.replace(/-/g, ""), todayMeal)}><Share2 className="h-4 w-4" /></Button>}
+                </div>
               </CardHeader>
               <CardContent>
                 {todayMeal ? (
@@ -307,7 +320,12 @@ export default function DashboardPage() {
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-card">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-black flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> 오늘 시간표</CardTitle>
-                {todayTable && <Button variant="ghost" size="icon" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4" /></Button>}
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="text-[10px] h-8 font-black text-primary hover:bg-primary/5 rounded-xl px-2" onClick={() => { setDetailType('timetable'); setIsWeeklyDetailOpen(true); }}>
+                    주간 전체보기 <ChevronRight className="h-3 w-3 ml-0.5" />
+                  </Button>
+                  {todayTable && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleShareTimetable(todayStr.replace(/-/g, ""), todayTable)}><Share2 className="h-4 w-4" /></Button>}
+                </div>
               </CardHeader>
               <CardContent>
                 {todayTable ? (
@@ -431,6 +449,91 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* 주간 상세 보기 다이얼로그 */}
+      <Dialog open={isWeeklyDetailOpen} onOpenChange={setIsWeeklyDetailOpen}>
+        <DialogContent className="max-w-2xl rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-card">
+          <DialogHeader className="p-8 bg-primary/5 border-b">
+            <div className="flex items-center gap-4">
+               <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
+                  {detailType === 'meal' ? <Utensils className="h-6 w-6 text-white" /> : <Clock className="h-6 w-6 text-white" />}
+               </div>
+               <div>
+                  <DialogTitle className="text-2xl font-black text-primary">
+                    {detailType === 'meal' ? '이번 주 급식표' : '이번 주 시간표'}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs font-bold text-primary/60">
+                    {format(weekDates[0], "M월 d일")} ~ {format(weekDates[4], "M월 d일")} 정보입니다.
+                  </DialogDescription>
+               </div>
+            </div>
+          </DialogHeader>
+          <div className="p-8 max-h-[65vh] overflow-y-auto custom-scrollbar space-y-6">
+             {isLoadingWeekly ? (
+               <div className="py-20 flex flex-col items-center justify-center gap-3 opacity-30">
+                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                 <p className="font-black text-sm">데이터를 불러오는 중...</p>
+               </div>
+             ) : (
+               <div className="grid gap-6">
+                 {weekDates.map((date, idx) => {
+                    const dateStr = format(date, "yyyyMMdd")
+                    const isToday = format(date, "yyyy-MM-dd") === todayStr
+                    
+                    if (detailType === 'meal') {
+                      const meal = weeklyMeals.find(m => m.date === dateStr)
+                      return (
+                        <div key={idx} className={cn("p-6 rounded-[2rem] border transition-all", isToday ? "bg-primary/5 border-primary/20 shadow-md scale-[1.02]" : "bg-muted/20 border-transparent")}>
+                          <div className="flex justify-between items-center mb-4">
+                            <span className={cn("px-4 py-1.5 rounded-full text-xs font-black", isToday ? "bg-primary text-white" : "bg-card text-muted-foreground")}>
+                               {format(date, "M월 d일 (E)", { locale: ko })}
+                            </span>
+                            {meal?.menu && <Button variant="ghost" size="icon" onClick={() => handleShareMeal(dateStr, meal.menu)}><Share2 className="h-4 w-4" /></Button>}
+                          </div>
+                          {meal?.menu ? (
+                            <div className="flex flex-wrap gap-1.5">
+                               {meal.menu.split(',').map((m, i) => (
+                                 <Badge key={i} variant="outline" className="bg-card border-none text-[11px] font-bold py-1 px-3 shadow-sm">{m.trim()}</Badge>
+                               ))}
+                            </div>
+                          ) : <p className="text-xs font-bold opacity-30 italic text-center py-4">급식 정보가 없습니다.</p>}
+                        </div>
+                      )
+                    } else {
+                      const table = weeklyTimetable.find(t => t.date === dateStr)
+                      return (
+                        <div key={idx} className={cn("p-6 rounded-[2rem] border transition-all", isToday ? "bg-primary/5 border-primary/20 shadow-md scale-[1.02]" : "bg-muted/20 border-transparent")}>
+                          <div className="flex justify-between items-center mb-4">
+                            <span className={cn("px-4 py-1.5 rounded-full text-xs font-black", isToday ? "bg-primary text-white" : "bg-card text-muted-foreground")}>
+                               {format(date, "M월 d일 (E)", { locale: ko })}
+                            </span>
+                            {table?.timetable && <Button variant="ghost" size="icon" onClick={() => handleShareTimetable(dateStr, table.timetable)}><Share2 className="h-4 w-4" /></Button>}
+                          </div>
+                          {table?.timetable ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                               {table.timetable.split(',').map((t, i) => {
+                                  const [p, c] = t.split(':')
+                                  return (
+                                    <div key={i} className="bg-card p-3 rounded-2xl shadow-sm border border-primary/5 text-center">
+                                       <p className="text-[10px] font-black text-primary opacity-60 mb-0.5">{p}</p>
+                                       <p className="text-xs font-black truncate">{c}</p>
+                                    </div>
+                                  )
+                               })}
+                            </div>
+                          ) : <p className="text-xs font-bold opacity-30 italic text-center py-4">시간표 정보가 없습니다.</p>}
+                        </div>
+                      )
+                    }
+                 })}
+               </div>
+             )}
+          </div>
+          <DialogFooter className="p-6 bg-muted/10 border-t">
+             <Button className="w-full h-12 rounded-2xl font-black bg-primary" onClick={() => setIsWeeklyDetailOpen(false)}>확인</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 계정 연동 안내 팝업 */}
       <Dialog open={showMigration} onOpenChange={(o) => {
