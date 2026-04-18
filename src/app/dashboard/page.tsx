@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react"
@@ -76,6 +77,7 @@ export default function DashboardPage() {
   const configRef = useMemoFirebase(() => doc(db, "metadata", "config"), [db])
   const { data: configData } = useDoc(configRef)
 
+  // 소셜 계정 연결 안내 팝업 로직
   useEffect(() => {
     if (!isUserLoading && user && !user.isAnonymous) {
       const socialProviders = ['google.com', 'oidc.naver', 'naver.com'];
@@ -254,6 +256,7 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl animate-in fade-in duration-500">
+      {/* 상단 웰컴 섹션 */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-primary">
@@ -283,6 +286,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-12">
         <div className="md:col-span-8 space-y-6">
+          {/* 급식 및 시간표 */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="rounded-[2.5rem] border-none shadow-sm bg-card">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -323,6 +327,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
+          {/* 오늘의 도전 문제 */}
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-card">
             <CardHeader className="bg-primary/5 flex flex-row items-center justify-between border-b">
               <div className="flex items-center gap-3">
@@ -368,6 +373,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="md:col-span-4 space-y-6">
+          {/* 행운 점수 섹션 */}
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-card">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-black flex items-center gap-2"><Clover className="h-5 w-5 text-green-500" /> 행운 점수</CardTitle>
@@ -408,6 +414,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
+          {/* 오늘의 명언 섹션 */}
           <Card className="rounded-[2.5rem] border-none shadow-sm bg-card overflow-hidden">
              <CardHeader className="border-b bg-muted/10 py-4 flex flex-row items-center justify-between">
                <CardTitle className="text-sm font-black flex items-center gap-2"><Quote className="h-5 w-5 text-accent" /> 오늘의 명언</CardTitle>
@@ -425,6 +432,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* 계정 연동 안내 팝업 */}
       <Dialog open={showMigration} onOpenChange={(o) => {
         if (!o) sessionStorage.setItem('migration_dismissed', 'true');
         setShowMigration(o);

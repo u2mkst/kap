@@ -29,12 +29,12 @@ service cloud.firestore {
       allow update, delete: if isUserAdmin();
     }
 
-    // 2. 유저 프로필 및 하위 데이터 (재귀적 규칙 적용)
+    // 2. 유저 프로필 및 하위 데이터 (재귀적 규칙 적용으로 모든 권한 해결)
     match /users/{userId} {
       allow get, list: if isAuthenticated();
       allow write: if isOwner(userId) || isUserAdmin();
 
-      // 모든 하위 컬렉션(friends, invites, plants, games 등)에 대한 소유자 권한 보장
+      // 모든 하위 컬렉션(friends, invites, plants, personal_fortunes 등)에 대한 소유자 권한 보장
       match /{allSubpaths=**} {
         allow read, write: if isOwner(userId) || isUserAdmin();
       }
